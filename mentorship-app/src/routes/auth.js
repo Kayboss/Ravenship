@@ -7,8 +7,8 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 const users = [
-  { id: "1", name: "Sarah Johnson", email: "sarah@test.com", password: "Test1234!", role: "mentee", verified: true, phone: "", city: "" },
-  { id: "2", name: "Marcus Chen", email: "mentor@test.com", password: "Mentor123!", role: "mentor", verified: true, phone: "", city: "" },
+  { id: "1", name: "Sarah Johnson", email: "daisy@gmail.com", password: "Test1234!", role: "mentee", verified: true, phone: "", city: "" },
+  { id: "2", name: "Marcus Chen", email: "raven@gmail.com", password: "Mentor123!", role: "mentor", verified: true, phone: "", city: "" },
   { id: "admin1", name: "Kay", email: "tripelkay@gmail.com", password: "Raven@26", role: "admin", verified: true, phone: "", city: "" },
 ];
 

@@ -2,6 +2,7 @@
 import dotenv from "dotenv";
 import express from "express";
 import { fileURLToPath } from "url";
+import path from "path";
 import { applySecurity } from "./middleware/securityConfig.js";
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
@@ -28,8 +29,14 @@ app.use("/api/mentor", mentorRouter);
 app.use("/api/community", communityRouter);
 app.use("/api/gradebook", gradebookRouter);
 
-app.use("*", (req, res) => {
-  res.status(404).json({ message: "Not found" });
+const distPath = path.resolve("dist");
+app.use(express.static(distPath));
+
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api")) {
+    return res.status(404).json({ message: "Not found" });
+  }
+  res.sendFile(path.join(distPath, "index.html"));
 });
 
 const isEntryPoint =
