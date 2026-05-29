@@ -348,6 +348,15 @@ const GraphicSide = styled.div`
 const LottieContainer = styled.div`
   width: 80%;
   max-width: 500px;
+  aspect-ratio: 1 / 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  svg {
+    width: 100% !important;
+    height: 100% !important;
+  }
 `;
 
 const FormSide = styled.div`

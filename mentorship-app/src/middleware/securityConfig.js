@@ -23,8 +23,19 @@ const apiLimiter = rateLimit({
 
 // Apply security middleware to an Express app
 export const applySecurity = (app) => {
-  // Set secure HTTP headers
-  app.use(helmet());
+  // Set secure HTTP headers with CSP relaxed for Lottie animations
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-eval'"],
+          connectSrc: ["'self'", "https://assets-v2.lottiefiles.com"],
+          imgSrc: ["'self'", "data:", "https://assets-v2.lottiefiles.com"],
+        },
+      },
+    })
+  );
 
   // Enable CORS
   app.use(cors(corsOptions));
