@@ -74,7 +74,7 @@ const UserTable = styled.table`width:100%;border-collapse:collapse;font-size:0.8
 const UTh = styled.th`text-align:left;padding:14px 16px;border-bottom:2px solid ${p => p.theme.colors.outline}30;color:${p => p.theme.colors.textSecondary};font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;`;
 const UTd = styled.td`padding:14px 16px;border-bottom:1px solid ${p => p.theme.colors.outline}15;color:${p => p.theme.colors.textPrimary};`;
 const URow = styled.tr`&:hover{background:${p => p.theme.colors.background};cursor:pointer;transition:all 0.15s;}`;
-const RoleBadge = styled.span`display:inline-block;padding:3px 12px;border-radius:50px;font-size:0.72rem;font-weight:700;background:${p => p.$mentor ? "#ffd9e3" : "#c8e6ff"};color:${p => p.$mentor ? "#8d004d" : "#004a6c"};`;
+const RoleBadge = styled.span`display:inline-block;padding:3px 12px;border-radius:50px;font-size:0.72rem;font-weight:700;background:${p => p.$role === "admin" ? "#fff3cd" : p.$role === "mentor" ? "#ffd9e3" : "#c8e6ff"};color:${p => p.$role === "admin" ? "#856404" : p.$role === "mentor" ? "#8d004d" : "#004a6c"};`;
 const StatusDot = styled.span`display:inline-block;width:8px;height:8px;border-radius:50%;background:${p => p.$online ? "#27AE60" : "#594048"};margin-right:6px;`;
 
 const ChartCard = styled.div`background:${p => p.theme.colors.surface || "#fff"};border-radius:16px;padding:20px;border:1px solid ${p => p.theme.colors.outline}30;`;
@@ -175,7 +175,7 @@ function DashboardOverview() {
                           </div>
                         </div>
                       </UTd>
-                      <UTd><RoleBadge $mentor={u.role === "mentor"}>{u.role === "mentor" ? "Mentor" : "Mentee"}</RoleBadge></UTd>
+                      <UTd><RoleBadge $role={u.role}>{u.role === "admin" ? "Admin" : u.role === "mentor" ? "Mentor" : "Mentee"}</RoleBadge></UTd>
                       <UTd>
                         <div style={{display:"flex",alignItems:"center",gap:8}}>
                           <div style={{width:64,height:6,borderRadius:3,background:"#e4e2e1",overflow:"hidden"}}>
