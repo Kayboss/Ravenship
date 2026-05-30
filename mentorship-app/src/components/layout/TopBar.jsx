@@ -383,12 +383,12 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
 
         <RelativeWrap>
           <Avatar onClick={() => setOpenDropdown(openDropdown === "profile" ? null : "profile")}>
-            {initials}
+            {user.photoURL ? <img src={user.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : initials}
           </Avatar>
           {openDropdown === "profile" && (
             <ProfileDropdown>
               <ProfileRow>
-                <ProfileAvatarSm>{initials}</ProfileAvatarSm>
+                <ProfileAvatarSm>{user.photoURL ? <img src={user.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : initials}</ProfileAvatarSm>
                 <ProfileDropdownHeader>
                   <ProfileName>{user.name}</ProfileName>
                   <ProfileEmail>{user.email}</ProfileEmail>

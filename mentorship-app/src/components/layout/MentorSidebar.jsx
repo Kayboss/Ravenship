@@ -178,7 +178,7 @@ export const MentorSidebar = () => {
       <Overlay $open={mobileOpen} onClick={() => setMobileOpen(false)} />
       <SidebarContainer $open={mobileOpen}>
         <ProfileSection>
-          <ProfileAvatar>{initials}</ProfileAvatar>
+          <ProfileAvatar>{user.photoURL ? <img src={user.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : initials}</ProfileAvatar>
           <ProfileName>{user.name}</ProfileName>
           <ProfilePhone>{user.phone || "No phone"}</ProfilePhone>
         </ProfileSection>

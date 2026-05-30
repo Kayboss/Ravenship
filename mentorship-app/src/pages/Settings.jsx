@@ -9,6 +9,7 @@ import { getStoredUser } from "../firebase/auth";
 import { updateUser } from "../firebase/db";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
+import { uploadProfilePic, deleteProfilePic } from "../firebase/storage";
 
 const Page = styled.div`
   display: flex;
@@ -352,9 +353,12 @@ export const Settings = () => {
     }
   };
 
+  const [photoFile, setPhotoFile] = useState(null);
+
   const handlePhoto = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPhotoFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setPhoto(ev.target.result);
     reader.readAsDataURL(file);
@@ -371,11 +375,16 @@ export const Settings = () => {
 
     try {
       const user = getStoredUser();
-      await updateUser(user.id, { name, phone, city, bio });
-      const updated = { ...user, name, phone, city, bio };
+      let photoURL = photo;
+      if (photoFile) {
+        photoURL = await uploadProfilePic(user.id, photoFile);
+        setPhotoFile(null);
+      }
+      await updateUser(user.id, { name, phone, city, bio, photoURL: photoURL || "" });
+      const updated = { ...user, name, phone, city, bio, photoURL: photoURL || "" };
       localStorage.setItem("user", JSON.stringify(updated));
       localStorage.setItem("settings", JSON.stringify({
-        dobMonth, dobDay, dobYear, interests, skills, photo, bio,
+        dobMonth, dobDay, dobYear, interests, skills, photo: photoURL, bio,
       }));
       setUser(updated);
     } catch {
