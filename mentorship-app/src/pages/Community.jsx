@@ -4,6 +4,8 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getStoredUser } from "../firebase/auth";
+import { getPosts, addPost, togglePostLike, getEvents, getUsers } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -649,7 +651,7 @@ export const Community = () => {
   const [commentInputs, setCommentInputs] = useState({});
   const [likingId, setLikingId] = useState(null);
   const conversationsRef = useRef({ ...conversationData });
-  const user = { name: "You", role: "Mentee", avatarColor: "#b50064" };
+  const user = getStoredUser() || { name: "You", role: "Mentee", avatarColor: "#b50064" };
 
   const syncTopBarMessages = () => {
     const names = Object.keys(conversationsRef.current);
@@ -664,18 +666,16 @@ export const Community = () => {
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
     syncTopBarMessages();
-    const headers = { Authorization: "Bearer " + localStorage.getItem("token") };
-    fetch("/api/community/posts", { headers }).then(r => r.json()).then(d => setPostList(Array.isArray(d) ? d : posts)).catch(() => setPostList(posts));
-    fetch("/api/community/members", { headers }).then(r => r.json()).then(d => setMemberList(Array.isArray(d) ? d : members)).catch(() => {});
-    fetch("/api/community/events", { headers }).then(r => r.json()).then(d => setEventList(Array.isArray(d) ? d : events)).catch(() => {});
+    getPosts().then(d => setPostList(Array.isArray(d) ? d : posts)).catch(() => setPostList(posts));
+    getUsers().then(d => setMemberList(Array.isArray(d) ? d : members)).catch(() => {});
+    getEvents().then(d => setEventList(Array.isArray(d) ? d : events)).catch(() => {});
   }, []);
 
   const toggleLike = (index) => {
     const post = postList[index];
     if (!post || !post.id || likingId === post.id) return;
     setLikingId(post.id);
-    fetch("/api/community/posts/" + post.id + "/like", { method: "POST", headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    togglePostLike(post.id)
       .then(() => { setLikingId(null); setPostList(prev => prev.map((p, i) => i === index ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p)); })
       .catch(() => setLikingId(null));
   };
@@ -703,8 +703,8 @@ export const Community = () => {
 
   const submitPost = () => {
     if (!newPostText.trim()) return;
-    fetch("/api/community/posts", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") }, body: JSON.stringify({ text: newPostText }) })
-      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.message); setPostList(prev => [d, ...prev]); setNewPostText(""); setNewPostImage(null); })
+    addPost({text: newPostText})
+      .then(d => { setPostList(prev => [d, ...prev]); setNewPostText(""); setNewPostImage(null); })
       .catch(() => {});
   };
 

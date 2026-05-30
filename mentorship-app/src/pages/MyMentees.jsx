@@ -5,6 +5,7 @@ import "aos/dist/aos.css";
 import { useParams } from "react-router-dom";
 import { MentorSidebar } from "../components/layout/MentorSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getStoredUser } from "../firebase/auth";
 
 const Page = styled.div`
   display: flex;
@@ -350,8 +351,7 @@ export const MyMentees = () => {
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true, offset: 50 });
-    let user = { email: "" };
-    try { const s = localStorage.getItem("user"); if (s) user = JSON.parse(s); } catch {}
+    const user = getStoredUser() || { email: "" };
     const key = `mentees_${user.email || "default"}`;
     const stored = localStorage.getItem(key);
     if (stored) {

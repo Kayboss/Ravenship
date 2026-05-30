@@ -6,6 +6,18 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ThemeContext } from "../context/ThemeContext.jsx";
 import { AdminSidebar } from "../components/layout/AdminSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getStoredUser } from "../firebase/auth";
+import {
+  getUsers, verifyUser, unverifyUser,
+  getCourses,
+  getAllGradebook,
+  addNotification,
+  getAnnouncements,
+  getHelpGuides, addHelpGuide,
+  getAnalytics
+} from "../firebase/db";
+import { db } from "../firebase/config";
+import { collection, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from "firebase/firestore";
 
 const Page = styled.div`display:flex;min-height:100vh;background:${p => p.theme.colors.background};`;
 const Main = styled.main`flex:1;margin-left:280px;padding:0 ${p => p.theme.spacing.xl} ${p => p.theme.spacing.xl};@media(max-width:${p => p.theme.breakpoints.mobile}){margin-left:0;padding:${p => p.theme.spacing.sm}}@media(min-width:${p => p.theme.breakpoints.mobile}) and (max-width:${p => p.theme.breakpoints.tablet}){margin-left:0;padding:${p => p.theme.spacing.lg}}`;
@@ -90,14 +102,11 @@ function DashboardOverview() {
   const [users, setUsers] = useState([]);
   const [notifs, setNotifs] = useState([]);
   const navigate = useNavigate();
-  let user = { name: "Admin" };
-  try { const s = localStorage.getItem("user"); if (s) user = JSON.parse(s); } catch {}
+  const user = getStoredUser() || { name: "Admin" };
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = { Authorization: "Bearer " + token };
-    fetch("/api/admin/analytics", { headers }).then(r => r.json()).then(d => setData(d)).catch(() => {});
-    fetch("/api/admin/users", { headers }).then(r => r.json()).then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
-    fetch("/api/admin/notifications", { headers }).then(r => r.json()).then(d => setNotifs(Array.isArray(d) ? d : [])).catch(() => {});
+    getAnalytics().then(d => setData(d)).catch(() => {});
+    getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
+    getAnnouncements().then(d => setNotifs(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Good morning"; if (h < 18) return "Good afternoon"; return "Good evening"; })();
   const totalUsers = data ? data.total : users.length;
@@ -233,7 +242,7 @@ function DashboardOverview() {
               <div key={n.id || i} style={{cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                   <AnnTag $c={i === 0 ? "#b50064" : i === 1 ? "#006590" : i === 3 ? "#e53935" : "#cca800"}>{i === 0 ? "System Update" : i === 1 ? "Event" : i === 3 ? "Urgent" : "Community"}</AnnTag>
-                  <span style={{fontSize:"0.7rem",color:"#999"}}>{n.createdAt ? new Date(n.createdAt).toLocaleDateString() : "Today"}</span>
+                  <span style={{fontSize:"0.7rem",color:"#999"}}>{n.createdAt ? new Date(n.createdAt.toDate ? n.createdAt.toDate() : n.createdAt).toLocaleDateString() : "Today"}</span>
                 </div>
                 <h5 style={{margin:"0 0 4px",fontWeight:700,fontSize:"0.85rem",color:"#2c3e50"}}>{n.title}</h5>
                 <p style={{margin:0,fontSize:"0.78rem",color:"#594048",lineHeight:1.4}}>{n.message}</p>
@@ -258,18 +267,15 @@ function MentorsSection() {
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = { Authorization: "Bearer " + token };
-    fetch("/api/admin/users", { headers })
-      .then(r => r.json()).then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor") : [])).catch(() => {});
-    fetch("/api/courses", { headers })
-      .then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
+    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor") : [])).catch(() => {});
+    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
-    fetch("/api/admin/verify-user", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") }, body: JSON.stringify({ userId: id, verified: v }) })
-      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.message || "Failed to update"); setUsers(prev => prev.map(u => u.id === id ? { ...u, verified: v } : u)); setVerifyMsg(null); })
+    const action = v ? verifyUser(id) : unverifyUser(id);
+    action
+      .then(() => { setUsers(prev => prev.map(u => u.id === id ? { ...u, verified: v } : u)); setVerifyMsg(null); })
       .catch(e => setVerifyMsg(e.message))
       .finally(() => setVerifying(null));
   };
@@ -277,7 +283,7 @@ function MentorsSection() {
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       {verifyMsg && <p style={{gridColumn:"1/-1",fontSize:"0.85rem",color:"#e53935",fontWeight:600,margin:0}}>{verifyMsg}</p>}
       {users.length === 0 ? <p style={{ color: "#594048", fontSize: "0.9rem", gridColumn:"1/-1" }}>No mentors registered.</p> : users.map((u, idx) => {
-        const mentorCourses = courses.filter(c => c.instructor.toLowerCase() === u.name.toLowerCase());
+        const mentorCourses = courses.filter(c => c.instructor?.toLowerCase() === u.name?.toLowerCase());
         return (
           <Card key={u.id} data-aos="fade-up" style={{marginBottom:0}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",cursor:"pointer"}} onClick={() => setExpandedMentor(expandedMentor === u.id ? null : u.id)}>
@@ -357,18 +363,15 @@ function MenteesSection() {
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = { Authorization: "Bearer " + token };
-    fetch("/api/admin/users", { headers })
-      .then(r => r.json()).then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentee") : [])).catch(() => {});
-    fetch("/api/courses", { headers })
-      .then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
+    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentee") : [])).catch(() => {});
+    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
-    fetch("/api/admin/verify-user", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") }, body: JSON.stringify({ userId: id, verified: v }) })
-      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.message || "Failed to update"); setUsers(prev => prev.map(u => u.id === id ? { ...u, verified: v } : u)); setVerifyMsg(null); })
+    const action = v ? verifyUser(id) : unverifyUser(id);
+    action
+      .then(() => { setUsers(prev => prev.map(u => u.id === id ? { ...u, verified: v } : u)); setVerifyMsg(null); })
       .catch(e => setVerifyMsg(e.message))
       .finally(() => setVerifying(null));
   };
@@ -442,9 +445,21 @@ function GradebookSection() {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     setLoading(true);
-    fetch("/api/gradebook", { headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(r => r.json()).then(d => { setMentees(d.mentees || []); setLoading(false); })
-      .catch(() => setLoading(false));
+    getAllGradebook()
+      .then(entries => {
+        return getUsers().then(users => {
+          return entries.map(e => {
+            const user = users.find(u => u.id === e.menteeId);
+            const scores = e.scores || {};
+            const vals = Object.values(scores).filter(v => typeof v === 'number');
+            const avg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+            return { name: user?.name || e.menteeId || "Unknown", scores, avg };
+          });
+        });
+      })
+      .then(setMentees)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
   const total = mentees.length;
   const passing = mentees.filter(m => m.avg >= 60).length;
@@ -505,22 +520,23 @@ function NotificationsSection() {
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(null);
   useEffect(() => {
-    fetch("/api/admin/notifications", { headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(r => r.json()).then(d => setList(Array.isArray(d) ? d : [])).catch(() => {});
+    getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
+      .then(snap => setList(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .catch(() => {});
   }, []);
   const send = () => {
     if (!title.trim() || !message.trim()) { setNotifMsg("Title and message are required"); return; }
     setSending(true);
     setNotifMsg("");
-    fetch("/api/admin/notifications", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") }, body: JSON.stringify({ title, message, targetRole }) })
-      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.message || "Failed to send"); setList(prev => [d, ...prev]); setTitle(""); setMessage(""); setNotifMsg("Sent!"); setTimeout(() => setNotifMsg(""), 2000); })
+    addNotification({ title, message, targetRole })
+      .then(id => { setList(prev => [{ id, title, message, targetRole, createdAt: new Date().toISOString() }, ...prev]); setTitle(""); setMessage(""); setNotifMsg("Sent!"); setTimeout(() => setNotifMsg(""), 2000); })
       .catch(e => setNotifMsg(e.message))
       .finally(() => setSending(false));
   };
   const remove = (id) => {
     setDeleting(id);
-    fetch(`/api/admin/notifications/${id}`, { method: "DELETE", headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(async r => { if (!r.ok) throw new Error("Failed to delete"); setList(prev => prev.filter(n => n.id !== id)); })
+    deleteDoc(doc(db, "notifications", id))
+      .then(() => { setList(prev => prev.filter(n => n.id !== id)); })
       .catch(e => setNotifMsg(e.message))
       .finally(() => setDeleting(null));
   };
@@ -558,8 +574,7 @@ function NotificationsSection() {
 function AnalyticsSection() {
   const [data, setData] = useState(null);
   useEffect(() => {
-    fetch("/api/admin/analytics", { headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(r => r.json()).then(d => setData(d)).catch(() => {});
+    getAnalytics().then(d => setData(d)).catch(() => {});
   }, []);
   if (!data) return <Card><p style={{ color: "#594048" }}>Loading...</p></Card>;
   return (
@@ -603,10 +618,10 @@ function HelpCenterSection() {
   const activeTab = loc.hash.includes("?tab=") ? loc.hash.split("?tab=")[1] : "messages";
 
   const load = () => {
-    fetch("/api/admin/help-messages", { headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(r => r.json()).then(d => setMsgs(Array.isArray(d) ? d : [])).catch(() => {});
-    fetch("/api/admin/startup-guides", { headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(r => r.json()).then(d => setGuides(Array.isArray(d) ? d : [])).catch(() => {});
+    getDocs(collection(db, "helpMessages"))
+      .then(snap => setMsgs(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .catch(() => {});
+    getHelpGuides().then(d => setGuides(Array.isArray(d) ? d : [])).catch(() => {});
   };
   useEffect(() => { load(); }, []);
 
@@ -615,15 +630,15 @@ function HelpCenterSection() {
     setAddingGuide(true);
     setGuideMsg("");
     setHelpError(null);
-    fetch("/api/admin/startup-guides", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") }, body: JSON.stringify({ title, content, targetRole }) })
-      .then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.message || "Failed to create guide"); setGuides(prev => [d, ...prev]); setTitle(""); setContent(""); setGuideMsg("Guide created!"); setTimeout(() => setGuideMsg(""), 2000); })
+    addHelpGuide({ title, content, targetRole })
+      .then(id => { setGuides(prev => [{ id, title, content, targetRole }, ...prev]); setTitle(""); setContent(""); setGuideMsg("Guide created!"); setTimeout(() => setGuideMsg(""), 2000); })
       .catch(e => { setHelpError(e.message); setGuideMsg(""); })
       .finally(() => setAddingGuide(false));
   };
   const removeGuide = (id) => {
     setRemovingGuide(id);
-    fetch(`/api/admin/startup-guides/${id}`, { method: "DELETE", headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(async r => { if (!r.ok) throw new Error("Failed to delete guide"); setGuides(prev => prev.filter(g => g.id !== id)); })
+    deleteDoc(doc(db, "helpGuides", id))
+      .then(() => { setGuides(prev => prev.filter(g => g.id !== id)); })
       .catch(e => setHelpError(e.message))
       .finally(() => setRemovingGuide(null));
   };
@@ -631,8 +646,8 @@ function HelpCenterSection() {
     setToggling(id);
     const msg = msgs.find(m => m.id === id);
     const newStatus = msg?.status === "open" ? "resolved" : "open";
-    fetch(`/api/admin/help-messages/${id}/status`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") }, body: JSON.stringify({ status: newStatus }) })
-      .then(async r => { if (!r.ok) throw new Error("Failed to update status"); setMsgs(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m)); })
+    updateDoc(doc(db, "helpMessages", id), { status: newStatus })
+      .then(() => { setMsgs(prev => prev.map(m => m.id === id ? { ...m, status: newStatus } : m)); })
       .catch(e => setHelpError(e.message))
       .finally(() => setToggling(null));
   };
@@ -659,7 +674,7 @@ function HelpCenterSection() {
                   </div>
                   <p style={{ fontSize: "0.85rem", color: "#594048", marginBottom: 4 }}>{m.message}</p>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.75rem", color: "#999" }}>{m.userEmail} · {new Date(m.createdAt).toLocaleDateString()}</span>
+                    <span style={{ fontSize: "0.75rem", color: "#999" }}>{m.userEmail} · {new Date(m.createdAt?.toDate ? m.createdAt.toDate() : m.createdAt).toLocaleDateString()}</span>
                     <Btn $outline disabled={toggling === m.id} style={{ fontSize: "0.75rem", padding: "4px 12px" }} onClick={() => toggleStatus(m.id)}>
                       {toggling === m.id ? "..." : m.status === "open" ? "✓ Resolve" : "Reopen"}
                     </Btn>
@@ -707,9 +722,7 @@ function CoursesSection() {
   const [courses, setCourses] = useState([]);
   const [expandedCourse, setExpandedCourse] = useState(null);
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = { Authorization: "Bearer " + token };
-    fetch("/api/courses", { headers }).then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
+    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
   const SectionBox = styled.div`background:#fff;border-radius:20px;border:1px solid #e0e0e0;padding:24px;margin-bottom:24px;`;
   const SectionBoxTitle = styled.h4`font-weight:700;font-size:1rem;color:#2c3e50;margin-bottom:16px;display:flex;align-items:center;gap:8px;`;
@@ -759,10 +772,8 @@ function ProgressSection() {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const headers = { Authorization: "Bearer " + token };
-    fetch("/api/admin/users", { headers }).then(r => r.json()).then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
-    fetch("/api/courses", { headers }).then(r => r.json()).then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
+    getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
+    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
   const mentors = users.filter(u => u.role === "mentor");
   const mentees = users.filter(u => u.role === "mentee");

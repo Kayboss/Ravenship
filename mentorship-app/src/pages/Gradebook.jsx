@@ -5,6 +5,8 @@ import "aos/dist/aos.css";
 import { useParams } from "react-router-dom";
 import { AdminSidebar } from "../components/layout/AdminSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getStoredUser } from "../firebase/auth";
+import { getUsers, getCourses, getAllGradebook, updateGradebook, getSubmissions } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -238,14 +240,47 @@ const MetricValue = styled.div`
   color: ${props => props.theme.colors.textPrimary};
 `;
 
+const COLORS = ["#6C5CE7","#00B894","#0984E3","#E17055","#FDCB6E","#E84393"];
+
 export const Gradebook = () => {
   const { role } = useParams();
   const [mentees, setMentees] = useState([]);
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true, offset: 50 });
-    fetch("/api/gradebook", { headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(r => r.json()).then(d => setMentees(d.mentees || [])).catch(() => {});
+    Promise.all([getAllGradebook(), getUsers(), getCourses()])
+      .then(([gradebooks, users, courses]) => {
+        const userMap = {};
+        users.forEach(u => { userMap[u.id] = u; });
+        const menteeMap = {};
+        gradebooks.forEach(gb => {
+          const menteeId = gb.menteeId;
+          if (!menteeMap[menteeId]) {
+            const user = userMap[menteeId] || {};
+            const name = user.name || "Unknown";
+            const initials = name.split(" ").map(n => n[0]).join("").toUpperCase() || "?";
+            menteeMap[menteeId] = {
+              name,
+              initials,
+              color: COLORS[menteeId.length % COLORS.length],
+              scores: {},
+              avg: 0
+            };
+          }
+          if (gb.scores && typeof gb.scores === "object") {
+            Object.keys(gb.scores).forEach(assignment => {
+              menteeMap[menteeId].scores[assignment] = gb.scores[assignment];
+            });
+          }
+        });
+        const result = Object.values(menteeMap);
+        result.forEach(m => {
+          const vals = Object.values(m.scores).filter(v => typeof v === "number");
+          m.avg = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+        });
+        setMentees(result);
+      })
+      .catch(() => {});
   }, []);
 
   const allAssignments = mentees.length > 0

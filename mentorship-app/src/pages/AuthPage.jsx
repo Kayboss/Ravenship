@@ -1,22 +1,18 @@
-// AuthPage with role selection and extra registration fields
 import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { gsap } from "gsap";
 import lottie from "lottie-web";
 import { useNavigate } from "react-router-dom";
+import { loginWithEmail } from "../firebase/auth";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../firebase/config";
 
-// Lottie placeholder animation URL
 const LOTTIE_URL = "https://assets-v2.lottiefiles.com/a/7400555a-117b-11ee-b7a8-3f5a379facbf/MaoSbTwAlQ.json";
 
 export const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState("mentee");
-  const [city, setCity] = useState("");
-  const [phone, setPhone] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
@@ -26,7 +22,6 @@ export const AuthPage = () => {
   const formRef = useRef(null);
   const navigate = useNavigate();
 
-  // Initialize Lottie animation once
   useEffect(() => {
     const anim = lottie.loadAnimation({
       container: lottieRef.current,
@@ -38,7 +33,6 @@ export const AuthPage = () => {
     return () => anim.destroy();
   }, []);
 
-  // GSAP entrance animation for form fields
   useEffect(() => {
     if (!formRef.current) return;
     const elements = formRef.current.children;
@@ -57,62 +51,22 @@ export const AuthPage = () => {
 
     try {
       if (isLogin) {
-        const res = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, role }),
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          setAuthMessage({ text: err.message || "Login failed", type: "error" });
-          return;
-        }
-        const data = await res.json();
-        localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("token", data.token);
-        const userRole = data.user.role;
-        if (userRole !== "admin" && !data.user.verified) {
+        const { userData } = await loginWithEmail(email, password);
+        if (userData.role !== "admin" && !userData.verified) {
           setAuthMessage({ text: "Your account is pending verification by an administrator. You will be able to log in once approved.", type: "warning" });
           localStorage.removeItem("user");
-          localStorage.removeItem("token");
           return;
         }
-      } else {
-        if (password !== confirmPassword) {
-          setAuthMessage({ text: "Passwords do not match", type: "error" });
-          return;
-        }
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: fullName,
-            email,
-            password,
-            role,
-            phone,
-            city,
-          }),
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          setAuthMessage({ text: err.message || "Registration failed", type: "error" });
-          return;
-        }
-        const data = await res.json();
-        localStorage.setItem("user", JSON.stringify(data.user));
-        localStorage.setItem("token", data.token);
-        if (role !== "admin") {
-          setAuthMessage({ text: "Registration successful! Your account is pending verification by an administrator. You will be able to log in once approved.", type: "warning" });
-          localStorage.removeItem("user");
-          localStorage.removeItem("token");
-          return;
-        }
+        setAuthMessage({ text: "", type: "" });
+        navigate(`/dashboard/${userData.role}`);
       }
-      setAuthMessage({ text: "", type: "" });
-      navigate(`/dashboard/${role}`);
-    } catch {
-      setAuthMessage({ text: "Network error. Please try again.", type: "error" });
+    } catch (err) {
+      const msg = err.code === "auth/user-not-found" || err.code === "auth/invalid-credential" || err.code === "auth/wrong-password"
+        ? "Invalid email or password."
+        : err.code === "auth/invalid-email"
+        ? "Please enter a valid email address."
+        : "Login failed. Please try again.";
+      setAuthMessage({ text: msg, type: "error" });
     }
   };
 
@@ -135,7 +89,6 @@ export const AuthPage = () => {
           <form onSubmit={handleSubmit} ref={formRef}>
             <Title>{isLogin ? "Welcome Back" : "Create an Account"}</Title>
 
-            {/* Role toggle – visible on both login and registration */}
             <InputGroup>
               <label>I am a</label>
               <RoleToggle role="radiogroup" aria-label="Select your role">
@@ -159,73 +112,7 @@ export const AuthPage = () => {
               </RoleToggle>
             </InputGroup>
 
-            {/* Two-column registration form */}
-            {!isLogin ? (
-              <FormColumns>
-                <Column>
-                  <InputGroup>
-                    <label>Full Name</label>
-                    <input
-                      type="text"
-                      placeholder="John Doe"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                    />
-                  </InputGroup>
-                  <InputGroup>
-                    <label>Telephone</label>
-                    <input
-                      type="tel"
-                      placeholder="+1 555‑123‑4567"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                    />
-                  </InputGroup>
-                  <InputGroup>
-                    <label>Email Address</label>
-                    <input type="email" name="email" placeholder="you@example.com" required />
-                  </InputGroup>
-                </Column>
-                <Column>
-                  <InputGroup>
-                    <label>City</label>
-                    <input
-                      type="text"
-                      placeholder="Your city"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      required
-                    />
-                  </InputGroup>
-                  <InputGroup>
-                    <label>Password</label>
-                    <PasswordWrapper>
-                      <input type={showPassword ? "text" : "password"} name="password" placeholder="••••••••" required />
-                      <ToggleVis type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
-                        {showPassword ? EyeOff : EyeOn}
-                      </ToggleVis>
-                    </PasswordWrapper>
-                  </InputGroup>
-                  <InputGroup>
-                    <label>Confirm Password</label>
-                    <PasswordWrapper>
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                      />
-                      <ToggleVis type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? "Hide password" : "Show password"}>
-                        {showConfirmPassword ? EyeOff : EyeOn}
-                      </ToggleVis>
-                    </PasswordWrapper>
-                  </InputGroup>
-                </Column>
-              </FormColumns>
-            ) : (
+            {isLogin ? (
               <>
                 <InputGroup>
                   <label>Email Address</label>
@@ -244,9 +131,13 @@ export const AuthPage = () => {
                   Forgot password?
                 </ForgotLink>
               </>
+            ) : (
+              <p style={{ textAlign: "center", color: "var(--theme-text-secondary, #594048)", padding: "24px 0" }}>
+                New accounts are created by administrators. Please contact your admin to get set up.
+              </p>
             )}
 
-            <SubmitButton type="submit">{isLogin ? "Sign In" : "Register"}</SubmitButton>
+            {isLogin && <SubmitButton type="submit">Sign In</SubmitButton>}
 
             {authMessage.text && (
               <p style={{
@@ -293,11 +184,9 @@ export const AuthPage = () => {
                           type="button"
                           onClick={async () => {
                             if (!resetEmail) return;
-                            await fetch("/api/auth/forgot-password", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ email: resetEmail }),
-                            });
+                            try {
+                              await sendPasswordResetEmail(auth, resetEmail);
+                            } catch {}
                             setResetSent(true);
                           }}
                         >
@@ -323,7 +212,6 @@ export const AuthPage = () => {
   );
 };
 
-// Styled components (unchanged from previous versions)
 const PageContainer = styled.div`
   display: flex;
   min-height: 100vh;
@@ -531,20 +419,6 @@ const SendButton = styled.button`
   &:hover {
     background: ${(props) => props.theme.colors.primaryContainer};
   }
-`;
-
-const FormColumns = styled.div`
-  display: flex;
-  gap: ${(props) => props.theme.spacing.lg};
-  @media (max-width: ${(props) => props.theme.breakpoints.tablet}) {
-    flex-direction: column;
-    gap: 0;
-  }
-`;
-
-const Column = styled.div`
-  flex: 1;
-  min-width: 0;
 `;
 
 const ForgotLink = styled.button`

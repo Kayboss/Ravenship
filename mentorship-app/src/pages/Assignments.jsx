@@ -5,6 +5,7 @@ import "aos/dist/aos.css";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getStoredUser } from "../firebase/auth";
 
 const Page = styled.div`
   display: flex;
@@ -639,9 +640,8 @@ export const Assignments = () => {
                   <button onClick={() => {
                     const f = document.getElementById(`file-${a.id}`).files?.[0];
                     if (!f) return alert("Please select a file");
-                    let uEmail = "default";
-                    try { const u = JSON.parse(localStorage.getItem("user") || "{}"); if (u.email) uEmail = u.email; } catch {}
-                    const subKey = `submissions_${uEmail}`;
+                    const u = getStoredUser();
+                    const subKey = `submissions_${u?.email || "default"}`;
                     const existing = JSON.parse(localStorage.getItem(subKey) || "[]");
                     existing.push({ id: Date.now(), assignment: a.title, course: a.course, file: f.name, size: (f.size / 1024).toFixed(0) + " KB", date: new Date().toLocaleDateString(), status: "Pending" });
                     localStorage.setItem(subKey, JSON.stringify(existing));

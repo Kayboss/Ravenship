@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { logout, getStoredUser } from "../../firebase/auth";
 
 const SidebarContainer = styled.nav`
   width: 280px;
@@ -137,17 +138,12 @@ export const Sidebar = () => {
   const { role } = useParams();
   const currentRole = role || "admin";
 
-  let user = { name: "User", phone: "" };
-  try {
-    const stored = localStorage.getItem("user");
-    if (stored) user = JSON.parse(stored);
-  } catch {}
+  const user = getStoredUser() || { name: "User", phone: "" };
 
   const initials = user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "U";
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    await logout();
     navigate("/");
   };
 

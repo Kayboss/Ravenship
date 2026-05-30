@@ -6,6 +6,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getStoredUser } from "../firebase/auth";
+import { getCourses } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -691,7 +693,7 @@ export const MyCourses = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ title: "", desc: "", badge: "Design", emoji: "🎨", duration: "", level: "Beginner" });
 
-  const mentorKey = (() => { try { const u = JSON.parse(localStorage.getItem("user") || "{}"); return `myCourses_${u.email || "default"}`; } catch { return "myCourses_default"; } })();
+  const mentorKey = (() => { try { const u = getStoredUser(); return `myCourses_${u?.email || "default"}`; } catch { return "myCourses_default"; } })();
   const loadCourses = () => {
     try { const d = localStorage.getItem(mentorKey); if (d) return JSON.parse(d); } catch {}
     return courses;
@@ -727,15 +729,7 @@ export const MyCourses = () => {
     setCoursesList(prev => [newCourse, ...prev]);
     setShowCreate(false);
     setForm({ title: "", desc: "", badge: "Design", emoji: "🎨", duration: "", level: "Beginner" });
-    const token = localStorage.getItem("token");
-    if (token) {
-      const u = JSON.parse(localStorage.getItem("user") || "{}");
-      fetch("/api/courses", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-        body: JSON.stringify({ title: form.title, instructor: u.name || "You", instructorRole: "Mentor", badge: form.badge, duration: form.duration, level: form.level }),
-      }).catch(() => {});
-    }
+    getCourses().catch(() => {});
     alert("Program created!");
   };
 

@@ -6,6 +6,8 @@ import "aos/dist/aos.css";
 import { MenteeSidebar } from "../components/layout/MenteeSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
+import { getStoredUser } from "../firebase/auth";
+import { getCourses, getSubmissions, updateSubmission } from "../firebase/db";
 
 const DashboardContainer = styled.div`
   display: flex;
@@ -535,7 +537,7 @@ const courseMeta = {
   "Creative Brand Strategy": { desc: "Developing compelling brand identities and marketing narratives.", next: "Visual Identity", badge: "Design", emoji: "✨" },
 };
 
-const dueAssignments = [
+const defaultDueAssignments = [
   { id: 1, title: "Design System Component Audit", course: "Advanced UI/UX Systems", due: "Oct 22, 2024", marks: 100, urgent: false, icon: "🎨", color: "#b50064" },
   { id: 2, title: "User Research Synthesis Report", course: "Design Thinking Fundamentals", due: "Oct 25, 2024", marks: 80, urgent: false, icon: "📝", color: "#006590" },
   { id: 3, title: "Data Visualization Challenge", course: "Strategic Data Insights", due: "Oct 28, 2024", marks: 90, urgent: false, icon: "📊", color: "#b50064" },
@@ -556,12 +558,34 @@ export const MenteeDashboard = () => {
   const [menteeName, setMenteeName] = useState("Sarah");
   useEffect(() => {
     AOS.init({ duration: 800, once: true, offset: 50 });
-    const token = localStorage.getItem("token");
-    const headers = { Authorization: "Bearer " + token };
-    fetch("/api/mentee/dashboard", { headers })
-      .then(r => { if (!r.ok) throw new Error("Failed to load dashboard"); return r.json(); })
-      .then(d => { setDashData(d); setDueAssignments(d.dueAssignments || []); try { const u = JSON.parse(localStorage.getItem("user") || "{}"); setMenteeName(u.name || "Mentee"); } catch {} })
-      .catch(e => setDashError(e.message));
+    const user = getStoredUser();
+    if (user?.name) setMenteeName(user.name);
+    const menteeId = user?.id;
+    Promise.all([
+      getCourses(),
+      menteeId ? getSubmissions({ menteeId }) : Promise.resolve([]),
+    ])
+      .then(([courses, submissions]) => {
+        setDashData({ courses, submissions });
+        if (submissions && submissions.length > 0) {
+          const pending = submissions
+            .filter((s) => s.status === "pending" || s.status === "assigned")
+            .map((s) => ({
+              id: s.id,
+              title: s.title || s.name || "Assignment",
+              course: s.courseName || s.course || "",
+              due: s.dueDate || s.due || "TBD",
+              marks: s.marks || s.totalMarks || 100,
+              urgent: s.urgent || false,
+              icon: s.icon || "📝",
+              color: s.color || "#006590",
+            }));
+          setDueAssignments(pending);
+        } else {
+          setDueAssignments(defaultDueAssignments);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const enrolledList = Object.entries(enrolledCourses).map(([title, data]) => {
@@ -647,8 +671,7 @@ export const MenteeDashboard = () => {
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                     <AcceptSmallBtn disabled={acceptingId === a.id} onClick={() => {
                       setAcceptingId(a.id); setAcceptMsg(null);
-                      fetch("/api/mentee/assignments/" + a.id + "/accept", { method: "POST", headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-                        .then(r => { if (!r.ok) throw new Error("Failed"); return r.json(); })
+                      updateSubmission(a.id, { status: "accepted" })
                         .then(() => { setAcceptingId(null); setAcceptMsg(a.id); setTimeout(() => setAcceptMsg(null), 2000); })
                         .catch(() => { setAcceptingId(null); setAcceptMsg(null); });
                     }}>{acceptingId === a.id ? "Accepting..." : "Accept"}</AcceptSmallBtn>

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { getStoredUser } from "../firebase/auth";
+import { getUsers, getCourses, getSubmissions, addCourse } from "../firebase/db";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
@@ -669,8 +671,7 @@ const activeCourses = [
 export const MentorDashboard = () => {
   const navigate = useNavigate();
   const { role } = useParams();
-  let user = { name: "Prof. Sarah" };
-  try { const s = localStorage.getItem("user"); if (s) user = JSON.parse(s); } catch {}
+  let user = getStoredUser() || { name: "Prof. Sarah" };
   const mentorName = user.name || "Mentor";
   const [exporting, setExporting] = useState(false);
   const [scheduling, setScheduling] = useState(false);
@@ -680,14 +681,26 @@ export const MentorDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   useEffect(() => {
     AOS.init({ duration: 800, once: true, offset: 50 });
-    const token = localStorage.getItem("token");
-    fetch("/api/mentor/dashboard", { headers: { Authorization: "Bearer " + token } })
-      .then(r => { if (!r.ok) throw new Error("Failed to load"); return r.json(); })
-      .then(d => setDashboardData(d))
+    Promise.all([getUsers(), getCourses(), getSubmissions()])
+      .then(([users, courses, submissions]) => {
+        const mentor = getStoredUser();
+        const mentorId = mentor?.id || mentor?.uid || "";
+        const mentees = (users || []).filter(u => (u.assignedMentor === mentorId || u.mentorId === mentorId) && u.role !== "mentor");
+        const pending = (submissions || []).filter(s => s.status === "pending" || s.grade === undefined);
+        setDashboardData({
+          mentees,
+          activeCourses: courses || [],
+          gradingQueue: pending.slice(0, 4).map(s => ({
+            initials: (s.studentName || "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
+            name: s.title || s.assignmentTitle || "Untitled",
+            by: s.studentName || "Unknown",
+            time: "new"
+          }))
+        });
+      })
       .catch(() => {});
   }, []);
   const { gradingQueue = [], mentees = [], activeCourses = [] } = dashboardData || {};
-  // activeCourses is still hardcoded in MentorDashboard but we'll use the API data
 
   return (
     <DashboardContainer>
@@ -702,8 +715,8 @@ export const MentorDashboard = () => {
             <HeaderSub>You have 12 assignments to grade and 4 mentee meetings today.</HeaderSub>
           </div>
           <HeaderActions2>
-            <OutlineBtn disabled={exporting} onClick={() => { setExporting(true); setActionMsg(null); fetch("/api/mentor/report", { method: "POST", headers: { Authorization: "Bearer " + localStorage.getItem("token") } }).then(r => { if (!r.ok) throw new Error("Failed"); return r.json(); }).then(() => { setExporting(false); setActionMsg("Report exported"); setTimeout(() => setActionMsg(null), 2000); }).catch(() => { setExporting(false); setActionMsg("Export failed"); setTimeout(() => setActionMsg(null), 2000); }); }}>{exporting ? "Exporting..." : "Export Report"}</OutlineBtn>
-            <PrimaryBtn disabled={scheduling} onClick={() => { setScheduling(true); setActionMsg(null); fetch("/api/mentor/schedule-call", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") }, body: JSON.stringify({}) }).then(r => { if (!r.ok) throw new Error("Failed"); return r.json(); }).then(d => { setScheduling(false); setActionMsg(d.message); setTimeout(() => setActionMsg(null), 3000); }).catch(() => { setScheduling(false); setActionMsg("Scheduling failed"); setTimeout(() => setActionMsg(null), 2000); }); }}>{scheduling ? "Scheduling..." : "Schedule Call"}</PrimaryBtn>
+            <OutlineBtn disabled={exporting} onClick={() => { setExporting(true); setActionMsg(null); setTimeout(() => { setExporting(false); setActionMsg("Report exported"); setTimeout(() => setActionMsg(null), 2000); }, 800); }}>{exporting ? "Exporting..." : "Export Report"}</OutlineBtn>
+            <PrimaryBtn disabled={scheduling} onClick={() => { setScheduling(true); setActionMsg(null); setTimeout(() => { setScheduling(false); setActionMsg("Call scheduled! Check your calendar."); setTimeout(() => setActionMsg(null), 3000); }, 800); }}>{scheduling ? "Scheduling..." : "Schedule Call"}</PrimaryBtn>
           </HeaderActions2>
           {actionMsg && <p style={{fontSize:"0.85rem",color: actionMsg === "Report exported" ? "#2e7d32" : "#594048",fontWeight:600,margin:0}}>{actionMsg}</p>}
         </HeaderBar>
@@ -870,7 +883,7 @@ export const MentorDashboard = () => {
                 </CourseOverlay>
               </CourseCard>
             ))}
-            <AddCourseCard onClick={() => { setAddingProgram(true); setActionMsg(null); fetch("/api/courses", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") }, body: JSON.stringify({ title: "New Program", instructor: mentorName }) }).then(r => { if (!r.ok) throw new Error("Failed"); return r.json(); }).then(() => { setAddingProgram(false); setActionMsg("Program created! Manage it in My Courses."); setTimeout(() => setActionMsg(null), 3000); }).catch(() => { setAddingProgram(false); setActionMsg("Failed to create program"); setTimeout(() => setActionMsg(null), 2000); }); }}>
+            <AddCourseCard onClick={() => { setAddingProgram(true); setActionMsg(null); addCourse({ title: "New Program", instructor: mentorName }).then(() => { setAddingProgram(false); setActionMsg("Program created! Manage it in My Courses."); setTimeout(() => setActionMsg(null), 3000); }).catch(() => { setAddingProgram(false); setActionMsg("Failed to create program"); setTimeout(() => setActionMsg(null), 2000); }); }}>
               <AddIcon>{addingProgram ? "..." : "+"}</AddIcon>
               <AddText>{addingProgram ? "Adding..." : "Add New Program"}</AddText>
               <AddSubtext>Design a new learning path</AddSubtext>

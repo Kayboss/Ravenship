@@ -2,6 +2,7 @@ import React, { useState, useContext } from "react";
 import styled from "styled-components";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ThemeContext } from "../../context/ThemeContext.jsx";
+import { logout, getStoredUser } from "../../firebase/auth";
 
 const Overlay = styled.div`
   display:none;
@@ -155,17 +156,12 @@ export const MenteeSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  let user = { name: "User", phone: "" };
-  try {
-    const stored = localStorage.getItem("user");
-    if (stored) user = JSON.parse(stored);
-  } catch {}
+  const user = getStoredUser() || { name: "User", phone: "" };
 
   const initials = user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "U";
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
+  const handleLogout = async () => {
+    await logout();
     navigate("/");
     setMobileOpen(false);
   };

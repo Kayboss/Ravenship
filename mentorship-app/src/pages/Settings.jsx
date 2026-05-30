@@ -5,6 +5,10 @@ import "aos/dist/aos.css";
 import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getStoredUser } from "../firebase/auth";
+import { updateUser } from "../firebase/db";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebase/config";
 
 const Page = styled.div`
   display: flex;
@@ -280,7 +284,7 @@ export const Settings = () => {
 
   const [user, setUser] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem("user")) || {};
+      return getStoredUser() || {};
     } catch { return {}; }
   });
 
@@ -305,7 +309,7 @@ export const Settings = () => {
   const [saving, setSaving] = useState(false);
 
   let userEmail = "default";
-  try { const u = JSON.parse(localStorage.getItem("user") || "{}"); if (u.email) userEmail = u.email; } catch {}
+  try { const u = getStoredUser(); if (u?.email) userEmail = u.email; } catch {}
   const notifKey = `notifPrefs_${userEmail}`;
   const loadNotifs = () => {
     try { const d = localStorage.getItem(notifKey); if (d) return JSON.parse(d); } catch {}
@@ -365,32 +369,18 @@ export const Settings = () => {
       if (newPw.length < 8) { setSaving(false); alert("Password must be at least 8 characters."); return; }
     }
 
-    const payload = { name, email, phone, city, bio, dobMonth, dobDay, dobYear, interests, skills, photo };
-    const token = localStorage.getItem("token");
-
     try {
-      const res = await fetch("/api/auth/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        setSaving(false);
-        alert(err.message || "Failed to save profile");
-        return;
-      }
-
-      const data = await res.json();
-      localStorage.setItem("user", JSON.stringify(data.user));
+      const user = getStoredUser();
+      await updateUser(user.id, { name, phone, city, bio });
+      const updated = { ...user, name, phone, city, bio };
+      localStorage.setItem("user", JSON.stringify(updated));
       localStorage.setItem("settings", JSON.stringify({
         dobMonth, dobDay, dobYear, interests, skills, photo, bio,
       }));
-      setUser(data.user);
+      setUser(updated);
     } catch {
       setSaving(false);
-      alert("Network error. Could not reach server.");
+      alert("Network error. Could not save profile.");
       return;
     }
 
@@ -607,12 +597,14 @@ function CommunitySettingsCard() {
   const [settings, setSettings] = useState({ postsEnabled: true, commentsEnabled: true, memberLimit: 100 });
   const [saved, setSaved] = useState(false);
   useEffect(() => {
-    fetch("/api/admin/community-settings", { headers: { Authorization: "Bearer " + localStorage.getItem("token") } })
-      .then(r => r.json()).then(d => setSettings(d)).catch(() => {});
+    getDoc(doc(db, "communitySettings", "main"))
+      .then((snap) => { if (snap.exists()) setSettings(snap.data()); })
+      .catch(() => {});
   }, []);
   const save = () => {
-    fetch("/api/admin/community-settings", { method: "PUT", headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") }, body: JSON.stringify(settings) })
-      .then(() => { setSaved(true); setTimeout(() => setSaved(false), 2000); }).catch(() => {});
+    setDoc(doc(db, "communitySettings", "main"), settings, { merge: true })
+      .then(() => { setSaved(true); setTimeout(() => setSaved(false), 2000); })
+      .catch(() => {});
   };
   return (
     <Card $span2 data-aos="fade-up">

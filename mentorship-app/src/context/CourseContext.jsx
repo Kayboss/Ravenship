@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
+import { getStoredUser } from "../firebase/auth";
+import { enrollMentee } from "../firebase/db";
 
 const CourseContext = createContext({
   enrolledCourses: {},
@@ -28,24 +30,17 @@ export const CourseProvider = ({ children }) => {
       if (prev[title]) return prev;
       const next = { ...prev, [title]: { started: true, startedAt: new Date().toISOString(), ...defaultProgress[title] } };
       localStorage.setItem("enrolledCourses", JSON.stringify(next));
-      const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const token = localStorage.getItem("token");
-      if (token) {
-        const courseId = "c" + ([
-          "Advanced UI/UX Systems",
-          "Strategic Data Insights",
-          "Design Thinking Fundamentals",
-          "Full-Stack Web Development",
-          "Product Management 101",
-          "Creative Brand Strategy",
-        ].indexOf(title) + 1);
-        if (courseId !== "c0") {
-          fetch("/api/courses/enroll", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-            body: JSON.stringify({ courseId, userName: user.name }),
-          }).catch(() => {});
-        }
+      const user = getStoredUser();
+      const courseId = "c" + ([
+        "Advanced UI/UX Systems",
+        "Strategic Data Insights",
+        "Design Thinking Fundamentals",
+        "Full-Stack Web Development",
+        "Product Management 101",
+        "Creative Brand Strategy",
+      ].indexOf(title) + 1);
+      if (courseId !== "c0" && user) {
+        enrollMentee(courseId, user.id).catch(() => {});
       }
       return next;
     });
