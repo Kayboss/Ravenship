@@ -96,7 +96,8 @@ export const AuthPage = () => {
       }
     } catch (err) {
       const code = err.code;
-      if (code === "auth/user-not-found" || code === "auth/invalid-credential" || code === "auth/wrong-password") {
+      const message = err.message;
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
         setAuthMessage({ text: "Invalid email or password.", type: "error" });
       } else if (code === "auth/invalid-email") {
         setAuthMessage({ text: "Please enter a valid email address.", type: "error" });
@@ -104,6 +105,10 @@ export const AuthPage = () => {
         setAuthMessage({ text: "An account with this email already exists.", type: "error" });
       } else if (code === "auth/weak-password") {
         setAuthMessage({ text: "Password should be at least 6 characters.", type: "error" });
+      } else if (code === "auth/too-many-requests") {
+        setAuthMessage({ text: "Too many attempts. Try again later.", type: "error" });
+      } else if (message) {
+        setAuthMessage({ text: message, type: "error" });
       } else {
         setAuthMessage({ text: "Something went wrong. Please try again.", type: "error" });
       }

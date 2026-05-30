@@ -6,6 +6,9 @@ export const loginWithEmail = async (email, password) => {
   const credential = await signInWithEmailAndPassword(auth, email, password);
   const user = credential.user;
   const userDoc = await getDoc(doc(db, "users", user.uid));
+  if (!userDoc.exists()) {
+    throw new Error("Account not set up. Contact your administrator.");
+  }
   const userData = userDoc.data();
   const stored = {
     id: user.uid,
