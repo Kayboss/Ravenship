@@ -24,6 +24,7 @@ export const AuthPage = () => {
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
   const [authMessage, setAuthMessage] = useState({ text: "", type: "" });
+  const [loading, setLoading] = useState(false);
 
   const lottieRef = useRef(null);
   const formRef = useRef(null);
@@ -52,6 +53,8 @@ export const AuthPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setAuthMessage({ text: "", type: "" });
     const form = e.target;
     const email = form.email.value;
     const password = form.password.value;
@@ -62,13 +65,17 @@ export const AuthPage = () => {
         if (userData.role !== "admin" && !userData.verified) {
           setAuthMessage({ text: "Your account is pending verification by an administrator. You will be able to log in once approved.", type: "warning" });
           localStorage.removeItem("user");
+          setLoading(false);
           return;
         }
         setAuthMessage({ text: "", type: "" });
+        setLoading(false);
         navigate(`/dashboard/${userData.role}`);
+        return;
       } else {
         if (password !== confirmPassword) {
           setAuthMessage({ text: "Passwords do not match", type: "error" });
+          setLoading(false);
           return;
         }
         const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -90,6 +97,7 @@ export const AuthPage = () => {
         if (!isVerified) {
           setAuthMessage({ text: "Registration successful! Your account is pending verification by an administrator.", type: "warning" });
           localStorage.removeItem("user");
+          setLoading(false);
           return;
         }
         navigate(`/dashboard/${role}`);
@@ -107,11 +115,15 @@ export const AuthPage = () => {
         setAuthMessage({ text: "Password should be at least 6 characters.", type: "error" });
       } else if (code === "auth/too-many-requests") {
         setAuthMessage({ text: "Too many attempts. Try again later.", type: "error" });
+      } else if (code === "auth/network-request-failed") {
+        setAuthMessage({ text: "Network error. Check your connection.", type: "error" });
       } else if (message) {
         setAuthMessage({ text: message, type: "error" });
       } else {
         setAuthMessage({ text: "Something went wrong. Please try again.", type: "error" });
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -219,7 +231,9 @@ export const AuthPage = () => {
               </FormColumns>
             )}
 
-            <SubmitButton type="submit">{isLogin ? "Sign In" : "Register"}</SubmitButton>
+            <SubmitButton type="submit" disabled={loading}>
+              {loading ? <Spinner /> : (isLogin ? "Sign In" : "Register")}
+            </SubmitButton>
 
             {authMessage.text && (
               <p style={{
@@ -387,13 +401,30 @@ const SubmitButton = styled.button`
   border-radius: 50px;
   font-size: 1rem;
   font-weight: 600;
-  cursor: pointer;
+  cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
+  opacity: ${(props) => (props.disabled ? 0.6 : 1)};
   transition: all 0.3s ease;
   margin-top: ${(props) => props.theme.spacing.sm};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   &:hover {
-    background-color: ${(props) => props.theme.colors.primaryContainer};
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(220, 32, 126, 0.3);
+    background-color: ${(props) => props.disabled ? props.theme.colors.primary : props.theme.colors.primaryContainer};
+    transform: ${(props) => (props.disabled ? "none" : "translateY(-2px)")};
+    box-shadow: ${(props) => (props.disabled ? "none" : "0 4px 12px rgba(220, 32, 126, 0.3)")};
+  }
+`;
+
+const Spinner = styled.div`
+  width: 20px;
+  height: 20px;
+  border: 3px solid #ffffff80;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 `;
 
