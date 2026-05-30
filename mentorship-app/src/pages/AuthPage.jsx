@@ -4,15 +4,22 @@ import { gsap } from "gsap";
 import lottie from "lottie-web";
 import { useNavigate } from "react-router-dom";
 import { loginWithEmail } from "../firebase/auth";
-import { sendPasswordResetEmail } from "firebase/auth";
+import { sendPasswordResetEmail, createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase/config";
+import { db } from "../firebase/config";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const LOTTIE_URL = "https://assets-v2.lottiefiles.com/a/7400555a-117b-11ee-b7a8-3f5a379facbf/MaoSbTwAlQ.json";
 
 export const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState("mentee");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
@@ -59,14 +66,47 @@ export const AuthPage = () => {
         }
         setAuthMessage({ text: "", type: "" });
         navigate(`/dashboard/${userData.role}`);
+      } else {
+        if (password !== confirmPassword) {
+          setAuthMessage({ text: "Passwords do not match", type: "error" });
+          return;
+        }
+        const credential = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = credential.user.uid;
+        const isVerified = role === "admin";
+        await setDoc(doc(db, "users", uid), {
+          name: fullName,
+          email,
+          role,
+          verified: isVerified,
+          phone: phone || "",
+          city: city || "",
+          bio: "",
+          createdAt: serverTimestamp(),
+        });
+        const stored = { id: uid, name: fullName, email, role, verified: isVerified, phone: phone || "", city: city || "" };
+        localStorage.setItem("user", JSON.stringify(stored));
+        setAuthMessage({ text: "", type: "" });
+        if (!isVerified) {
+          setAuthMessage({ text: "Registration successful! Your account is pending verification by an administrator.", type: "warning" });
+          localStorage.removeItem("user");
+          return;
+        }
+        navigate(`/dashboard/${role}`);
       }
     } catch (err) {
-      const msg = err.code === "auth/user-not-found" || err.code === "auth/invalid-credential" || err.code === "auth/wrong-password"
-        ? "Invalid email or password."
-        : err.code === "auth/invalid-email"
-        ? "Please enter a valid email address."
-        : "Login failed. Please try again.";
-      setAuthMessage({ text: msg, type: "error" });
+      const code = err.code;
+      if (code === "auth/user-not-found" || code === "auth/invalid-credential" || code === "auth/wrong-password") {
+        setAuthMessage({ text: "Invalid email or password.", type: "error" });
+      } else if (code === "auth/invalid-email") {
+        setAuthMessage({ text: "Please enter a valid email address.", type: "error" });
+      } else if (code === "auth/email-already-in-use") {
+        setAuthMessage({ text: "An account with this email already exists.", type: "error" });
+      } else if (code === "auth/weak-password") {
+        setAuthMessage({ text: "Password should be at least 6 characters.", type: "error" });
+      } else {
+        setAuthMessage({ text: "Something went wrong. Please try again.", type: "error" });
+      }
     }
   };
 
@@ -132,12 +172,49 @@ export const AuthPage = () => {
                 </ForgotLink>
               </>
             ) : (
-              <p style={{ textAlign: "center", color: "var(--theme-text-secondary, #594048)", padding: "24px 0" }}>
-                New accounts are created by administrators. Please contact your admin to get set up.
-              </p>
+              <FormColumns>
+                <Column>
+                  <InputGroup>
+                    <label>Full Name</label>
+                    <input type="text" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                  </InputGroup>
+                  <InputGroup>
+                    <label>Telephone</label>
+                    <input type="tel" placeholder="+1 555-123-4567" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                  </InputGroup>
+                  <InputGroup>
+                    <label>Email Address</label>
+                    <input type="email" name="email" placeholder="you@example.com" required />
+                  </InputGroup>
+                </Column>
+                <Column>
+                  <InputGroup>
+                    <label>City</label>
+                    <input type="text" placeholder="Your city" value={city} onChange={(e) => setCity(e.target.value)} required />
+                  </InputGroup>
+                  <InputGroup>
+                    <label>Password</label>
+                    <PasswordWrapper>
+                      <input type={showPassword ? "text" : "password"} name="password" placeholder="••••••••" required />
+                      <ToggleVis type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>
+                        {showPassword ? EyeOff : EyeOn}
+                      </ToggleVis>
+                    </PasswordWrapper>
+                  </InputGroup>
+                  <InputGroup>
+                    <label>Confirm Password</label>
+                    <PasswordWrapper>
+                      <input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                      <ToggleVis type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? "Hide password" : "Show password"}>
+                        {showConfirmPassword ? EyeOff : EyeOn}
+                      </ToggleVis>
+                    </PasswordWrapper>
+                  </InputGroup>
+                </Column>
+              </FormColumns>
             )}
 
-            {isLogin && <SubmitButton type="submit">Sign In</SubmitButton>}
+            <SubmitButton type="submit">{isLogin ? "Sign In" : "Register"}</SubmitButton>
 
             {authMessage.text && (
               <p style={{
@@ -419,6 +496,20 @@ const SendButton = styled.button`
   &:hover {
     background: ${(props) => props.theme.colors.primaryContainer};
   }
+`;
+
+const FormColumns = styled.div`
+  display: flex;
+  gap: ${(props) => props.theme.spacing.lg};
+  @media (max-width: ${(props) => props.theme.breakpoints.tablet}) {
+    flex-direction: column;
+    gap: 0;
+  }
+`;
+
+const Column = styled.div`
+  flex: 1;
+  min-width: 0;
 `;
 
 const ForgotLink = styled.button`
