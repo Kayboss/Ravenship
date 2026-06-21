@@ -46,8 +46,8 @@ const ProfileSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
   border-bottom: 1px solid ${(props) => props.theme.colors.outline};
 `;
 
@@ -86,19 +86,19 @@ const NavList = styled.ul`
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 `;
 
 const NavButton = styled.button`
   width: 100%;
   text-align: left;
-  padding: 8px 12px;
+  padding: 6px 10px;
   background: ${(props) => (props.$active ? props.theme.colors.primaryContainer : "transparent")};
   color: ${(props) => (props.$active ? "white" : props.theme.colors.textSecondary)};
   border: none;
   border-radius: 8px;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: ${(props) => (props.$active ? 700 : 500)};
   cursor: pointer;
   display: flex;
@@ -122,13 +122,13 @@ const FooterSection = styled.div`
 const FooterBtn = styled.button`
   width: 100%;
   text-align: left;
-  padding: 8px 12px;
+  padding: 6px 10px;
   background: transparent;
   color: ${(props) => props.theme.colors.textSecondary};
   border: none;
   border-radius: 8px;
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   display: flex;
