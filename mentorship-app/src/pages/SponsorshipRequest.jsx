@@ -7,7 +7,7 @@ import { jsPDF } from "jspdf";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { addSponsorshipRequest, getUser } from "../firebase/db";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 
 const Page = styled.div`
   display: flex;
@@ -229,8 +229,12 @@ export const SponsorshipRequest = () => {
   const [sent, setSent] = useState(false);
   const [formMsg, setFormMsg] = useState("");
   const [groupName, setGroupName] = useState("");
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     if (user?.id && role === "mentee") {
       getUser(user.id).then(u => {
         if (u?.mentorId) {

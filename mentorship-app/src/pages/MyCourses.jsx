@@ -6,7 +6,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getCourses, addCourse, updateCourse, deleteCourse, getUser } from "../firebase/db";
 
 const Page = styled.div`
@@ -697,8 +697,12 @@ export const MyCourses = () => {
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     const load = async () => {
       try {
         let mentorFilter = null;

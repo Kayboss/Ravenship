@@ -5,7 +5,7 @@ import "aos/dist/aos.css";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { fileToBase64 } from "../lib/upload";
 import { getUser } from "../firebase/db";
 
@@ -398,15 +398,19 @@ export const Assignments = () => {
   const [newAssignment, setNewAssignment] = useState({
     title: "", course: "Advanced UI/UX Systems", desc: "", marks: "", due: "",
   });
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     const currentUser = getStoredUser();
     if (isMentee && currentUser?.id) {
       getUser(currentUser.id).then(u => {
         if (u?.mentorId) setMenteeMentorId(u.mentorId);
       }).catch(() => {});
     }
-  }, []);
+  }, [authReady]);
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });

@@ -5,7 +5,7 @@ import "aos/dist/aos.css";
 import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getUsers, getCourses, getAllGradebook, updateGradebook, getSubmissions } from "../firebase/db";
 
 const Page = styled.div`
@@ -245,8 +245,12 @@ const COLORS = ["#6C5CE7","#00B894","#0984E3","#E17055","#FDCB6E","#E84393"];
 export const Gradebook = () => {
   const { role } = useParams();
   const [mentees, setMentees] = useState([]);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     AOS.init({ duration: 800, once: true, offset: 50 });
     Promise.all([getAllGradebook(), getUsers(), getCourses()])
       .then(([gradebooks, users, courses]) => {

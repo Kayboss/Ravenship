@@ -4,7 +4,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getPosts, addPost, updatePost, deletePost, togglePostLike, getEvents, getUsers, getOrCreateConversation, sendMessage, subscribeMessages, subscribeConversations, markMessagesRead, subscribeConversation, setTyping } from "../firebase/db";
 
 const Page = styled.div`
@@ -640,10 +640,14 @@ export const Community = () => {
   const typingTimeoutRef = useRef(null);
   const [otherTyping, setOtherTyping] = useState(false);
   const [chatPopupOpen, setChatPopupOpen] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
   const user = getStoredUser() || { name: "You", role: "Mentee", avatarColor: "#b50064" };
   const isPostAuthor = (p) => user?.id && (p.authorId === user.id || p.authorId === user.uid);
 
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
+
   useEffect(() => {
+    if (!authReady) return;
     AOS.init({ duration: 800, once: true });
     getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(() => {});
     getUsers().then(d => setMemberList(Array.isArray(d) ? d : [])).catch(() => {});
@@ -659,7 +663,7 @@ export const Community = () => {
   }, []);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!authReady || !user?.id) return;
     const unsub = subscribeConversations(user.id, (data) => {
       setConversations(data);
       const msgs = data.map(c => {

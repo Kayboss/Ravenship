@@ -5,7 +5,7 @@ import "aos/dist/aos.css";
 import { useParams } from "react-router-dom";
 import { MentorSidebar } from "../components/layout/MentorSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getUsers } from "../firebase/db";
 
 const Page = styled.div`
@@ -304,8 +304,12 @@ export const MyMentees = () => {
   const { role } = useParams();
   const [mentees, setMentees] = useState([]);
   const [viewing, setViewing] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     AOS.init({ duration: 800, once: true, offset: 50 });
     const currentUser = getStoredUser();
     const mentorId = currentUser?.id;

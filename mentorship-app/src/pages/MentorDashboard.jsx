@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getUsers, getCourses, getSubmissions, addCourse, getAllGradebook } from "../firebase/db";
 import styled from "styled-components";
 import AOS from "aos";
@@ -662,7 +662,10 @@ export const MentorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState({ totalMentees: 0, avgGrade: "—", completionRate: 0, pendingTasks: 0, trendValues: [] });
   const [greeting, setGreeting] = useState("Good Morning");
+  const [authReady, setAuthReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => {
+    if (!authReady) return;
     const h = new Date().getHours();
     setGreeting(h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
     AOS.init({ duration: 800, once: true, offset: 50 });

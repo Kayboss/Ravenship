@@ -5,7 +5,7 @@ import "aos/dist/aos.css";
 import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { updateUser, logActivity } from "../firebase/db";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
@@ -645,7 +645,10 @@ const SaveSmallBtn = styled.button`
 function CommunitySettingsCard() {
   const [settings, setSettings] = useState({ postsEnabled: true, commentsEnabled: true, memberLimit: 100 });
   const [saved, setSaved] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => {
+    if (!authReady) return;
     getDoc(doc(db, "communitySettings", "main"))
       .then((snap) => { if (snap.exists()) setSettings(snap.data()); })
       .catch(() => {});

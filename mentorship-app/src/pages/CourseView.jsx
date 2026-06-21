@@ -7,6 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getCourse, getCourses, updateCourse, deleteCourse as deleteCourseFromDb } from "../firebase/db";
+import { onAuthReady } from "../firebase/auth";
 
 const Page = styled.div`
   display: flex;
@@ -285,10 +286,13 @@ export const CourseView = () => {
     try { const c = localStorage.getItem(`completed_${courseName}`); return c ? JSON.parse(c) : []; } catch { return []; }
   };
   const [completedLessons, setCompletedLessons] = useState(getCompleted);
+  const [authReady, setAuthReady] = useState(false);
 
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
 
   useEffect(() => {
+    if (!authReady) return;
     const lsId = localStorage.getItem("fs_courseId_" + courseName);
     if (lsId) {
       setFirestoreCourseId(lsId);

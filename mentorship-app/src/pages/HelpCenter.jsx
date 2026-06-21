@@ -6,6 +6,7 @@ import { useParams, Link } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getCounsellingRequests, deleteCounsellingRequest, getSponsorshipRequests, deleteSponsorshipRequest } from "../firebase/db";
+import { onAuthReady } from "../firebase/auth";
 
 const Page = styled.div`
   display: flex;
@@ -228,6 +229,9 @@ export const HelpCenter = () => {
   const [sponsorReqs, setSponsorReqs] = useState([]);
   const [loadingSponsors, setLoadingSponsors] = useState(true);
   const [pdfModal, setPdfModal] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
   const fetchRequests = async () => {
     try {
@@ -243,8 +247,8 @@ export const HelpCenter = () => {
   };
 
   useEffect(() => {
-    if (isAdmin) fetchRequests();
-  }, [isAdmin]);
+    if (isAdmin && authReady) fetchRequests();
+  }, [isAdmin, authReady]);
 
   const handleDelete = async (id) => {
     await deleteCounsellingRequest(id);

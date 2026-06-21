@@ -6,7 +6,7 @@ import "aos/dist/aos.css";
 import { MenteeSidebar } from "../components/layout/MenteeSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getCourses, getSubmissions, updateSubmission, getAllGradebook, getUser } from "../firebase/db";
 
 const DashboardContainer = styled.div`
@@ -553,8 +553,11 @@ export const MenteeDashboard = () => {
   const [menteeName, setMenteeName] = useState("Mentee");
   const [groupName, setGroupName] = useState("");
   const [menteeStats, setMenteeStats] = useState({ hours: "0h", skills: "0", submissionsCount: 0, weekData: [0,0,0,0,0,0,0] });
+  const [authReady, setAuthReady] = useState(false);
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => {
+    if (!authReady) return;
     AOS.init({ duration: 800, once: true, offset: 50 });
     const user = getStoredUser();
     if (user?.name) setMenteeName(user.name);
