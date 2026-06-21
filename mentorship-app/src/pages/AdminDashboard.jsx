@@ -6,7 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ThemeContext } from "../context/ThemeContext.jsx";
 import { AdminSidebar } from "../components/layout/AdminSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getStoredUser } from "../firebase/auth";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 import {
   getUsers, verifyUser, unverifyUser,
   getCourses,
@@ -1071,9 +1071,11 @@ const AdminPageTitle = styled.h2`font-size:1.6rem;font-weight:700;color:${p => p
 
 export default function AdminDashboard() {
   const [theme, setTheme] = useState("dark");
+  const [authReady, setAuthReady] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
   const location = useLocation();
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => {
     const t = location.hash.replace("#", "");
     if (t && tabs.find(tab => tab.key === t)) { setActiveTab(t); }
@@ -1085,10 +1087,10 @@ export default function AdminDashboard() {
       <AdminPageMain>
         <TopBar theme={theme} setTheme={setTheme} />
         <AdminPageTitle>{tabs.find(t => t.key === activeTab)?.label || "Dashboard"}</AdminPageTitle>
-        {tabs.map(tab => {
+        {authReady ? tabs.map(tab => {
           const Comp = tab.comp;
           return <div key={tab.key} style={{ display: tab.key === activeTab ? "block" : "none" }}><Comp /></div>;
-        })}
+        }) : <p style={{textAlign:"center",padding:40,color:"#594048"}}>Loading dashboard...</p>}
       </AdminPageMain>
     </AdminPageLayout>
   );

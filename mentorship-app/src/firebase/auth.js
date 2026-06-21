@@ -51,3 +51,8 @@ export const getStoredUser = () => {
     return null;
   }
 };
+
+let _authReady = false;
+const _authReadyCallbacks = [];
+onAuthStateChanged(auth, () => { _authReady = true; _authReadyCallbacks.forEach(cb => cb()); _authReadyCallbacks.length = 0; });
+export const onAuthReady = (cb) => { if (_authReady) cb(); else _authReadyCallbacks.push(cb); };
