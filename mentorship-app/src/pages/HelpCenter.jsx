@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
+import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 
@@ -107,6 +108,8 @@ const faqs = [
 export const HelpCenter = () => {
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
   const [openFaq, setOpenFaq] = React.useState(null);
+  const { role } = useParams();
+  const isMentee = role === "mentee";
 
   return (
     <Page>
@@ -125,11 +128,19 @@ export const HelpCenter = () => {
               </FaqItem>
             ))}
           </Card>
-          <Card data-aos="fade-up">
-            <CardTitle>💬 Live Chat</CardTitle>
-            <CardDesc>Chat with our support team in real-time during business hours.</CardDesc>
-            <ContactBtn as="button" style={{ border: "none", cursor: "pointer", fontFamily: "inherit" }} onClick={() => alert("Live chat coming soon!")}>Start Live Chat</ContactBtn>
-          </Card>
+          {isMentee ? (
+            <Card data-aos="fade-up">
+              <CardTitle>📋 Counselling Request Form</CardTitle>
+              <CardDesc>Request a counselling session by filling out our counselling request form.</CardDesc>
+              <ContactBtn href="https://members.yaaanimahfoundation.org/counselling-request-form/" target="_blank" rel="noopener noreferrer">Open Counselling Form →</ContactBtn>
+            </Card>
+          ) : (
+            <Card data-aos="fade-up">
+              <CardTitle>💬 Live Chat</CardTitle>
+              <CardDesc>Chat with our support team in real-time during business hours.</CardDesc>
+              <ContactBtn as="button" style={{ border: "none", cursor: "pointer", fontFamily: "inherit" }} onClick={() => alert("Live chat coming soon!")}>Start Live Chat</ContactBtn>
+            </Card>
+          )}
           <Card data-aos="fade-up">
             <CardTitle>📧 Email Support</CardTitle>
             <CardDesc>Send us an email and we'll respond within 24 hours.</CardDesc>
