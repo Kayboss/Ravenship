@@ -306,6 +306,20 @@ export const addHelpGuide = async (data) => {
   return ref.id;
 };
 
+// ── Counselling Requests ──
+
+export const addCounsellingRequest = async (data) => {
+  const user = getStoredUser();
+  const ref = await addDoc(collection(db, "counsellingRequests"), {
+    ...data,
+    userId: user?.id || "",
+    userName: user?.name || data.name || "",
+    userEmail: user?.email || data.email || "",
+    createdAt: serverTimestamp()
+  });
+  return ref.id;
+};
+
 // ── Analytics (aggregate helpers) ──
 
 export const getAnalytics = async () => {
