@@ -16,6 +16,7 @@ export default function AdminOverview() {
   const [data, setData] = useState(null);
   const [users, setUsers] = useState([]);
   const [notifs, setNotifs] = useState([]);
+  const [roleFilter, setRoleFilter] = useState("all");
   const navigate = useNavigate();
   const user = getStoredUser() || { name: "Admin" };
   const [weekData, setWeekData] = useState([]);
@@ -56,6 +57,7 @@ export default function AdminOverview() {
       setSourceData(Object.entries(cities).map(([l, v]) => ({ l, v: Math.round((v/total)*100), c: "#b50064" })));
     }).catch(() => {});
   }, []);
+  const filteredUsers = roleFilter === "all" ? users : users.filter(u => u.role === roleFilter);
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Good morning"; if (h < 18) return "Good afternoon"; return "Good evening"; })();
   const totalUsers = data ? data.total : users.length;
   const mentors = data ? data.mentors : users.filter(u => u.role === "mentor").length;
@@ -109,16 +111,21 @@ export default function AdminOverview() {
             <div style={{padding:"16px 20px",borderBottom:"1px solid #e0e0e0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <CardTitle style={{margin:0}}>User Management</CardTitle>
               <div style={{display:"flex",gap:8}}>
-                <button style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",cursor:"pointer",fontSize:"0.78rem"}}>🔽 Filter</button>
-                <button style={{padding:"6px 16px",borderRadius:8,border:"none",background:"#b50064",color:"#fff",fontWeight:600,cursor:"pointer",fontSize:"0.78rem"}}>View All</button>
+                <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",cursor:"pointer",fontSize:"0.78rem",fontFamily:"inherit"}}>
+                  <option value="all">All Roles</option>
+                  <option value="admin">Admins</option>
+                  <option value="mentor">Mentors</option>
+                  <option value="mentee">Mentees</option>
+                </select>
+                <button style={{padding:"6px 16px",borderRadius:8,border:"none",background:"#b50064",color:"#fff",fontWeight:600,cursor:"pointer",fontSize:"0.78rem"}} onClick={() => navigate("/dashboard/admin/mentors")}>View All</button>
               </div>
             </div>
             <div style={{overflowX:"auto"}}>
               <UserTable>
                 <thead><tr><UTh>User</UTh><UTh>Role</UTh><UTh>Progress</UTh><UTh>Status</UTh><UTh></UTh></tr></thead>
                 <tbody>
-                  {users.slice(0,6).map((u,i) => (
-                    <URow key={u.id || i}>
+                  {filteredUsers.slice(0,6).map((u,i) => (
+                    <URow key={u.id || i} onClick={() => navigate(u.role === "mentor" ? "/dashboard/admin/mentors" : "/dashboard/admin/mentees")}>
                       <UTd>
                         <div style={{display:"flex",alignItems:"center",gap:12}}>
                           <div style={{width:36,height:36,borderRadius:"50%",background:u.role === "mentor" ? "#b50064" : "#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.8rem",fontWeight:700,color:"#fff",flexShrink:0}}>
