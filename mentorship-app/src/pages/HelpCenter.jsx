@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { useParams, Link } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getCounsellingRequests, deleteCounsellingRequest } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -107,11 +108,94 @@ const faqs = [
   { q: "What should I do if I face a technical issue?", a: "Contact our support team using the button below and we'll get back to you within 24 hours." },
 ];
 
+const AdminSection = styled.div`
+  margin-top: 32px;
+`;
+
+const AdminSectionTitle = styled.h3`
+  font-weight: 700;
+  color: ${p => p.theme.colors.textPrimary};
+  margin-bottom: 16px;
+  font-size: 1.1rem;
+`;
+
+const RequestTable = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const RequestRow = styled.div`
+  background: ${p => p.theme.colors.surface};
+  border-radius: 14px;
+  padding: 16px 20px;
+  border: 1px solid ${p => p.theme.colors.outline};
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  @media (max-width: 600px) { flex-direction: column; }
+`;
+
+const RequestInfo = styled.div`
+  flex: 1;
+  p { margin: 2px 0; font-size: 0.85rem; color: ${p => p.theme.colors.textPrimary}; }
+  span { color: ${p => p.theme.colors.textSecondary}; font-size: 0.8rem; }
+`;
+
+const DeleteBtn = styled.button`
+  background: #e53935;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  &:hover { opacity: 0.85; }
+`;
+
+const EmptyMsg = styled.p`
+  color: ${p => p.theme.colors.textSecondary};
+  font-size: 0.85rem;
+  font-style: italic;
+`;
+
 export const HelpCenter = () => {
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
   const [openFaq, setOpenFaq] = React.useState(null);
   const { role } = useParams();
   const isMentee = role === "mentee";
+  const isAdmin = role === "admin";
+
+  const [requests, setRequests] = useState([]);
+  const [loadingReqs, setLoadingReqs] = useState(true);
+
+  const fetchRequests = async () => {
+    try {
+      const data = await getCounsellingRequests();
+      setRequests(data);
+    } catch { /* ignore */ }
+    setLoadingReqs(false);
+  };
+
+  useEffect(() => {
+    if (isAdmin) fetchRequests();
+  }, [isAdmin]);
+
+  const handleDelete = async (id) => {
+    await deleteCounsellingRequest(id);
+    setRequests(prev => prev.filter(r => r.id !== id));
+  };
+
+  const formatDate = (ts) => {
+    if (!ts?.toDate) return "";
+    return ts.toDate().toLocaleDateString("en-US", {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  };
 
   return (
     <Page>
@@ -159,6 +243,31 @@ export const HelpCenter = () => {
             <ContactBtn href="mailto:bugs@mentorship.com">Report Bug</ContactBtn>
           </Card>
         </Grid>
+
+        {isAdmin && (
+          <AdminSection data-aos="fade-up">
+            <AdminSectionTitle>📋 Incoming Counselling Requests</AdminSectionTitle>
+            {loadingReqs ? (
+              <p style={{ color: "#594048", fontSize: "0.85rem" }}>Loading...</p>
+            ) : requests.length === 0 ? (
+              <EmptyMsg>No counselling requests yet.</EmptyMsg>
+            ) : (
+              <RequestTable>
+                {requests.map(req => (
+                  <RequestRow key={req.id}>
+                    <RequestInfo>
+                      <p><strong>{req.name}</strong> &lt;{req.email}&gt;</p>
+                      <p>Type: {req.type}</p>
+                      <p>Preferred date: {req.dateTime}</p>
+                      <span>Submitted {formatDate(req.createdAt)}</span>
+                    </RequestInfo>
+                    <DeleteBtn onClick={() => handleDelete(req.id)}>Delete</DeleteBtn>
+                  </RequestRow>
+                ))}
+              </RequestTable>
+            )}
+          </AdminSection>
+        )}
       </Main>
     </Page>
   );

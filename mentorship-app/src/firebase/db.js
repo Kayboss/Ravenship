@@ -505,3 +505,15 @@ export const getErrors = async (limitCount = 100) => {
 export const markErrorResolved = async (errorId) => {
   await updateDoc(doc(db, "errors", errorId), { resolved: true });
 };
+
+// ── Counselling Requests ──
+
+export const getCounsellingRequests = async () => {
+  const q = query(collection(db, "counsellingRequests"), orderBy("createdAt", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const deleteCounsellingRequest = async (id) => {
+  await deleteDoc(doc(db, "counsellingRequests", id));
+};
