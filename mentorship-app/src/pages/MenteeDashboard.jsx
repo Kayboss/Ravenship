@@ -7,7 +7,7 @@ import { MenteeSidebar } from "../components/layout/MenteeSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { getStoredUser } from "../firebase/auth";
-import { getCourses, getSubmissions, updateSubmission, getAllGradebook } from "../firebase/db";
+import { getCourses, getSubmissions, updateSubmission, getAllGradebook, getUser } from "../firebase/db";
 
 const DashboardContainer = styled.div`
   display: flex;
@@ -558,11 +558,17 @@ export const MenteeDashboard = () => {
     const user = getStoredUser();
     if (user?.name) setMenteeName(user.name);
     const menteeId = user?.id;
-    Promise.all([
-      getCourses(),
-      menteeId ? getSubmissions({ menteeId }) : Promise.resolve([]),
-      menteeId ? getAllGradebook(menteeId) : Promise.resolve([]),
-    ])
+    (async () => {
+      let mentorFilter = null;
+      if (menteeId) {
+        const u = await getUser(menteeId);
+        if (u?.mentorId) mentorFilter = u.mentorId;
+      }
+      Promise.all([
+        getCourses(mentorFilter),
+        menteeId ? getSubmissions({ menteeId }) : Promise.resolve([]),
+        menteeId ? getAllGradebook(menteeId) : Promise.resolve([]),
+      ])
       .then(([courses, submissions, gradebook]) => {
         setDashData({ courses, submissions });
         setCoursesList(Array.isArray(courses) ? courses : []);
@@ -584,6 +590,7 @@ export const MenteeDashboard = () => {
         setMenteeStats({ hours: `${hours}h`, skills: `${graded.length || allScores.length}`, submissionsCount: submissions?.length || 0, weekData: [0,0,0,0,0,0,0] });
       })
       .catch(() => {});
+    })();
   }, []);
 
   const enrolledList = Object.entries(enrolledCourses).map(([title, data]) => {

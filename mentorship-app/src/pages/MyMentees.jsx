@@ -307,8 +307,10 @@ export const MyMentees = () => {
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true, offset: 50 });
+    const currentUser = getStoredUser();
+    const mentorId = currentUser?.id;
     getUsers().then(allUsers => {
-      const mentees = allUsers.filter(u => u.role === "mentee");
+      const mentees = allUsers.filter(u => u.role === "mentee" && u.mentorId === mentorId);
       if (mentees.length > 0) {
         setMentees(mentees.map(u => ({
           name: u.name || u.email?.split("@")[0] || "Unknown",

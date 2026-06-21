@@ -15,7 +15,9 @@ import {
   getAnnouncements,
   getHelpGuides, addHelpGuide,
   getAnalytics, getSubmissions,
-  getActivities, getErrors, markErrorResolved, logActivity
+  getActivities, getErrors, markErrorResolved, logActivity,
+  getMentors, getUnassignedMentees, getMenteesByMentor,
+  assignMenteeToMentor, removeMenteeFromMentor
 } from "../firebase/db";
 import { sendApprovedEmail } from "../lib/email";
 import { db } from "../firebase/config";
@@ -926,6 +928,119 @@ function ErrorsSection() {
   );
 }
 
+function MentorshipSection() {
+  const [mentors, setMentors] = useState([]);
+  const [unassigned, setUnassigned] = useState([]);
+  const [selectedMentor, setSelectedMentor] = useState(null);
+  const [assignedMentees, setAssignedMentees] = useState([]);
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const load = () => {
+    getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(() => {});
+    getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(() => {});
+  };
+  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (selectedMentor) {
+      getMenteesByMentor(selectedMentor.id).then(d => setAssignedMentees(Array.isArray(d) ? d : [])).catch(() => {});
+    } else {
+      setAssignedMentees([]);
+    }
+  }, [selectedMentor]);
+
+  const doAssign = async (menteeId, menteeName) => {
+    if (!selectedMentor) { setMsg("Select a mentor first"); return; }
+    setLoading(true);
+    setMsg("");
+    try {
+      await assignMenteeToMentor(selectedMentor.id, menteeId);
+      setMsg(`Assigned ${menteeName} to ${selectedMentor.name}`);
+      setUnassigned(prev => prev.filter(u => u.id !== menteeId));
+      setAssignedMentees(prev => [...prev, { id: menteeId, name: menteeName }]);
+    } catch (e) { setMsg(e.message); }
+    setLoading(false);
+  };
+
+  const doUnassign = async (menteeId, menteeName) => {
+    if (!selectedMentor) return;
+    setLoading(true);
+    setMsg("");
+    try {
+      await removeMenteeFromMentor(selectedMentor.id, menteeId);
+      setMsg(`Removed ${menteeName} from ${selectedMentor.name}`);
+      setAssignedMentees(prev => prev.filter(u => u.id !== menteeId));
+      getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(() => {});
+    } catch (e) { setMsg(e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <Card data-aos="fade-up">
+      <CardTitle>🔗 Mentor–Mentee Assignments</CardTitle>
+      <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Select a mentor to manage their assigned mentees.</p>
+      {msg && <p style={{fontSize:"0.85rem",color:msg.includes("rror")||msg.includes("first")?"#e53935":"#2e7d32",fontWeight:600,marginBottom:12}}>{msg}</p>}
+
+      <div style={{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}}>
+        <Select value={selectedMentor?.id || ""} onChange={e => {
+          const m = mentors.find(mm => mm.id === e.target.value);
+          setSelectedMentor(m || null);
+        }} style={{minWidth:250}}>
+          <option value="">— Select a mentor —</option>
+          {mentors.map(m => <option key={m.id} value={m.id}>{m.name} ({m.email})</option>)}
+        </Select>
+        <Btn $outline onClick={() => { setSelectedMentor(null); load(); }}>Refresh</Btn>
+      </div>
+
+      {selectedMentor && (
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+          <div>
+            <h5 style={{fontSize:"0.9rem",fontWeight:700,color:"#2c3e50",marginBottom:12}}>👤 Assigned to {selectedMentor.name}</h5>
+            {assignedMentees.length === 0 ? (
+              <p style={{fontSize:"0.85rem",color:"#999"}}>No mentees assigned yet.</p>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {assignedMentees.map(m => (
+                  <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f9f9f9",borderRadius:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff"}}>
+                        {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
+                      </div>
+                      <span style={{fontWeight:600,fontSize:"0.85rem",color:"#2c3e50"}}>{m.name}</span>
+                    </div>
+                    <Btn $red disabled={loading} onClick={() => doUnassign(m.id, m.name)} style={{fontSize:"0.75rem",padding:"4px 10px"}}>Unassign</Btn>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <h5 style={{fontSize:"0.9rem",fontWeight:700,color:"#2c3e50",marginBottom:12}}>📋 Unassigned Mentees</h5>
+            {unassigned.length === 0 ? (
+              <p style={{fontSize:"0.85rem",color:"#999"}}>All mentees are assigned.</p>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {unassigned.map(m => (
+                  <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f9f9f9",borderRadius:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:"#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff"}}>
+                        {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
+                      </div>
+                      <span style={{fontWeight:600,fontSize:"0.85rem",color:"#2c3e50"}}>{m.name}</span>
+                    </div>
+                    <Btn disabled={loading || !selectedMentor} onClick={() => doAssign(m.id, m.name)} style={{fontSize:"0.75rem",padding:"4px 10px"}}>Assign</Btn>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 const tabs = [
   { key: "overview", label: "📊 Overview", comp: DashboardOverview },
   { key: "mentors", label: "👨‍🏫 Mentors", comp: MentorsSection },
@@ -934,6 +1049,7 @@ const tabs = [
   { key: "progress", label: "📈 Progress", comp: ProgressSection },
   { key: "gradebook", label: "📋 Gradebook", comp: GradebookSection },
   { key: "notifications", label: "🔔 Notifications", comp: NotificationsSection },
+  { key: "mentorship", label: "🔗 Mentorship", comp: MentorshipSection },
   { key: "help", label: "❓ Help Center", comp: HelpCenterSection },
   { key: "activity", label: "📊 Activity Log", comp: ActivitySection },
   { key: "errors", label: "⚠️ Error Log", comp: ErrorsSection },

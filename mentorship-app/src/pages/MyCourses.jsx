@@ -7,7 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser } from "../firebase/auth";
-import { getCourses, addCourse, updateCourse, deleteCourse } from "../firebase/db";
+import { getCourses, addCourse, updateCourse, deleteCourse, getUser } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -681,6 +681,7 @@ export const MyCourses = () => {
   const [selected, setSelected] = useState(null);
   const [bioView, setBioView] = useState(null);
   const isMentor = role === "mentor";
+  const isMentee = role === "mentee";
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ title: "", desc: "", badge: "Design", emoji: "🎨", duration: "", level: "Beginner", featuredImage: "" });
 
@@ -698,22 +699,33 @@ export const MyCourses = () => {
   const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
-    getCourses().then(firestoreCourses => {
-      const localCourses = loadLocalCourses();
-      if (localCourses) {
-        const existingTitles = new Set(firestoreCourses.map(c => c.title));
-        const newLocals = localCourses.filter(c => !existingTitles.has(c.title));
-        const merged = [...newLocals, ...firestoreCourses];
-        setCoursesList(merged);
-        localStorage.setItem(mentorKey, JSON.stringify(merged));
-      } else {
-        setCoursesList(firestoreCourses);
-        localStorage.setItem(mentorKey, JSON.stringify(firestoreCourses));
+    const load = async () => {
+      try {
+        let mentorFilter = null;
+        if (isMentor && currentUser?.id) {
+          mentorFilter = currentUser.id;
+        } else if (isMentee && currentUser?.id) {
+          const u = await getUser(currentUser.id);
+          if (u?.mentorId) mentorFilter = u.mentorId;
+        }
+        const firestoreCourses = await getCourses(mentorFilter);
+        const localCourses = loadLocalCourses();
+        if (localCourses) {
+          const existingTitles = new Set(firestoreCourses.map(c => c.title));
+          const newLocals = localCourses.filter(c => !existingTitles.has(c.title));
+          const merged = [...newLocals, ...firestoreCourses];
+          setCoursesList(merged);
+          localStorage.setItem(mentorKey, JSON.stringify(merged));
+        } else {
+          setCoursesList(firestoreCourses);
+          localStorage.setItem(mentorKey, JSON.stringify(firestoreCourses));
+        }
+      } catch {
+        const fallback = loadLocalCourses() || [];
+        setCoursesList(fallback);
       }
-    }).catch(() => {
-      const fallback = loadLocalCourses() || [];
-      setCoursesList(fallback);
-    });
+    };
+    load();
   }, []);
 
   useEffect(() => {
@@ -734,6 +746,7 @@ export const MyCourses = () => {
       featuredImage: form.featuredImage || "",
       instructor: mentorName,
       role: "Mentor",
+      createdBy: currentUser?.id || null,
       assignments: 0,
       duration: form.duration + " weeks",
       lessons: 0,

@@ -666,10 +666,10 @@ export const MentorDashboard = () => {
     const h = new Date().getHours();
     setGreeting(h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
     AOS.init({ duration: 800, once: true, offset: 50 });
-    Promise.all([getUsers(), getCourses(), getSubmissions({}), getAllGradebook()])
+    const mentor = getStoredUser();
+    const mentorId = mentor?.id || mentor?.uid || "";
+    Promise.all([getUsers(), getCourses(mentorId), getSubmissions({}), getAllGradebook()])
       .then(([users, courses, submissions, gradebook]) => {
-        const mentor = getStoredUser();
-        const mentorId = mentor?.id || mentor?.uid || "";
         const mentees = (users || []).filter(u => (u.assignedMentor === mentorId || u.mentorId === mentorId) && u.role !== "mentor" && u.role !== "admin");
         const pending = (submissions || []).filter(s => s.status === "pending" || s.grade === undefined);
         const graded = (submissions || []).filter(s => s.score != null);

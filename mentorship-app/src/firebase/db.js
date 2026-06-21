@@ -29,9 +29,50 @@ export const unverifyUser = async (uid) => {
   await updateDoc(doc(db, "users", uid), { verified: false });
 };
 
+// ── Mentor / Mentee Management ──
+
+export const assignMenteeToMentor = async (mentorId, menteeId) => {
+  await updateDoc(doc(db, "users", menteeId), { mentorId });
+  await updateDoc(doc(db, "users", mentorId), {
+    assignedMentees: arrayUnion(menteeId)
+  });
+};
+
+export const removeMenteeFromMentor = async (mentorId, menteeId) => {
+  await updateDoc(doc(db, "users", menteeId), { mentorId: "" });
+  await updateDoc(doc(db, "users", mentorId), {
+    assignedMentees: arrayRemove(menteeId)
+  });
+};
+
+export const getMentors = async () => {
+  const q = query(collection(db, "users"), where("role", "==", "mentor"));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const getUnassignedMentees = async () => {
+  const q = query(collection(db, "users"), where("role", "==", "mentee"));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .filter(u => !u.mentorId);
+};
+
+export const getMenteesByMentor = async (mentorId) => {
+  const q = query(collection(db, "users"), where("role", "==", "mentee"), where("mentorId", "==", mentorId));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
 // ── Courses ──
 
-export const getCourses = async () => {
+export const getCourses = async (mentorId) => {
+  if (mentorId) {
+    const q = query(collection(db, "courses"), where("createdBy", "==", mentorId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
   const snap = await getDocs(collection(db, "courses"));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 };

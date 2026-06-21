@@ -7,6 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser } from "../firebase/auth";
 import { fileToBase64 } from "../lib/upload";
+import { getUser } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -386,10 +387,12 @@ const GradeLabel = styled.p`
 export const Assignments = () => {
   const { role } = useParams();
   const isMentor = role === "mentor";
+  const isMentee = role === "mentee";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const courseFilter = searchParams.get("course");
   const [assignments, setAssignments] = useState([]);
+  const [menteeMentorId, setMenteeMentorId] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newAssignment, setNewAssignment] = useState({
@@ -397,16 +400,33 @@ export const Assignments = () => {
   });
 
   useEffect(() => {
+    const currentUser = getStoredUser();
+    if (isMentee && currentUser?.id) {
+      getUser(currentUser.id).then(u => {
+        if (u?.mentorId) setMenteeMentorId(u.mentorId);
+      }).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
     AOS.init({ duration: 800, once: true });
     const stored = localStorage.getItem("assignments");
     if (stored) setAssignments(JSON.parse(stored));
   }, []);
+
+  const currentUser = getStoredUser();
+  const mentorFiltered = (() => {
+    if (isMentor && currentUser?.id) return assignments.filter(a => a.mentorId === currentUser.id);
+    if (isMentee && menteeMentorId) return assignments.filter(a => a.mentorId === menteeMentorId);
+    return assignments;
+  })();
 
   useEffect(() => {
     localStorage.setItem("assignments", JSON.stringify(assignments));
   }, [assignments]);
 
   const handleCreateAssignment = () => {
+    const user = getStoredUser();
     const newId = Math.max(...assignments.map(a => a.id), 0) + 1;
     const assignment = {
       id: newId,
@@ -421,6 +441,7 @@ export const Assignments = () => {
       iconColor: "#b50064",
       poster: "You",
       posterRole: "Mentor",
+      mentorId: user?.id || null,
       submissions: 0,
       spots: 15,
     };
@@ -445,8 +466,8 @@ export const Assignments = () => {
   };
 
   const courseFiltered = courseFilter
-    ? assignments.filter(a => a.course === courseFilter)
-    : assignments;
+    ? mentorFiltered.filter(a => a.course === courseFilter)
+    : mentorFiltered;
 
   const filtered = activeTab === "all"
     ? courseFiltered
