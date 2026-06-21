@@ -70,7 +70,8 @@ export default function AdminOverview() {
         .um-cards{display:none}
         @media(max-width:768px){
           .um-table-wrap{display:none}
-          .um-cards{display:flex;flexDirection:column;gap:6px;padding:10px 14px}
+          .um-cards{display:block;padding:10px 14px}
+          .um-cards > div + div{margin-top:6px}
         }
         @media(min-width:769px){.um-cards{display:none!important}}
       `}</style>
@@ -159,7 +160,7 @@ export default function AdminOverview() {
 
             <div className="um-cards">
               {filteredUsers.slice(0,6).map((u,i) => (
-                <div key={u.id || i} className="um-card" onClick={() => navigate(u.role === "mentor" ? "/dashboard/admin/mentors" : "/dashboard/admin/mentees")} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#f9f9f9",borderRadius:10,cursor:"pointer"}}>
+                <div key={u.id || i} onClick={() => navigate(u.role === "mentor" ? "/dashboard/admin/mentors" : "/dashboard/admin/mentees")} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#f9f9f9",borderRadius:10,cursor:"pointer",width:"100%",boxSizing:"border-box"}}>
                   <div style={{width:32,height:32,borderRadius:"50%",background:u.role === "mentor" ? "#b50064" : "#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>
                     {u.name?.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) || "?"}
                   </div>
