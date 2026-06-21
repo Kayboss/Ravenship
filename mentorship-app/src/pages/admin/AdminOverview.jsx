@@ -70,14 +70,7 @@ export default function AdminOverview() {
         .um-cards{display:none}
         @media(max-width:768px){
           .um-table-wrap{display:none}
-          .um-cards{display:flex;flexDirection:column;gap:10px;padding:12px 16px}
-          .um-card{padding:14px;background:#f9f9f9;border-radius:12px;cursor:pointer;transition:background 0.15s}
-          .um-card:active{background:#f0f0f0}
-          .um-card-top{display:flex;alignItems:center;gap:10px;marginBottom:8px}
-          .um-card-avatar{width:38px;height:38px;border-radius:50%;display:flex;alignItems:center;justifyContent:center;font-size:0.8rem;font-weight:700;color:#fff;flexShrink:0}
-          .um-card-name{fontWeight:700;fontSize:0.9rem;color:#2c3e50}
-          .um-card-email{fontSize:0.75rem;color:#594048}
-          .um-card-meta{display:flex;alignItems:center;gap:8px;flexWrap:wrap}
+          .um-cards{display:flex;flexDirection:column;gap:6px;padding:10px 14px}
         }
         @media(min-width:769px){.um-cards{display:none!important}}
       `}</style>
@@ -166,22 +159,17 @@ export default function AdminOverview() {
 
             <div className="um-cards">
               {filteredUsers.slice(0,6).map((u,i) => (
-                <div key={u.id || i} className="um-card" onClick={() => navigate(u.role === "mentor" ? "/dashboard/admin/mentors" : "/dashboard/admin/mentees")}>
-                  <div className="um-card-top">
-                    <div className="um-card-avatar" style={{background:u.role === "mentor" ? "#b50064" : "#0298D7"}}>
-                      {u.name?.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) || "?"}
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div className="um-card-name" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
-                      <div className="um-card-email" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.email}</div>
-                    </div>
+                <div key={u.id || i} className="um-card" onClick={() => navigate(u.role === "mentor" ? "/dashboard/admin/mentors" : "/dashboard/admin/mentees")} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#f9f9f9",borderRadius:10,cursor:"pointer"}}>
+                  <div style={{width:32,height:32,borderRadius:"50%",background:u.role === "mentor" ? "#b50064" : "#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>
+                    {u.name?.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) || "?"}
                   </div>
-                  <div className="um-card-meta">
-                    <RoleBadge $role={u.role}>{u.role === "admin" ? "Admin" : u.role === "mentor" ? "Mentor" : "Mentee"}</RoleBadge>
-                    <span style={{display:"flex",alignItems:"center",fontSize:"0.75rem",fontWeight:600,color:u.verified ? "#27AE60" : "#f57f17"}}>
-                      <StatusDot $online={!!u.verified} />{u.verified ? "Verified" : "Pending"}
-                    </span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,fontSize:"0.82rem",color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
                   </div>
+                  <RoleBadge $role={u.role}>{u.role === "admin" ? "Admin" : u.role === "mentor" ? "Mentor" : "Mentee"}</RoleBadge>
+                  <span style={{display:"flex",alignItems:"center",fontSize:"0.7rem",fontWeight:600,color:u.verified ? "#27AE60" : "#f57f17",flexShrink:0}}>
+                    <StatusDot $online={!!u.verified} />{u.verified ? "✓" : "⏳"}
+                  </span>
                 </div>
               ))}
               {filteredUsers.length === 0 && <p style={{color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:20}}>No users found.</p>}
