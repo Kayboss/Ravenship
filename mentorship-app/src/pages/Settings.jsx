@@ -301,7 +301,7 @@ export const Settings = () => {
   const [dobYear, setDobYear] = useState(settings.dobYear || "");
   const [interests, setInterests] = useState(settings.interests || []);
   const [skills, setSkills] = useState(settings.skills || []);
-  const [photo, setPhoto] = useState(settings.photo || "");
+  const [photo, setPhoto] = useState(user.photoURL || settings.photo || "");
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
