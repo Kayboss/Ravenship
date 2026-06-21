@@ -107,7 +107,7 @@ const SectionTitle = styled.h4`font-size:0.75rem;font-weight:700;color:${p => p.
 
 const AnnTag = styled.span`display:inline-block;padding:2px 10px;border-radius:50px;font-size:0.7rem;font-weight:700;background:${p => p.$c}20;color:${p => p.$c};`;
 
-function DashboardOverview({ authReady }) {
+function DashboardOverview() {
   const [data, setData] = useState(null);
   const [users, setUsers] = useState([]);
   const [notifs, setNotifs] = useState([]);
@@ -115,7 +115,9 @@ function DashboardOverview({ authReady }) {
   const user = getStoredUser() || { name: "Admin" };
   const [weekData, setWeekData] = useState([]);
   const [sourceData, setSourceData] = useState([]);
-  useEffect(() => { if (!authReady) return;
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (!ready) return;
     getAnalytics().then(d => setData(d)).catch(() => {});
     getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
     Promise.all([
@@ -149,7 +151,7 @@ function DashboardOverview({ authReady }) {
       const total = allUsers.length || 1;
       setSourceData(Object.entries(cities).map(([l, v]) => ({ l, v: Math.round((v/total)*100), c: "#b50064" })));
     }).catch(() => {});
-  }, [authReady]);
+  }, [ready]);
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Good morning"; if (h < 18) return "Good afternoon"; return "Good evening"; })();
   const totalUsers = data ? data.total : users.length;
   const mentors = data ? data.mentors : users.filter(u => u.role === "mentor").length;
@@ -293,7 +295,7 @@ function DashboardOverview({ authReady }) {
   );
 }
 
-function MentorsSection({ authReady }) {
+function MentorsSection() {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [bioUser, setBioUser] = useState(null);
@@ -301,10 +303,12 @@ function MentorsSection({ authReady }) {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
-  useEffect(() => { if (!authReady) return;
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (!ready) return;
     getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor") : [])).catch(() => {});
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [authReady]);
+  }, [ready]);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
@@ -394,7 +398,7 @@ function MentorsSection({ authReady }) {
   );
 }
 
-function MenteesSection({ authReady }) {
+function MenteesSection() {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [bioUser, setBioUser] = useState(null);
@@ -402,10 +406,12 @@ function MenteesSection({ authReady }) {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
-  useEffect(() => { if (!authReady) return;
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (!ready) return;
     getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentee") : [])).catch(() => {});
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [authReady]);
+  }, [ready]);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
@@ -484,11 +490,13 @@ function MenteesSection({ authReady }) {
   );
 }
 
-function GradebookSection({ authReady }) {
+function GradebookSection() {
   const [mentees, setMentees] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { if (!authReady) return;
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (!ready) return;
     setLoading(true);
     getAllGradebook()
       .then(entries => {
@@ -509,7 +517,7 @@ function GradebookSection({ authReady }) {
       const names = [...new Set(courses.flatMap(c => c.assignments ? (typeof c.assignments === 'number' ? [] : c.assignments) : []))];
       setAssignments(names.length ? names : ["Assignment 1", "Assignment 2", "Assignment 3", "Assignment 4", "Assignment 5"]);
     }).catch(() => setAssignments(["Assignment 1", "Assignment 2", "Assignment 3", "Assignment 4", "Assignment 5"]));
-  }, [authReady]);
+  }, [ready]);
   const total = mentees.length;
   const passing = mentees.filter(m => m.avg >= 60).length;
   const avg = Math.round(mentees.reduce((s, m) => s + m.avg, 0) / (total || 1));
@@ -560,7 +568,7 @@ function GradebookSection({ authReady }) {
   );
 }
 
-function NotificationsSection({ authReady }) {
+function NotificationsSection() {
   const [list, setList] = useState([]);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -568,11 +576,13 @@ function NotificationsSection({ authReady }) {
   const [notifMsg, setNotifMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(null);
-  useEffect(() => { if (!authReady) return;
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (!ready) return;
     getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
       .then(snap => setList(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
       .catch(() => {});
-  }, [authReady]);
+  }, [ready]);
   const send = () => {
     if (!title.trim() || !message.trim()) { setNotifMsg("Title and message are required"); return; }
     setSending(true);
@@ -620,11 +630,13 @@ function NotificationsSection({ authReady }) {
   );
 }
 
-function AnalyticsSection({ authReady }) {
+function AnalyticsSection() {
   const [data, setData] = useState(null);
-  useEffect(() => { if (!authReady) return;
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (!ready) return;
     getAnalytics().then(d => setData(d)).catch(() => {});
-  }, [authReady]);
+  }, [ready]);
   if (!data) return <Card><p style={{ color: "#594048" }}>Loading...</p></Card>;
   return (
     <>
@@ -651,7 +663,7 @@ function AnalyticsSection({ authReady }) {
   );
 }
 
-function HelpCenterSection({ authReady }) {
+function HelpCenterSection() {
   const navigate = useNavigate();
   const loc = useLocation();
   const [msgs, setMsgs] = useState([]);
@@ -668,6 +680,7 @@ function HelpCenterSection({ authReady }) {
   const [sponsorReqs, setSponsorReqs] = useState([]);
   const [pdfModal, setPdfModal] = useState(null);
   const activeTab = loc.hash.includes("?tab=") ? loc.hash.split("?tab=")[1] : "messages";
+  const [ready, setReady] = useState(false);
 
   const load = () => {
     getDocs(collection(db, "helpMessages"))
@@ -677,7 +690,8 @@ function HelpCenterSection({ authReady }) {
     getCounsellingRequests().then(d => setCounselReqs(Array.isArray(d) ? d : [])).catch(() => {});
     getSponsorshipRequests().then(d => setSponsorReqs(Array.isArray(d) ? d : [])).catch(() => {});
   };
-  useEffect(() => { if (authReady) load(); }, [authReady]);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (ready) load(); }, [ready]);
 
   const fmtDate = (ts) => {
     if (!ts?.toDate) return "";
@@ -840,12 +854,14 @@ function HelpCenterSection({ authReady }) {
   );
 }
 
-function CoursesSection({ authReady }) {
+function CoursesSection() {
   const [courses, setCourses] = useState([]);
   const [expandedCourse, setExpandedCourse] = useState(null);
-  useEffect(() => { if (!authReady) return;
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (!ready) return;
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [authReady]);
+  }, [ready]);
   return (
     <div style={{display:"flex",flexDirection:"column",gap:12}}>
       {courses.length === 0 ? <SectionBox data-aos="fade-up"><p style={{color:"#594048",fontSize:"0.85rem"}}>No courses yet.</p></SectionBox> : courses.map((c, i) => (
@@ -888,13 +904,15 @@ function CoursesSection({ authReady }) {
   );
 }
 
-function ProgressSection({ authReady }) {
+function ProgressSection() {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
-  useEffect(() => { if (!authReady) return;
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (!ready) return;
     getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [authReady]);
+  }, [ready]);
   const mentors = users.filter(u => u.role === "mentor");
   const mentees = users.filter(u => u.role === "mentee");
   const topMentors = [...mentors].sort((a, b) => (b.courseCount || courses.filter(c => c.instructor?.toLowerCase() === b.name?.toLowerCase()).length) - (a.courseCount || courses.filter(c => c.instructor?.toLowerCase() === a.name?.toLowerCase()).length)).slice(0, 5);
@@ -938,11 +956,13 @@ function ProgressSection({ authReady }) {
   );
 }
 
-function ActivitySection({ authReady }) {
+function ActivitySection() {
   const [activities, setActivities] = useState([]);
-  useEffect(() => { if (!authReady) return;
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (!ready) return;
     getActivities(50).then(setActivities).catch(() => {});
-  }, [authReady]);
+  }, [ready]);
   return (
     <Card data-aos="fade-up">
       <CardTitle>📊 Recent Activity Log</CardTitle>
@@ -969,11 +989,13 @@ function ActivitySection({ authReady }) {
   );
 }
 
-function ErrorsSection({ authReady }) {
+function ErrorsSection() {
   const [errors, setErrors] = useState([]);
   const [resolving, setResolving] = useState(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
   const load = () => getErrors(50).then(setErrors).catch(() => {});
-  useEffect(() => { if (authReady) load(); }, [authReady]);
+  useEffect(() => { if (ready) load(); }, [ready]);
   const doResolve = (id) => {
     setResolving(id);
     markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? {...e, resolved: true} : e)); }).catch(() => {}).finally(() => setResolving(null));
@@ -1019,7 +1041,7 @@ function ErrorsSection({ authReady }) {
   );
 }
 
-function MentorshipSection({ authReady }) {
+function MentorshipSection() {
   const [mentors, setMentors] = useState([]);
   const [unassigned, setUnassigned] = useState([]);
   const [selectedMentor, setSelectedMentor] = useState(null);
@@ -1027,12 +1049,14 @@ function MentorshipSection({ authReady }) {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const [ready, setReady] = useState(false);
 
   const load = () => {
     getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(() => {});
     getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(() => {});
   };
-  useEffect(() => { if (authReady) load(); }, [authReady]);
+  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
+  useEffect(() => { if (ready) load(); }, [ready]);
 
   useEffect(() => {
     if (selectedMentor) {
@@ -1184,11 +1208,9 @@ const AdminPageTitle = styled.h2`font-size:1.6rem;font-weight:700;color:${p => p
 
 export default function AdminDashboard() {
   const [theme, setTheme] = useState("dark");
-  const [authReady, setAuthReady] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
   const location = useLocation();
-  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => {
     const t = location.hash.replace("#", "");
     if (t && tabs.find(tab => tab.key === t)) { setActiveTab(t); }
@@ -1202,7 +1224,7 @@ export default function AdminDashboard() {
         <AdminPageTitle>{tabs.find(t => t.key === activeTab)?.label || "Dashboard"}</AdminPageTitle>
         {tabs.map(tab => {
           const Comp = tab.comp;
-          return <div key={tab.key} style={{ display: tab.key === activeTab ? "block" : "none" }}><Comp authReady={authReady} /></div>;
+          return <div key={tab.key} style={{ display: tab.key === activeTab ? "block" : "none" }}><Comp /></div>;
         })}
       </AdminPageMain>
     </AdminPageLayout>
