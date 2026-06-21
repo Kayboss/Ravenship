@@ -6,6 +6,7 @@ import { useParams, Link } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { addCounsellingRequest } from "../firebase/db";
+import { getStoredUser } from "../firebase/auth";
 
 const Page = styled.div`
   display: flex;
@@ -63,6 +64,20 @@ const Select = styled.select`
   color: ${p => p.theme.colors.textPrimary};
 `;
 
+const TextArea = styled.textarea`
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid ${p => p.theme.colors.outline};
+  font-family: inherit;
+  font-size: 0.85rem;
+  width: 100%;
+  box-sizing: border-box;
+  background: ${p => p.theme.colors.surface};
+  color: ${p => p.theme.colors.textPrimary};
+  resize: vertical;
+  min-height: 100px;
+`;
+
 const Label = styled.label`
   font-weight: 600;
   font-size: 0.85rem;
@@ -100,16 +115,17 @@ const BackLink = styled(Link)`
 export const CounsellingRequest = () => {
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
   const { role } = useParams();
+  const user = getStoredUser();
 
-  const [form, setForm] = useState({ name: "", email: "", type: "", dateTime: "" });
+  const [form, setForm] = useState({ name: user?.name || "", email: user?.email || "", type: "", dateTime: "", reasons: "" });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [formMsg, setFormMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.type.trim() || !form.dateTime.trim()) {
-      setFormMsg("Please fill in all fields.");
+    if (!form.type.trim() || !form.dateTime.trim() || !form.reasons.trim()) {
+      setFormMsg("Please fill in all required fields.");
       return;
     }
     setSending(true);
@@ -120,9 +136,10 @@ export const CounsellingRequest = () => {
         email: form.email.trim(),
         type: form.type.trim(),
         dateTime: form.dateTime.trim(),
+        reasons: form.reasons.trim(),
       });
       setSent(true);
-      setForm({ name: "", email: "", type: "", dateTime: "" });
+      setForm({ name: user?.name || "", email: user?.email || "", type: "", dateTime: "", reasons: "" });
       setFormMsg("Request submitted! We'll get back to you soon.");
     } catch (err) {
       setFormMsg(err.message || "Failed to submit. Try again.");
@@ -148,14 +165,14 @@ export const CounsellingRequest = () => {
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
                 <Label>Your Name</Label>
-                <Input type="text" placeholder="eg: Ama Ataa" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+                <Input type="text" value={form.name} disabled style={{ opacity: 0.7, cursor: "not-allowed" }} />
               </div>
               <div>
                 <Label>Email</Label>
-                <Input type="email" placeholder="Email Address" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+                <Input type="email" value={form.email} disabled style={{ opacity: 0.7, cursor: "not-allowed" }} />
               </div>
               <div>
-                <Label>Type of Counselling Requesting</Label>
+                <Label>Type of Counselling Requesting *</Label>
                 <Select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
                   <option value="">Select type...</option>
                   <option value="Academic">Academic</option>
@@ -166,7 +183,11 @@ export const CounsellingRequest = () => {
                 </Select>
               </div>
               <div>
-                <Label>Date / Time You Want to Meet the Counsellor</Label>
+                <Label>Reasons for Counselling *</Label>
+                <TextArea placeholder="Briefly describe what you'd like to discuss or get help with..." value={form.reasons} onChange={e => setForm({ ...form, reasons: e.target.value })} />
+              </div>
+              <div>
+                <Label>Date / Time You Want to Meet the Counsellor *</Label>
                 <Input type="date" value={form.dateTime} onChange={e => setForm({ ...form, dateTime: e.target.value })} />
               </div>
               {formMsg && <p style={{ fontSize: "0.85rem", color: formMsg.includes("submitted") ? "#2e7d32" : "#e53935", fontWeight: 600 }}>{formMsg}</p>}

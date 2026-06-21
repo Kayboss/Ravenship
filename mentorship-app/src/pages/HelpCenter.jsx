@@ -326,6 +326,7 @@ export const HelpCenter = () => {
                       <RequestInfo>
                         <p><strong>{req.name}</strong> &lt;{req.email}&gt;</p>
                         <p>Type: {req.type}</p>
+                        {req.reasons && <p>Reasons: {req.reasons}</p>}
                         <p>Preferred date: {req.dateTime}</p>
                         <span>Submitted {formatDate(req.createdAt)}</span>
                       </RequestInfo>
