@@ -54,5 +54,5 @@ export const getStoredUser = () => {
 
 let _authReady = false;
 const _authReadyCallbacks = [];
-onAuthStateChanged(auth, () => { _authReady = true; _authReadyCallbacks.forEach(cb => cb()); _authReadyCallbacks.length = 0; });
+onAuthStateChanged(auth, (user) => { if (user) { _authReady = true; _authReadyCallbacks.forEach(cb => cb()); _authReadyCallbacks.length = 0; } });
 export const onAuthReady = (cb) => { if (_authReady) cb(); else _authReadyCallbacks.push(cb); };
