@@ -55,4 +55,16 @@ export const getStoredUser = () => {
 let _authReady = false;
 const _authReadyCallbacks = [];
 onAuthStateChanged(auth, (user) => { if (user) { _authReady = true; _authReadyCallbacks.forEach(cb => cb()); _authReadyCallbacks.length = 0; } });
-export const onAuthReady = (cb) => { if (_authReady) cb(); else _authReadyCallbacks.push(cb); };
+export const onAuthReady = (cb) => {
+  if (_authReady) { cb(); return; }
+  if (auth.currentUser) { _authReady = true; cb(); return; }
+  const stored = getStoredUser();
+  if (stored) {
+    const fallback = setTimeout(() => {
+      if (!_authReady) { _authReady = true; cb(); }
+    }, 1500);
+    _authReadyCallbacks.push(() => { clearTimeout(fallback); cb(); });
+  } else {
+    _authReadyCallbacks.push(cb);
+  }
+};
