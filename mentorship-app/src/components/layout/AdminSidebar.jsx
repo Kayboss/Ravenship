@@ -143,17 +143,17 @@ const FooterBtn = styled.button`
 
 const navItems = [
   { label: "Dashboard",     path: "/dashboard/admin",              icon: "⚙️" },
-  { label: "Mentors",       path: "/dashboard/admin#mentors",      icon: "👤" },
-  { label: "Mentees",       path: "/dashboard/admin#mentees",      icon: "👥" },
-  { label: "Courses",       path: "/dashboard/admin#courses",      icon: "📚" },
-  { label: "Leaderboard",   path: "/dashboard/admin#progress",     icon: "🏆" },
-  { label: "Gradebook",     path: "/dashboard/admin#gradebook",    icon: "📋" },
+  { label: "Mentors",       path: "/dashboard/admin/mentors",      icon: "👤" },
+  { label: "Mentees",       path: "/dashboard/admin/mentees",      icon: "👥" },
+  { label: "Courses",       path: "/dashboard/admin/courses",      icon: "📚" },
+  { label: "Leaderboard",   path: "/dashboard/admin/leaderboard",  icon: "🏆" },
+  { label: "Gradebook",     path: "/dashboard/admin/gradebook",    icon: "📋" },
   { label: "Community",     path: "/dashboard/admin/community",    icon: "👥" },
-  { label: "Notifications", path: "/dashboard/admin#notifications", icon: "🔔" },
-  { label: "Mentorship",    path: "/dashboard/admin#mentorship",   icon: "🔗" },
-  { label: "Help Center",   path: "/dashboard/admin#help",         icon: "❓" },
-  { label: "Activity Log",  path: "/dashboard/admin#activity",     icon: "📊" },
-  { label: "Error Log",     path: "/dashboard/admin#errors",       icon: "⚠️" },
+  { label: "Notifications", path: "/dashboard/admin/notifications",icon: "🔔" },
+  { label: "Mentorship",    path: "/dashboard/admin/mentorship",   icon: "🔗" },
+  { label: "Help Center",   path: "/dashboard/admin/help",         icon: "❓" },
+  { label: "Activity Log",  path: "/dashboard/admin/activity",     icon: "📊" },
+  { label: "Error Log",     path: "/dashboard/admin/errors",       icon: "⚠️" },
 ];
 
 export const AdminSidebar = () => {
@@ -188,19 +188,19 @@ export const AdminSidebar = () => {
           <ProfilePhone>{user.phone || "No phone"}</ProfilePhone>
         </ProfileSection>
         <NavList>
-          {navItems.map((item) => (
-            <li key={item.path}>
-              <NavButton
-                $active={item.path.includes("#")
-                  ? location.pathname + location.hash === item.path
-                  : location.pathname === item.path && !location.hash}
-                onClick={() => handleNav(item.path)}
-              >
-                <span>{item.icon}</span>
-                {item.label}
-              </NavButton>
-            </li>
-          ))}
+          {navItems.map((item) => {
+            const isActive = item.path === "/dashboard/admin"
+              ? location.pathname === "/dashboard/admin"
+              : location.pathname === item.path;
+            return (
+              <li key={item.path}>
+                <NavButton $active={isActive} onClick={() => handleNav(item.path)}>
+                  <span>{item.icon}</span>
+                  {item.label}
+                </NavButton>
+              </li>
+            );
+          })}
         </NavList>
         <FooterSection>
           <FooterBtn onClick={toggleTheme}>{theme === "dark" ? "☀️" : "🌙"} {theme === "dark" ? "Light Mode" : "Dark Mode"}</FooterBtn>

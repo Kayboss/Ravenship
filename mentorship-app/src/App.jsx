@@ -11,7 +11,19 @@ import { Community } from "./pages/Community.jsx";
 import { Analytics } from "./pages/Analytics.jsx";
 import { Gradebook } from "./pages/Gradebook.jsx";
 import { Settings } from "./pages/Settings.jsx";
-import AdminDashboard from "./pages/AdminDashboard.jsx";
+import AdminLayout from "./pages/admin/AdminLayout.jsx";
+import AdminOverview from "./pages/admin/AdminOverview.jsx";
+import AdminMentors from "./pages/admin/AdminMentors.jsx";
+import AdminMentees from "./pages/admin/AdminMentees.jsx";
+import AdminCourses from "./pages/admin/AdminCourses.jsx";
+import AdminLeaderboard from "./pages/admin/AdminLeaderboard.jsx";
+import AdminGradebook from "./pages/admin/AdminGradebook.jsx";
+import AdminNotifications from "./pages/admin/AdminNotifications.jsx";
+import AdminMentorship from "./pages/admin/AdminMentorship.jsx";
+import AdminHelpCenter from "./pages/admin/AdminHelpCenter.jsx";
+import AdminActivity from "./pages/admin/AdminActivity.jsx";
+import AdminErrors from "./pages/admin/AdminErrors.jsx";
+import AdminAnalytics from "./pages/admin/AdminAnalytics.jsx";
 import { HelpCenter } from "./pages/HelpCenter.jsx";
 import { CounsellingRequest } from "./pages/CounsellingRequest.jsx";
 import { SponsorshipRequest } from "./pages/SponsorshipRequest.jsx";
@@ -81,7 +93,20 @@ export const App = () => (
           <Route path="/dashboard/:role/analytics" element={<Analytics />} />
           <Route path="/dashboard/:role/gradebook" element={<Gradebook />} />
           <Route path="/dashboard/:role/settings" element={<Settings />} />
-          <Route path="/dashboard/admin" element={<AdminDashboard />} />
+          <Route path="/dashboard/admin" element={<AdminLayout />}>
+            <Route index element={<AdminOverview />} />
+            <Route path="mentors" element={<AdminMentors />} />
+            <Route path="mentees" element={<AdminMentees />} />
+            <Route path="courses" element={<AdminCourses />} />
+            <Route path="leaderboard" element={<AdminLeaderboard />} />
+            <Route path="gradebook" element={<AdminGradebook />} />
+            <Route path="notifications" element={<AdminNotifications />} />
+            <Route path="mentorship" element={<AdminMentorship />} />
+            <Route path="help" element={<AdminHelpCenter />} />
+            <Route path="activity" element={<AdminActivity />} />
+            <Route path="errors" element={<AdminErrors />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+          </Route>
           <Route path="/dashboard/:role/help" element={<HelpCenter />} />
           <Route path="/dashboard/:role/counselling-request" element={<CounsellingRequest />} />
           <Route path="/dashboard/:role/sponsorship-request" element={<SponsorshipRequest />} />
