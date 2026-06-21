@@ -551,6 +551,7 @@ export const MenteeDashboard = () => {
   const [dueAssignments, setDueAssignments] = useState([]);
   const [coursesList, setCoursesList] = useState([]);
   const [menteeName, setMenteeName] = useState("Mentee");
+  const [groupName, setGroupName] = useState("");
   const [menteeStats, setMenteeStats] = useState({ hours: "0h", skills: "0", submissionsCount: 0, weekData: [0,0,0,0,0,0,0] });
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   useEffect(() => {
@@ -562,7 +563,10 @@ export const MenteeDashboard = () => {
       let mentorFilter = null;
       if (menteeId) {
         const u = await getUser(menteeId);
-        if (u?.mentorId) mentorFilter = u.mentorId;
+        if (u?.mentorId) {
+          mentorFilter = u.mentorId;
+          getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(() => {});
+        }
       }
       Promise.all([
         getCourses(mentorFilter),
@@ -606,6 +610,7 @@ export const MenteeDashboard = () => {
 
         <HeroSection data-aos="fade-down">
           <HeroTitle>Welcome back, {menteeName}! 👋</HeroTitle>
+          {groupName && <HeroText style={{fontWeight:600,fontSize:"0.9rem",marginTop:-8}}>📍 Group: {groupName}</HeroText>}
           <HeroText>
             You have {dueAssignments.length} pending assignment{dueAssignments.length !== 1 ? "s" : ""} and {menteeStats.skills} completed submission{menteeStats.skills !== "1" ? "s" : ""}. Keep up the momentum!
           </HeroText>
