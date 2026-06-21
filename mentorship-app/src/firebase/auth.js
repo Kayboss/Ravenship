@@ -67,8 +67,6 @@ export const onAuthReady = (cb) => {
         if (!handled) { handled = true; _authReady = true; cb(); }
       }
     }, 300);
-    // Safety: stop polling after 10s regardless
-    setTimeout(() => { clearInterval(retry); if (!handled) { handled = true; _authReady = true; cb(); } }, 10000);
     _authReadyCallbacks.push(() => { clearInterval(retry); if (!handled) { handled = true; cb(); } });
   } else {
     _authReadyCallbacks.push(cb);
