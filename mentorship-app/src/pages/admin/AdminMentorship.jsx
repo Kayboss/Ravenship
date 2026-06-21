@@ -93,7 +93,8 @@ export default function AdminMentorship() {
             <Input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Cohort Alpha, Group A..." style={{maxWidth:300}} />
             <Btn disabled={loading} onClick={saveGroupName}>{loading ? "Saving..." : "Save"}</Btn>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+          <style>{`@media(max-width:600px){.mentorship-panels{grid-template-columns:1fr !important}}`}</style>
+          <div className="mentorship-panels" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
             <div>
               <h5 style={{fontSize:"0.9rem",fontWeight:700,color:"#2c3e50",marginBottom:12}}>👤 Assigned to {selectedMentor.name}</h5>
               {assignedMentees.length === 0 ? (

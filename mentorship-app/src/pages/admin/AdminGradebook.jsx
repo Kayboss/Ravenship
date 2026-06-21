@@ -39,13 +39,13 @@ export default function AdminGradebook() {
       <CardTitle>📋 All Submissions & Grades</CardTitle>
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         {[["👥 Total", total, "#594048"], ["📊 Avg Grade", `${avg}%`, "#b50064"], ["✅ Passing", passing, "#2e7d32"], ["❌ Failing", mentees.filter(m => m.avg < 60).length, "#e53935"]].map(([l, v, c]) => (
-          <div key={l} style={{ flex: 1, minWidth: 100, padding: "12px 16px", background: "#f9f9f9", borderRadius: 12, textAlign: "center" }}>
+          <div key={l} style={{ flex: 1, minWidth: 80, padding: "12px 16px", background: "#f9f9f9", borderRadius: 12, textAlign: "center" }}>
             <div style={{ fontSize: "0.75rem", color: "#594048", fontWeight: 600 }}>{l}</div>
             <div style={{ fontSize: "1.4rem", fontWeight: 800, color: c }}>{v}</div>
           </div>
         ))}
       </div>
-      <style>{`@media(max-width:480px){.gb-table{display:none}.gb-cards{display:flex}}`}</style>
+      <style>{`@media(max-width:768px){.gb-table{display:none}.gb-cards{display:flex}}`}</style>
       <div className="gb-table" style={{ overflowX: "auto" }}>
         <Table><thead><tr><Th>Mentee</Th>{assignments.map(a => <Th key={a}>{a}</Th>)}<Th>Avg</Th><Th>Status</Th></tr></thead>
         <tbody>{mentees.map((m, i) => (
@@ -56,7 +56,7 @@ export default function AdminGradebook() {
       </div>
       <div className="gb-cards" style={{ display: "none", flexDirection: "column", gap: 12 }}>
         {mentees.map((m, i) => (
-          <div key={i} style={{ background: "#f9f9f9", borderRadius: 12, padding: 16 }}>
+          <div key={i} style={{ background: "#f9f9f9", borderRadius: 12, padding: "14px 16px", border: "1px solid #e0e0e0", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <strong style={{ fontSize: "0.9rem" }}>{m.name}</strong>
               <div style={{ display: "flex", gap: 8 }}>

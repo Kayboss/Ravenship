@@ -42,7 +42,7 @@ export default function AdminNotifications() {
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
         <Input placeholder="Notification title..." value={title} onChange={e => setTitle(e.target.value)} />
         <Textarea placeholder="Message content..." value={message} onChange={e => setMessage(e.target.value)} />
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
           <Select value={targetRole} onChange={e => setTargetRole(e.target.value)}>
             <option value="all">All Users</option><option value="mentor">Mentors Only</option><option value="mentee">Mentees Only</option>
           </Select>

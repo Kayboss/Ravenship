@@ -23,7 +23,7 @@ export default function AdminErrors() {
           {errors.map((e, i) => {
             const time = e.timestamp?.toDate ? e.timestamp.toDate() : new Date(e.timestamp);
             return (
-              <div key={e.id || i} style={{padding:"12px 16px",background:e.resolved?"#f9f9f9":"#fff7f7",borderRadius:12,borderLeft:`4px solid ${e.resolved?"#2e7d32":"#e53935"}`}}>
+              <div key={e.id || i} style={{padding:"12px 16px",background:e.resolved?"#f9f9f9":"#fff7f7",borderRadius:12,borderLeft:`4px solid ${e.resolved?"#2e7d32":"#e53935"}`,overflow:"hidden"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:700,fontSize:"0.85rem",color:"#2c3e50",marginBottom:4}}>{e.message || "Unknown error"}</div>

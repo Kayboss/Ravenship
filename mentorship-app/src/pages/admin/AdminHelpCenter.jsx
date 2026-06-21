@@ -112,7 +112,7 @@ export default function AdminHelpCenter() {
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24, background: "#f9f9f9", padding: 16, borderRadius: 12 }}>
             <Input placeholder="Guide title..." value={title} onChange={e => setTitle(e.target.value)} />
             <Textarea placeholder="Guide content (markdown or plain text)..." value={content} onChange={e => setContent(e.target.value)} />
-            <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
               <Select value={targetRole} onChange={e => setTargetRole(e.target.value)}>
                 <option value="all">All Users</option><option value="mentor">Mentors</option><option value="mentee">Mentees</option>
               </Select>

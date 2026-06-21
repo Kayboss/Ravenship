@@ -23,7 +23,7 @@ export const PdfOverlay = styled.div`position:fixed;inset:0;background:rgba(0,0,
 export const PdfModalInner = styled.div`background:#fff;border-radius:16px;width:90%;max-width:800px;height:90vh;position:relative;overflow:hidden;`;
 export const PdfCloseBtn = styled.button`position:absolute;top:10px;right:14px;background:#e53935;color:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:1.2rem;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;font-family:inherit;&:hover{opacity:0.85}`;
 
-export const KpiGrid = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:32px;`;
+export const KpiGrid = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:20px;margin-bottom:32px;`;
 export const KpiCard = styled.div`background:${p => p.theme.colors.surface || "#fff"};border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.04);border-left:4px solid ${p => p.$border};border:1px solid ${p => p.theme.colors.outline}30;`;
 export const KpiIcon = styled.div`width:40px;height:40px;border-radius:12px;background:${p => p.$bg}20;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:12px;`;
 export const KpiValue = styled.div`font-size:1.8rem;font-weight:800;color:${p => p.theme.colors.textPrimary};`;

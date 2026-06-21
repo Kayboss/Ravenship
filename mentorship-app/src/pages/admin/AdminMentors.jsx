@@ -33,7 +33,9 @@ export default function AdminMentors() {
       .finally(() => setVerifying(null));
   };
   return (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+    <>
+    <style>{`@media(max-width:560px){.mentor-grid{grid-template-columns:1fr !important}}`}</style>
+    <div className="mentor-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       {verifyMsg && <p style={{gridColumn:"1/-1",fontSize:"0.85rem",color:"#e53935",fontWeight:600,margin:0}}>{verifyMsg}</p>}
       {users.length === 0 ? <p style={{ color: "#594048", fontSize: "0.9rem", gridColumn:"1/-1" }}>No mentors registered.</p> : users.map((u, idx) => {
         const mentorCourses = courses.filter(c => c.instructor?.toLowerCase() === u.name?.toLowerCase());
@@ -104,5 +106,6 @@ export default function AdminMentors() {
         );
       })}
     </div>
+    </>
   );
 }

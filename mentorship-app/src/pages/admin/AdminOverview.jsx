@@ -110,7 +110,7 @@ export default function AdminOverview() {
           <Card style={{padding:0,overflow:"hidden",marginBottom:0}}>
             <div style={{padding:"16px 20px",borderBottom:"1px solid #e0e0e0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <CardTitle style={{margin:0}}>User Management</CardTitle>
-              <div style={{display:"flex",gap:8}}>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                 <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",cursor:"pointer",fontSize:"0.78rem",fontFamily:"inherit"}}>
                   <option value="all">All Roles</option>
                   <option value="admin">Admins</option>

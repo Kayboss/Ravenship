@@ -33,7 +33,9 @@ export default function AdminMentees() {
       .finally(() => setVerifying(null));
   };
   return (
-    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+    <>
+    <style>{`@media(max-width:560px){.mentee-grid{grid-template-columns:1fr !important}}`}</style>
+    <div className="mentee-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       {verifyMsg && <p style={{gridColumn:"1/-1",fontSize:"0.85rem",color:"#e53935",fontWeight:600,margin:0}}>{verifyMsg}</p>}
       {users.length === 0 ? <p style={{ gridColumn:"1/-1",color: "#594048", fontSize: "0.9rem" }}>No mentees registered.</p> : users.map((u) => {
         const menteeCourses = courses.filter(c => (c.enrolledMentees || c.enrolled || []).some(e => e.userId === u.id || e.email === u.email));
@@ -93,5 +95,6 @@ export default function AdminMentees() {
         );
       })}
     </div>
+    </>
   );
 }

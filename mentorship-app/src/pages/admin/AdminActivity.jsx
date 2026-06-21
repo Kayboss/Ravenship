@@ -19,7 +19,7 @@ export default function AdminActivity() {
           {activities.map((a, i) => {
             const time = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
             return (
-              <div key={a.id || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:i%2===0?"#fafafa":"#fff",borderRadius:10,fontSize:"0.85rem"}}>
+              <div key={a.id || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:i%2===0?"#fafafa":"#fff",borderRadius:10,fontSize:"0.85rem",overflow:"hidden"}}>
                 <div style={{width:32,height:32,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>{a.userName?.split(" ").map(w=>w[0]).join("").slice(0,2)}</div>
                 <div style={{flex:1,minWidth:0}}>
                   <strong style={{color:"#2c3e50"}}>{a.action}</strong>
