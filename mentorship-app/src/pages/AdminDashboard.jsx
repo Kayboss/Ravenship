@@ -935,6 +935,7 @@ function MentorshipSection() {
   const [assignedMentees, setAssignedMentees] = useState([]);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [groupName, setGroupName] = useState("");
 
   const load = () => {
     getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(() => {});
@@ -944,11 +945,25 @@ function MentorshipSection() {
 
   useEffect(() => {
     if (selectedMentor) {
+      setGroupName(selectedMentor.groupName || "");
       getMenteesByMentor(selectedMentor.id).then(d => setAssignedMentees(Array.isArray(d) ? d : [])).catch(() => {});
     } else {
       setAssignedMentees([]);
+      setGroupName("");
     }
   }, [selectedMentor]);
+
+  const saveGroupName = async () => {
+    if (!selectedMentor) return;
+    setLoading(true);
+    setMsg("");
+    try {
+      await updateDoc(doc(db, "users", selectedMentor.id), { groupName });
+      setMsg("Group name saved!");
+      setMentors(prev => prev.map(m => m.id === selectedMentor.id ? { ...m, groupName } : m));
+    } catch (e) { setMsg(e.message); }
+    setLoading(false);
+  };
 
   const doAssign = async (menteeId, menteeName) => {
     if (!selectedMentor) { setMsg("Select a mentor first"); return; }
@@ -979,7 +994,7 @@ function MentorshipSection() {
   return (
     <Card data-aos="fade-up">
       <CardTitle>🔗 Mentor–Mentee Assignments</CardTitle>
-      <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Select a mentor to manage their assigned mentees.</p>
+      <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Select a mentor to manage their group and assigned mentees.</p>
       {msg && <p style={{fontSize:"0.85rem",color:msg.includes("rror")||msg.includes("first")?"#e53935":"#2e7d32",fontWeight:600,marginBottom:12}}>{msg}</p>}
 
       <div style={{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}}>
@@ -988,52 +1003,59 @@ function MentorshipSection() {
           setSelectedMentor(m || null);
         }} style={{minWidth:250}}>
           <option value="">— Select a mentor —</option>
-          {mentors.map(m => <option key={m.id} value={m.id}>{m.name} ({m.email})</option>)}
+          {mentors.map(m => <option key={m.id} value={m.id}>{m.name}{m.groupName ? ` (${m.groupName})` : ""} ({m.email})</option>)}
         </Select>
         <Btn $outline onClick={() => { setSelectedMentor(null); load(); }}>Refresh</Btn>
       </div>
 
       {selectedMentor && (
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
-          <div>
-            <h5 style={{fontSize:"0.9rem",fontWeight:700,color:"#2c3e50",marginBottom:12}}>👤 Assigned to {selectedMentor.name}</h5>
-            {assignedMentees.length === 0 ? (
-              <p style={{fontSize:"0.85rem",color:"#999"}}>No mentees assigned yet.</p>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {assignedMentees.map(m => (
-                  <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f9f9f9",borderRadius:10}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{width:32,height:32,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff"}}>
-                        {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
-                      </div>
-                      <span style={{fontWeight:600,fontSize:"0.85rem",color:"#2c3e50"}}>{m.name}</span>
-                    </div>
-                    <Btn $red disabled={loading} onClick={() => doUnassign(m.id, m.name)} style={{fontSize:"0.75rem",padding:"4px 10px"}}>Unassign</Btn>
-                  </div>
-                ))}
-              </div>
-            )}
+        <div style={{display:"flex",flexDirection:"column",gap:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <label style={{fontWeight:600,fontSize:"0.85rem",color:"#2c3e50"}}>Group Name:</label>
+            <Input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Cohort Alpha, Group A..." style={{maxWidth:300}} />
+            <Btn disabled={loading} onClick={saveGroupName}>{loading ? "Saving..." : "Save"}</Btn>
           </div>
-          <div>
-            <h5 style={{fontSize:"0.9rem",fontWeight:700,color:"#2c3e50",marginBottom:12}}>📋 Unassigned Mentees</h5>
-            {unassigned.length === 0 ? (
-              <p style={{fontSize:"0.85rem",color:"#999"}}>All mentees are assigned.</p>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {unassigned.map(m => (
-                  <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f9f9f9",borderRadius:10}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{width:32,height:32,borderRadius:"50%",background:"#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff"}}>
-                        {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+            <div>
+              <h5 style={{fontSize:"0.9rem",fontWeight:700,color:"#2c3e50",marginBottom:12}}>👤 Assigned to {selectedMentor.name}</h5>
+              {assignedMentees.length === 0 ? (
+                <p style={{fontSize:"0.85rem",color:"#999"}}>No mentees assigned yet.</p>
+              ) : (
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {assignedMentees.map(m => (
+                    <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f9f9f9",borderRadius:10}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10}}>
+                        <div style={{width:32,height:32,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff"}}>
+                          {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
+                        </div>
+                        <span style={{fontWeight:600,fontSize:"0.85rem",color:"#2c3e50"}}>{m.name}</span>
                       </div>
-                      <span style={{fontWeight:600,fontSize:"0.85rem",color:"#2c3e50"}}>{m.name}</span>
+                      <Btn $red disabled={loading} onClick={() => doUnassign(m.id, m.name)} style={{fontSize:"0.75rem",padding:"4px 10px"}}>Unassign</Btn>
                     </div>
-                    <Btn disabled={loading || !selectedMentor} onClick={() => doAssign(m.id, m.name)} style={{fontSize:"0.75rem",padding:"4px 10px"}}>Assign</Btn>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <h5 style={{fontSize:"0.9rem",fontWeight:700,color:"#2c3e50",marginBottom:12}}>📋 Unassigned Mentees</h5>
+              {unassigned.length === 0 ? (
+                <p style={{fontSize:"0.85rem",color:"#999"}}>All mentees are assigned.</p>
+              ) : (
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {unassigned.map(m => (
+                    <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f9f9f9",borderRadius:10}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10}}>
+                        <div style={{width:32,height:32,borderRadius:"50%",background:"#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff"}}>
+                          {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
+                        </div>
+                        <span style={{fontWeight:600,fontSize:"0.85rem",color:"#2c3e50"}}>{m.name}</span>
+                      </div>
+                      <Btn disabled={loading || !selectedMentor} onClick={() => doAssign(m.id, m.name)} style={{fontSize:"0.75rem",padding:"4px 10px"}}>Assign</Btn>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
