@@ -1,12 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { addCounsellingRequest } from "../firebase/db";
-import { getStoredUser } from "../firebase/auth";
 
 const Page = styled.div`
   display: flex;
@@ -99,29 +97,7 @@ const ContactBtn = styled.a`
   &:hover { opacity: 0.9; }
 `;
 
-const FormInput = styled.input`
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid ${p => p.theme.colors.outline};
-  font-family: inherit;
-  font-size: 0.85rem;
-  width: 100%;
-  box-sizing: border-box;
-  background: ${p => p.theme.colors.surface};
-  color: ${p => p.theme.colors.textPrimary};
-`;
 
-const FormSelect = styled.select`
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid ${p => p.theme.colors.outline};
-  font-family: inherit;
-  font-size: 0.85rem;
-  width: 100%;
-  box-sizing: border-box;
-  background: ${p => p.theme.colors.surface};
-  color: ${p => p.theme.colors.textPrimary};
-`;
 
 const faqs = [
   { q: "How do I enroll in a course?", a: "Navigate to My Courses from the sidebar, browse available courses, and click 'Start Course' on any course card to begin your learning journey." },
@@ -136,36 +112,6 @@ export const HelpCenter = () => {
   const [openFaq, setOpenFaq] = React.useState(null);
   const { role } = useParams();
   const isMentee = role === "mentee";
-  const user = getStoredUser();
-
-  const [form, setForm] = useState({ name: "", email: "", type: "", dateTime: "" });
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [formMsg, setFormMsg] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.type.trim() || !form.dateTime.trim()) {
-      setFormMsg("Please fill in all fields.");
-      return;
-    }
-    setSending(true);
-    setFormMsg("");
-    try {
-      await addCounsellingRequest({
-        name: form.name.trim(),
-        email: form.email.trim(),
-        type: form.type.trim(),
-        dateTime: form.dateTime.trim(),
-      });
-      setSent(true);
-      setForm({ name: "", email: "", type: "", dateTime: "" });
-      setFormMsg("Request submitted! We'll get back to you soon.");
-    } catch (err) {
-      setFormMsg(err.message || "Failed to submit. Try again.");
-    }
-    setSending(false);
-  };
 
   return (
     <Page>
@@ -185,48 +131,10 @@ export const HelpCenter = () => {
             ))}
           </Card>
           {isMentee ? (
-            <Card data-aos="fade-up" $span2>
-              <CardTitle>📋 Counselling Request Form</CardTitle>
-              <CardDesc>Request a counselling session by filling out the form below.</CardDesc>
-              {sent ? (
-                <div style={{textAlign:"center",padding:"20px 0"}}>
-                  <p style={{fontSize:"1.1rem",fontWeight:700,color:"#2e7d32",marginBottom:12}}>✅ Request Submitted</p>
-                  <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:20}}>{formMsg}</p>
-                  <ContactBtn as="button" style={{border:"none",cursor:"pointer",fontFamily:"inherit"}} onClick={() => setSent(false)}>Submit Another Request</ContactBtn>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} style={{display:"flex",flexDirection:"column",gap:16}}>
-                  <div>
-                    <label style={{fontWeight:600,fontSize:"0.85rem",display:"block",marginBottom:4,color:"#2c3e50"}}>Your Name</label>
-                    <FormInput type="text" placeholder="eg: Ama Ataa" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-                  </div>
-                  <div>
-                    <label style={{fontWeight:600,fontSize:"0.85rem",display:"block",marginBottom:4,color:"#2c3e50"}}>Email</label>
-                    <FormInput type="email" placeholder="Email Address" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-                  </div>
-                  <div>
-                    <label style={{fontWeight:600,fontSize:"0.85rem",display:"block",marginBottom:4,color:"#2c3e50"}}>Type of Counselling Requesting</label>
-                    <FormSelect value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
-                      <option value="">Select type...</option>
-                      <option value="Academic">Academic</option>
-                      <option value="Career">Career</option>
-                      <option value="Personal">Personal</option>
-                      <option value="Mental Health">Mental Health</option>
-                      <option value="Other">Other</option>
-                    </FormSelect>
-                  </div>
-                  <div>
-                    <label style={{fontWeight:600,fontSize:"0.85rem",display:"block",marginBottom:4,color:"#2c3e50"}}>Date / Time You Want to Meet the Counsellor</label>
-                    <FormInput type="text" placeholder="e.g. Monday 14th July, 10:00 AM" value={form.dateTime} onChange={e => setForm({...form, dateTime: e.target.value})} />
-                  </div>
-                  {formMsg && <p style={{fontSize:"0.85rem",color:formMsg.includes("submitted")?"#2e7d32":"#e53935",fontWeight:600}}>{formMsg}</p>}
-                  <div>
-                    <ContactBtn as="button" type="submit" disabled={sending} style={{border:"none",cursor:sending?"not-allowed":"pointer",fontFamily:"inherit",opacity:sending?0.7:1}}>
-                      {sending ? "Submitting..." : "Submit Request"}
-                    </ContactBtn>
-                  </div>
-                </form>
-              )}
+            <Card data-aos="fade-up">
+              <CardTitle>📋 Counselling Request</CardTitle>
+              <CardDesc>Need someone to talk to? Book a counselling session with a professional counsellor.</CardDesc>
+              <ContactBtn as={Link} to="/dashboard/mentee/counselling-request">Book Now</ContactBtn>
             </Card>
           ) : (
             <Card data-aos="fade-up">

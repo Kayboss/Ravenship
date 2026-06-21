@@ -13,6 +13,7 @@ import { Gradebook } from "./pages/Gradebook.jsx";
 import { Settings } from "./pages/Settings.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import { HelpCenter } from "./pages/HelpCenter.jsx";
+import { CounsellingRequest } from "./pages/CounsellingRequest.jsx";
 import { logError } from "./firebase/db";
 
 const AppLayout = ({ children }) => {
@@ -81,6 +82,7 @@ export const App = () => (
           <Route path="/dashboard/:role/settings" element={<Settings />} />
           <Route path="/dashboard/admin" element={<AdminDashboard />} />
           <Route path="/dashboard/:role/help" element={<HelpCenter />} />
+          <Route path="/dashboard/:role/counselling-request" element={<CounsellingRequest />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppLayout>
