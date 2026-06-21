@@ -107,7 +107,7 @@ const SectionTitle = styled.h4`font-size:0.75rem;font-weight:700;color:${p => p.
 
 const AnnTag = styled.span`display:inline-block;padding:2px 10px;border-radius:50px;font-size:0.7rem;font-weight:700;background:${p => p.$c}20;color:${p => p.$c};`;
 
-function DashboardOverview() {
+function DashboardOverview({ authReady }) {
   const [data, setData] = useState(null);
   const [users, setUsers] = useState([]);
   const [notifs, setNotifs] = useState([]);
@@ -115,7 +115,7 @@ function DashboardOverview() {
   const user = getStoredUser() || { name: "Admin" };
   const [weekData, setWeekData] = useState([]);
   const [sourceData, setSourceData] = useState([]);
-  useEffect(() => {
+  useEffect(() => { if (!authReady) return;
     getAnalytics().then(d => setData(d)).catch(() => {});
     getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
     Promise.all([
@@ -149,7 +149,7 @@ function DashboardOverview() {
       const total = allUsers.length || 1;
       setSourceData(Object.entries(cities).map(([l, v]) => ({ l, v: Math.round((v/total)*100), c: "#b50064" })));
     }).catch(() => {});
-  }, []);
+  }, [authReady]);
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Good morning"; if (h < 18) return "Good afternoon"; return "Good evening"; })();
   const totalUsers = data ? data.total : users.length;
   const mentors = data ? data.mentors : users.filter(u => u.role === "mentor").length;
@@ -293,7 +293,7 @@ function DashboardOverview() {
   );
 }
 
-function MentorsSection() {
+function MentorsSection({ authReady }) {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [bioUser, setBioUser] = useState(null);
@@ -301,10 +301,10 @@ function MentorsSection() {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
-  useEffect(() => {
+  useEffect(() => { if (!authReady) return;
     getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor") : [])).catch(() => {});
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, []);
+  }, [authReady]);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
@@ -394,7 +394,7 @@ function MentorsSection() {
   );
 }
 
-function MenteesSection() {
+function MenteesSection({ authReady }) {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [bioUser, setBioUser] = useState(null);
@@ -402,10 +402,10 @@ function MenteesSection() {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
-  useEffect(() => {
+  useEffect(() => { if (!authReady) return;
     getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentee") : [])).catch(() => {});
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, []);
+  }, [authReady]);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
@@ -484,11 +484,11 @@ function MenteesSection() {
   );
 }
 
-function GradebookSection() {
+function GradebookSection({ authReady }) {
   const [mentees, setMentees] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
+  useEffect(() => { if (!authReady) return;
     setLoading(true);
     getAllGradebook()
       .then(entries => {
@@ -509,7 +509,7 @@ function GradebookSection() {
       const names = [...new Set(courses.flatMap(c => c.assignments ? (typeof c.assignments === 'number' ? [] : c.assignments) : []))];
       setAssignments(names.length ? names : ["Assignment 1", "Assignment 2", "Assignment 3", "Assignment 4", "Assignment 5"]);
     }).catch(() => setAssignments(["Assignment 1", "Assignment 2", "Assignment 3", "Assignment 4", "Assignment 5"]));
-  }, []);
+  }, [authReady]);
   const total = mentees.length;
   const passing = mentees.filter(m => m.avg >= 60).length;
   const avg = Math.round(mentees.reduce((s, m) => s + m.avg, 0) / (total || 1));
@@ -560,7 +560,7 @@ function GradebookSection() {
   );
 }
 
-function NotificationsSection() {
+function NotificationsSection({ authReady }) {
   const [list, setList] = useState([]);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -568,11 +568,11 @@ function NotificationsSection() {
   const [notifMsg, setNotifMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(null);
-  useEffect(() => {
+  useEffect(() => { if (!authReady) return;
     getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
       .then(snap => setList(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
       .catch(() => {});
-  }, []);
+  }, [authReady]);
   const send = () => {
     if (!title.trim() || !message.trim()) { setNotifMsg("Title and message are required"); return; }
     setSending(true);
@@ -620,11 +620,11 @@ function NotificationsSection() {
   );
 }
 
-function AnalyticsSection() {
+function AnalyticsSection({ authReady }) {
   const [data, setData] = useState(null);
-  useEffect(() => {
+  useEffect(() => { if (!authReady) return;
     getAnalytics().then(d => setData(d)).catch(() => {});
-  }, []);
+  }, [authReady]);
   if (!data) return <Card><p style={{ color: "#594048" }}>Loading...</p></Card>;
   return (
     <>
@@ -651,7 +651,7 @@ function AnalyticsSection() {
   );
 }
 
-function HelpCenterSection() {
+function HelpCenterSection({ authReady }) {
   const navigate = useNavigate();
   const loc = useLocation();
   const [msgs, setMsgs] = useState([]);
@@ -677,7 +677,7 @@ function HelpCenterSection() {
     getCounsellingRequests().then(d => setCounselReqs(Array.isArray(d) ? d : [])).catch(() => {});
     getSponsorshipRequests().then(d => setSponsorReqs(Array.isArray(d) ? d : [])).catch(() => {});
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (authReady) load(); }, [authReady]);
 
   const fmtDate = (ts) => {
     if (!ts?.toDate) return "";
@@ -840,12 +840,12 @@ function HelpCenterSection() {
   );
 }
 
-function CoursesSection() {
+function CoursesSection({ authReady }) {
   const [courses, setCourses] = useState([]);
   const [expandedCourse, setExpandedCourse] = useState(null);
-  useEffect(() => {
+  useEffect(() => { if (!authReady) return;
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, []);
+  }, [authReady]);
   return (
     <div style={{display:"flex",flexDirection:"column",gap:12}}>
       {courses.length === 0 ? <SectionBox data-aos="fade-up"><p style={{color:"#594048",fontSize:"0.85rem"}}>No courses yet.</p></SectionBox> : courses.map((c, i) => (
@@ -888,13 +888,13 @@ function CoursesSection() {
   );
 }
 
-function ProgressSection() {
+function ProgressSection({ authReady }) {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
-  useEffect(() => {
+  useEffect(() => { if (!authReady) return;
     getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, []);
+  }, [authReady]);
   const mentors = users.filter(u => u.role === "mentor");
   const mentees = users.filter(u => u.role === "mentee");
   const topMentors = [...mentors].sort((a, b) => (b.courseCount || courses.filter(c => c.instructor?.toLowerCase() === b.name?.toLowerCase()).length) - (a.courseCount || courses.filter(c => c.instructor?.toLowerCase() === a.name?.toLowerCase()).length)).slice(0, 5);
@@ -938,11 +938,11 @@ function ProgressSection() {
   );
 }
 
-function ActivitySection() {
+function ActivitySection({ authReady }) {
   const [activities, setActivities] = useState([]);
-  useEffect(() => {
+  useEffect(() => { if (!authReady) return;
     getActivities(50).then(setActivities).catch(() => {});
-  }, []);
+  }, [authReady]);
   return (
     <Card data-aos="fade-up">
       <CardTitle>📊 Recent Activity Log</CardTitle>
@@ -969,11 +969,11 @@ function ActivitySection() {
   );
 }
 
-function ErrorsSection() {
+function ErrorsSection({ authReady }) {
   const [errors, setErrors] = useState([]);
   const [resolving, setResolving] = useState(null);
   const load = () => getErrors(50).then(setErrors).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (authReady) load(); }, [authReady]);
   const doResolve = (id) => {
     setResolving(id);
     markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? {...e, resolved: true} : e)); }).catch(() => {}).finally(() => setResolving(null));
@@ -1019,7 +1019,7 @@ function ErrorsSection() {
   );
 }
 
-function MentorshipSection() {
+function MentorshipSection({ authReady }) {
   const [mentors, setMentors] = useState([]);
   const [unassigned, setUnassigned] = useState([]);
   const [selectedMentor, setSelectedMentor] = useState(null);
@@ -1032,7 +1032,7 @@ function MentorshipSection() {
     getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(() => {});
     getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(() => {});
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (authReady) load(); }, [authReady]);
 
   useEffect(() => {
     if (selectedMentor) {
@@ -1184,11 +1184,11 @@ const AdminPageTitle = styled.h2`font-size:1.6rem;font-weight:700;color:${p => p
 
 export default function AdminDashboard() {
   const [theme, setTheme] = useState("dark");
-  const [containerKey, setContainerKey] = useState(0);
+  const [authReady, setAuthReady] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
   const location = useLocation();
-  useEffect(() => { onAuthReady(() => setContainerKey(k => k + 1)); }, []);
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => {
     const t = location.hash.replace("#", "");
     if (t && tabs.find(tab => tab.key === t)) { setActiveTab(t); }
@@ -1200,10 +1200,10 @@ export default function AdminDashboard() {
       <AdminPageMain>
         <TopBar theme={theme} setTheme={setTheme} />
         <AdminPageTitle>{tabs.find(t => t.key === activeTab)?.label || "Dashboard"}</AdminPageTitle>
-        <div key={containerKey}>{tabs.map(tab => {
+        {tabs.map(tab => {
           const Comp = tab.comp;
-          return <div key={tab.key} style={{ display: tab.key === activeTab ? "block" : "none" }}><Comp /></div>;
-        })}</div>
+          return <div key={tab.key} style={{ display: tab.key === activeTab ? "block" : "none" }}><Comp authReady={authReady} /></div>;
+        })}
       </AdminPageMain>
     </AdminPageLayout>
   );
