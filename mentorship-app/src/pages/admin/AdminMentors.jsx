@@ -34,24 +34,33 @@ export default function AdminMentors() {
   };
   return (
     <>
-    <style>{`@media(max-width:560px){.mentor-grid{grid-template-columns:1fr !important}}`}</style>
+    <style>{`
+      @media(max-width:560px){.mentor-grid{grid-template-columns:1fr !important}}
+      .mentor-header{display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer}
+      .mentor-info{display:flex;gap:16px;align-items:center;flex:1;min-width:0}
+      .mentor-meta{display:flex;gap:8px;align-items:center;flex-shrink:0}
+      @media(max-width:480px){
+        .mentor-header{flex-direction:column;gap:10px}
+        .mentor-meta{align-self:flex-start}
+      }
+    `}</style>
     <div className="mentor-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       {verifyMsg && <p style={{gridColumn:"1/-1",fontSize:"0.85rem",color:"#e53935",fontWeight:600,margin:0}}>{verifyMsg}</p>}
       {users.length === 0 ? <p style={{ color: "#594048", fontSize: "0.9rem", gridColumn:"1/-1" }}>No mentors registered.</p> : users.map((u, idx) => {
         const mentorCourses = courses.filter(c => c.instructor?.toLowerCase() === u.name?.toLowerCase());
         return (
           <Card key={u.id} data-aos="fade-up" style={{marginBottom:0}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",cursor:"pointer"}} onClick={() => setExpandedMentor(expandedMentor === u.id ? null : u.id)}>
-              <div style={{display:"flex",gap:16,alignItems:"center"}}>
+            <div className="mentor-header" onClick={() => setExpandedMentor(expandedMentor === u.id ? null : u.id)}>
+              <div className="mentor-info">
                 <div style={{width:52,height:52,borderRadius:"50%",background:"#006590",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",fontWeight:700,color:"#fff",flexShrink:0}}>
                   {u.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
                 </div>
-                <div>
-                  <h4 style={{margin:0,fontSize:"1rem",fontWeight:700,color:"#2c3e50"}}>{u.name}</h4>
-                  <span style={{fontSize:"0.8rem",color:"#594048"}}>{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.city ? ` · ${u.city}` : ""}</span>
+                <div style={{minWidth:0}}>
+                  <h4 style={{margin:0,fontSize:"1rem",fontWeight:700,color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</h4>
+                  <span style={{fontSize:"0.8rem",color:"#594048",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.city ? ` · ${u.city}` : ""}</span>
                 </div>
               </div>
-              <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+              <div className="mentor-meta">
                 <Badge $c={u.verified ? "#2e7d32" : "#f57f17"}>{u.verified ? "✅ Verified" : "⏳ Pending"}</Badge>
                 <span style={{fontSize:"0.75rem",color:"#999"}}>{mentorCourses.length} course{mentorCourses.length !== 1 ? "s" : ""}</span>
               </div>
