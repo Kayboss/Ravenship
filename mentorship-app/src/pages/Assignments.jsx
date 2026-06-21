@@ -6,6 +6,7 @@ import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser } from "../firebase/auth";
+import { fileToBase64 } from "../lib/upload";
 
 const Page = styled.div`
   display: flex;
@@ -382,71 +383,28 @@ const GradeLabel = styled.p`
   color: ${(props) => props.theme.colors.textSecondary};
 `;
 
-const initialAssignments = [
-  {
-    id: 1, title: "Design System Component Audit", course: "Advanced UI/UX Systems",
-    desc: "Conduct a comprehensive audit of the existing component library. Identify inconsistencies in spacing, typography, and color usage across at least 20 core components. Document findings with screenshots and proposed fixes in a shared Figma board.",
-    marks: 100, due: "Oct 22, 2024", posted: "Oct 8, 2024",
-    status: "available", icon: "🎨", iconColor: "#b50064",
-    poster: "Marcus Chen", posterRole: "Lead Designer",
-    submissions: 8, spots: 15,
-  },
-  {
-    id: 2, title: "User Research Synthesis Report", course: "Design Thinking Fundamentals",
-    desc: "Synthesize findings from 8 user interviews conducted during Session 4. Create an affinity map, identify top 5 pain points, and propose 3 design opportunities. Deliverable: 4-page PDF report with visual artifacts.",
-    marks: 80, due: "Oct 25, 2024", posted: "Oct 10, 2024",
-    status: "available", icon: "📝", iconColor: "#006590",
-    poster: "Dr. Sarah Jenkins", posterRole: "UX Director",
-    submissions: 12, spots: 20,
-  },
-  {
-    id: 3, title: "React State Management Lab", course: "Full-Stack Web Development",
-    desc: "Implement a complex state management scenario using React Context + useReducer. Build a multi-step checkout flow with form validation, cart state, and order confirmation. Include unit tests for all reducers.",
-    marks: 120, due: "Oct 18, 2024", posted: "Oct 5, 2024",
-    status: "accepted", icon: "⚛️", iconColor: "#ffd200",
-    poster: "James Wilson", posterRole: "Software Architect",
-    submissions: 5, spots: 15,
-  },
-  {
-    id: 4, title: "Data Visualization Challenge", course: "Strategic Data Insights",
-    desc: "Using the provided Q3 sales dataset, create 3 distinct visualizations that reveal actionable insights. Must include: an interactive dashboard mockup, a comparative bar/line chart, and a geographic heatmap.",
-    marks: 90, due: "Oct 28, 2024", posted: "Oct 12, 2024",
-    status: "available", icon: "📊", iconColor: "#b50064",
-    poster: "Aisha Patel", posterRole: "Data Scientist",
-    submissions: 6, spots: 15,
-  },
-  {
-    id: 5, title: "Brand Identity Proposal", course: "Creative Brand Strategy",
-    desc: "Develop a complete brand identity for a fictional startup. Deliverables: mood board, color palette, typography system, logo concepts (3 variations), and a brand guidelines one-pager.",
-    marks: 100, due: "Oct 20, 2024", posted: "Oct 6, 2024",
-    status: "graded", icon: "✨", iconColor: "#b50064",
-    poster: "Tom Nakamura", posterRole: "Brand Director",
-    submissions: 14, spots: 15, grade: 88,
-  },
-  {
-    id: 6, title: "Midterm Presentation Deck", course: "Product Management 101",
-    desc: "Prepare a 10-slide presentation on a product of your choice. Cover: problem statement, market analysis, user personas, feature roadmap, success metrics. Record a 5-min video walkthrough.",
-    marks: 150, due: "Oct 30, 2024", posted: "Oct 14, 2024",
-    status: "available", icon: "🚀", iconColor: "#ffd200",
-    poster: "Maria Gonzalez", posterRole: "PM Lead",
-    submissions: 3, spots: 20,
-  },
-];
-
 export const Assignments = () => {
   const { role } = useParams();
   const isMentor = role === "mentor";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const courseFilter = searchParams.get("course");
-  const [assignments, setAssignments] = useState(initialAssignments);
+  const [assignments, setAssignments] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newAssignment, setNewAssignment] = useState({
     title: "", course: "Advanced UI/UX Systems", desc: "", marks: "", due: "",
   });
 
-  useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
+  useEffect(() => {
+    AOS.init({ duration: 800, once: true });
+    const stored = localStorage.getItem("assignments");
+    if (stored) setAssignments(JSON.parse(stored));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("assignments", JSON.stringify(assignments));
+  }, [assignments]);
 
   const handleCreateAssignment = () => {
     const newId = Math.max(...assignments.map(a => a.id), 0) + 1;
@@ -637,13 +595,15 @@ export const Assignments = () => {
                 <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                   <input type="file" id={`file-${a.id}`}
                     style={{ flex: 1, fontSize: "0.85rem", fontFamily: "inherit" }} />
-                  <button onClick={() => {
+                  <button onClick={async () => {
                     const f = document.getElementById(`file-${a.id}`).files?.[0];
                     if (!f) return alert("Please select a file");
                     const u = getStoredUser();
                     const subKey = `submissions_${u?.email || "default"}`;
                     const existing = JSON.parse(localStorage.getItem(subKey) || "[]");
-                    existing.push({ id: Date.now(), assignment: a.title, course: a.course, file: f.name, size: (f.size / 1024).toFixed(0) + " KB", date: new Date().toLocaleDateString(), status: "Pending" });
+                    let content = null;
+                    if (f.size < 500000) content = await fileToBase64(f);
+                    existing.push({ id: Date.now(), assignment: a.title, course: a.course, file: f.name, size: (f.size / 1024).toFixed(0) + " KB", date: new Date().toLocaleDateString(), status: "Pending", content });
                     localStorage.setItem(subKey, JSON.stringify(existing));
                     setAssignments(prev => prev.map(x => x.id === a.id ? { ...x, status: "submitted" } : x));
                     alert(`Submitted "${a.title}" successfully!`);

@@ -147,6 +147,7 @@ const navItems = [
   { label: "Courses",     path: "/dashboard/mentor/my-courses",  icon: "📚" },
   { label: "Assignments", path: "/dashboard/mentor/assignments", icon: "📝" },
   { label: "Submissions", path: "/dashboard/mentor/submissions", icon: "📂" },
+  { label: "Gradebook",   path: "/dashboard/mentor/gradebook",   icon: "📋" },
   { label: "Community",   path: "/dashboard/mentor/community",   icon: "💬" },
   { label: "Help Center", path: "/dashboard/mentor/help",        icon: "❓" },
 ];

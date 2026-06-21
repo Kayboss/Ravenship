@@ -6,6 +6,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getCourse, getCourses, updateCourse, deleteCourse as deleteCourseFromDb } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -226,146 +227,7 @@ const ProgressText = styled.span`
   white-space: nowrap;
 `;
 
-const courseContent = {
-  "Advanced UI/UX Systems": {
-    emoji: "🎨", color: "#b50064",
-    lessons: {
-      "Design Token Architecture": { desc: "Learn how to build a scalable design token system that powers your entire component library.", video: "🎬", sections: [
-        { type: "text", content: "Design tokens are the visual atoms of a design system. They are a centralized set of design decisions — colors, typography, spacing, shadows — that can be referenced across any platform or framework." },
-        { type: "list", items: ["Understanding design token categories (global, alias, component)", "Setting up a JSON-based token hierarchy", "Platform-specific token transformation", "Token naming conventions and documentation"] },
-        { type: "text", content: "In this lesson, you'll build a complete token architecture from scratch, starting with primitive values and working up to component-specific tokens." }] },
-      "Component Composition Patterns": { desc: "Master the art of composing complex UI components from smaller, reusable building blocks.", video: "🎬", sections: [
-        { type: "text", content: "Component composition is the foundation of scalable UI development. By breaking interfaces into small, focused components, you create systems that are easier to maintain, test, and extend." },
-        { type: "list", items: ["Compound components pattern", "Slot-based composition", "Render props and children patterns", "State colocation strategies"] },
-        { type: "text", content: "You'll refactor a monolithic interface into a composed component system." }] },
-      "Accessibility & Inclusive Design": { desc: "Build interfaces that work for everyone, regardless of ability.", video: "🎬", sections: [
-        { type: "text", content: "Accessibility is not an afterthought — it's a core design principle. This lesson covers WCAG guidelines, assistive technology support, and inclusive design patterns." },
-        { type: "list", items: ["WCAG 2.1 levels and success criteria", "Screen reader testing and ARIA attributes", "Color contrast and motion sensitivity", "Keyboard navigation and focus management"] }] },
-      "Design System Documentation": { desc: "Create clear, living documentation that your team will actually use.", video: "🎬", sections: [
-        { type: "text", content: "Great design systems are backed by great documentation. Learn how to document components, patterns, and guidelines effectively." },
-        { type: "list", items: ["Component storybook setup", "Usage guidelines and examples", "Versioning and changelogs", "Contribution workflows"] }] },
-      "Cross-Platform Consistency": { desc: "Ensure your design system works seamlessly across web, mobile, and beyond.", video: "🎬", sections: [
-        { type: "text", content: "A truly robust design system adapts to every platform while maintaining visual and behavioral consistency." },
-        { type: "list", items: ["Platform-specific adaptations", "Responsive design patterns", "Native vs web component mapping"] }] },
-      "Versioning & Release Workflows": { desc: "Manage and distribute your design system changes with confidence.", video: "🎬", sections: [
-        { type: "text", content: "Semantic versioning and automated release pipelines keep your design system reliable and up-to-date." },
-        { type: "list", items: ["Semantic versioning for design systems", "Automated changelog generation", "Canary releases and testing"] }] },
-    },
-  },
-  "Strategic Data Insights": {
-    emoji: "📊", color: "#006590",
-    lessons: {
-      "Exploratory Data Analysis": { desc: "Learn techniques to explore and understand your data before modeling.", video: "📊", sections: [
-        { type: "text", content: "Exploratory Data Analysis (EDA) is the critical first step in any data project. It helps you understand patterns, spot anomalies, and form hypotheses." },
-        { type: "list", items: ["Descriptive statistics and summary metrics", "Distribution analysis and outlier detection", "Correlation matrices and pair plots", "Missing data imputation strategies"] },
-        { type: "text", content: "You'll work through a real dataset and produce a comprehensive EDA report." }] },
-      "Data Visualization Principles": { desc: "Master the art of telling stories with data through effective visualizations.", video: "📊", sections: [
-        { type: "text", content: "A great visualization can reveal insights that raw numbers hide. Learn the principles of effective data visualization design." },
-        { type: "list", items: ["Chart type selection guide", "Color theory and accessibility in charts", "Interactive dashboard design", "Animation and narrative flow"] }] },
-      "Statistical Foundations": { desc: "Build the statistical toolkit needed for rigorous data analysis.", video: "📊", sections: [
-        { type: "text", content: "Statistics provides the framework for making data-driven decisions with confidence." },
-        { type: "list", items: ["Probability distributions", "Hypothesis testing fundamentals", "Confidence intervals and p-values", "Bayesian vs frequentist thinking"] }] },
-      "Business Case Frameworks": { desc: "Translate data findings into actionable business recommendations.", video: "📊", sections: [
-        { type: "text", content: "Data is only valuable when it drives decisions. Learn how to structure business cases around your analysis." },
-        { type: "list", items: ["ROI analysis frameworks", "A/B testing design and interpretation", "Cohort and retention analysis", "Executive summary writing"] }] },
-      "Presentation & Storytelling": { desc: "Deliver data insights that captivate and persuade your audience.", video: "📊", sections: [
-        { type: "text", content: "The best analysis is useless if you can't communicate it effectively. Master the art of data storytelling." },
-        { type: "list", items: ["Narrative arc for data stories", "Slide design best practices", "Handling Q&A and pushback", "Building executive dashboards"] }] },
-      "Capstone Project": { desc: "Apply everything you've learned to a real-world business dataset.", video: "📊", sections: [
-        { type: "text", content: "Bring it all together. You'll receive a business problem and a dataset, then work through the entire pipeline from EDA to final presentation." },
-        { type: "list", items: ["Define business problem and success metrics", "Perform analysis and build visualizations", "Prepare executive summary and recommendations", "Present to peers for feedback"] }] },
-    },
-  },
-  "Design Thinking Fundamentals": {
-    emoji: "💡", color: "#ffd200",
-    lessons: {
-      "Empathy & User Research": { desc: "Learn how to truly understand your users through research.", video: "🎬", sections: [
-        { type: "text", content: "Empathy is the foundation of human-centered design. Learn research techniques to uncover real user needs." },
-        { type: "list", items: ["User interview techniques", "Contextual inquiry and observation", "Survey design and analysis", "Empathy mapping"] }] },
-      "Problem Definition": { desc: "Frame the right problem before jumping to solutions.", video: "🎬", sections: [
-        { type: "text", content: "A well-defined problem is half-solved. Learn to synthesize research into a clear problem statement." },
-        { type: "list", items: ["Affinity diagramming", "Point of view statements", "How might we questions", "Problem validation techniques"] }] },
-      "Ideation & Brainstorming": { desc: "Generate creative solutions using structured ideation methods.", video: "🎬", sections: [
-        { type: "text", content: "Quantity leads to quality. Learn facilitation techniques for productive brainstorming sessions." },
-        { type: "list", items: ["Brainwriting and round-robin", "SCAMPER technique", "Crazy 8s and rapid ideation", "Idea selection matrix"] }] },
-      "Rapid Prototyping": { desc: "Bring your ideas to life quickly and cheaply.", video: "🎬", sections: [
-        { type: "text", content: "Prototypes make ideas tangible. Learn low-fidelity to high-fidelity prototyping techniques." },
-        { type: "list", items: ["Paper prototyping", "Wireframing and mockups", "Interactive click-through prototypes", "Fidelity decision framework"] }] },
-      "User Testing & Iteration": { desc: "Validate your designs with real users and iterate based on feedback.", video: "🎬", sections: [
-        { type: "text", content: "Testing with users is the only way to know if your solution works. Learn facilitation and synthesis techniques." },
-        { type: "list", items: ["Usability testing protocols", "Think-aloud methodology", "Feedback synthesis and prioritization", "Iteration planning"] }] },
-    },
-  },
-  "Full-Stack Web Development": {
-    emoji: "⚛️", color: "#006590",
-    lessons: {
-      "React & Component Architecture": { desc: "Build modern UIs with React's component model.", video: "⚛️", sections: [
-        { type: "text", content: "React revolutionized frontend development with its declarative, component-based approach." },
-        { type: "list", items: ["JSX and rendering fundamentals", "State and props management", "Hooks: useState, useEffect, useContext", "Custom hooks and reusable logic"] }] },
-      "Node.js & Express APIs": { desc: "Build robust backend APIs with Node.js and Express.", video: "⚛️", sections: [
-        { type: "text", content: "Node.js enables JavaScript on the server. Express provides a minimal framework for building APIs." },
-        { type: "list", items: ["RESTful API design principles", "Express routing and middleware", "Request validation and error handling", "API documentation with Swagger"] }] },
-      "Database Design & SQL": { desc: "Design efficient database schemas and write powerful queries.", video: "⚛️", sections: [
-        { type: "text", content: "Data is the core of most applications. Learn to design and query relational databases effectively." },
-        { type: "list", items: ["Entity-relationship modeling", "Normalization and denormalization", "Complex SQL queries and joins", "Query optimization and indexing"] }] },
-      "Authentication & Security": { desc: "Protect your application and user data.", video: "⚛️", sections: [
-        { type: "text", content: "Security is everyone's responsibility. Learn to implement authentication and protect against common attacks." },
-        { type: "list", items: ["JWT tokens and session management", "OAuth 2.0 and social login", "Input sanitization and XSS prevention", "HTTPS and secure headers"] }] },
-      "Testing & CI/CD": { desc: "Write tests and automate your deployment pipeline.", video: "⚛️", sections: [
-        { type: "text", content: "Automated testing and continuous deployment give you confidence to ship frequently." },
-        { type: "list", items: ["Unit testing with Jest", "Integration testing with Supertest", "End-to-end testing with Playwright", "GitHub Actions CI/CD pipeline"] }] },
-      "Cloud Deployment": { desc: "Deploy your application to the cloud for the world to see.", video: "⚛️", sections: [
-        { type: "text", content: "Take your application from localhost to production. Learn cloud deployment strategies." },
-        { type: "list", items: ["Docker containerization", "AWS EC2 and Elastic Beanstalk", "Environment configuration and secrets", "Monitoring and logging"] }] },
-    },
-  },
-  "Product Management 101": {
-    emoji: "🚀", color: "#ffd200",
-    lessons: {
-      "Market Research & Analysis": { desc: "Understand your market before building your product.", video: "🚀", sections: [
-        { type: "text", content: "Great products start with deep market understanding. Learn to research and analyze market opportunities." },
-        { type: "list", items: ["TAM, SAM, SOM analysis", "Competitive landscape mapping", "Market trend analysis", "Customer segmentation"] }] },
-      "User Personas & Stories": { desc: "Put users at the center of your product decisions.", video: "🚀", sections: [
-        { type: "text", content: "User personas and stories help your team build empathy and stay focused on user needs." },
-        { type: "list", items: ["Persona development research", "User story mapping", "Acceptance criteria writing", "Story estimation techniques"] }] },
-      "Feature Prioritization": { desc: "Decide what to build and what to say no to.", video: "🚀", sections: [
-        { type: "text", content: "Product managers must constantly prioritize. Learn frameworks for making tough trade-off decisions." },
-        { type: "list", items: ["MoSCoW prioritization", "RICE scoring model", "Effort-impact matrix", "Kano model analysis"] }] },
-      "Roadmap Planning": { desc: "Create and communicate a compelling product roadmap.", video: "🚀", sections: [
-        { type: "text", content: "A roadmap communicates where your product is going and why. Learn to build strategic roadmaps." },
-        { type: "list", items: ["Theme-based roadmaps", "Quarterly planning cycles", "Stakeholder alignment", "Public vs internal roadmaps"] }] },
-      "Agile & Sprint Management": { desc: "Lead agile teams effectively and deliver value iteratively.", video: "🚀", sections: [
-        { type: "text", content: "Agile is the industry standard for product development. Learn to run effective sprint cycles." },
-        { type: "list", items: ["Sprint planning and grooming", "Daily standup facilitation", "Retrospective techniques", "Velocity tracking and forecasting"] }] },
-      "Launch & Go-to-Market": { desc: "Plan and execute successful product launches.", video: "🚀", sections: [
-        { type: "text", content: "A great product needs a great launch. Learn go-to-market strategy and launch execution." },
-        { type: "list", items: ["Launch checklist and readiness", "Marketing and communication plans", "Beta testing programs", "Post-launch metrics and iteration"] }] },
-    },
-  },
-  "Creative Brand Strategy": {
-    emoji: "✨", color: "#b50064",
-    lessons: {
-      "Brand Positioning & Strategy": { desc: "Define your brand's unique place in the market.", video: "✨", sections: [
-        { type: "text", content: "Brand positioning defines how your brand is perceived relative to competitors. It's the strategic foundation for all creative work." },
-        { type: "list", items: ["Brand purpose and vision", "Target audience definition", "Competitive differentiation", "Brand personality archetypes"] }] },
-      "Visual Identity Systems": { desc: "Create a cohesive visual language for your brand.", video: "✨", sections: [
-        { type: "text", content: "A strong visual identity makes your brand instantly recognizable across every touchpoint." },
-        { type: "list", items: ["Logo design principles and variations", "Color palette development", "Typography selection and hierarchy", "Visual asset guidelines"] }] },
-      "Tone of Voice & Messaging": { desc: "Develop a distinctive brand voice that resonates.", video: "✨", sections: [
-        { type: "text", content: "Your brand's voice is how you speak to your audience. Consistency builds trust and recognition." },
-        { type: "list", items: ["Brand voice dimensions", "Messaging hierarchy", "Tagline and copy development", "Channel-specific adaptations"] }] },
-      "Mood Boards & Concepting": { desc: "Explore visual directions and communicate creative concepts.", video: "✨", sections: [
-        { type: "text", content: "Mood boards bring abstract brand strategy to life through visual exploration and concept development." },
-        { type: "list", items: ["Research and inspiration gathering", "Composition and layout techniques", "Client presentation strategies", "Feedback incorporation"] }] },
-      "Brand Guidelines": { desc: "Document your brand system so anyone can apply it consistently.", video: "✨", sections: [
-        { type: "text", content: "Brand guidelines ensure consistency across teams, agencies, and platforms." },
-        { type: "list", items: ["Guideline structure and content", "Usage rules and examples", "Digital and print application", "Brand governance workflows"] }] },
-      "Portfolio Presentation": { desc: "Showcase your brand work in a compelling portfolio.", video: "✨", sections: [
-        { type: "text", content: "Your portfolio is your most powerful marketing tool. Learn to present your brand projects effectively." },
-        { type: "list", items: ["Case study structure", "Visual storytelling techniques", "Process documentation", "Personal branding"] }] },
-    },
-  },
-};
+const courseContent = {};
 
 const fallbackLesson = {
   desc: "Begin your learning journey with an introduction to the course.",
@@ -405,12 +267,15 @@ export const CourseView = () => {
   const [courseData, setCourseData] = useState(loadSavedCourseData);
   const [courseTitle, setCourseTitle] = useState(() => { const s = loadSavedCourseData(); return s._title || courseName; });
   const [editCourse, setEditCourse] = useState({ title: courseName, desc: "", badge: "Design", level: "Intermediate", emoji: courseData.emoji });
+  const [firestoreCourseId, setFirestoreCourseId] = useState(null);
   const [newTopicName, setNewTopicName] = useState("");
   const [resTitle, setResTitle] = useState("");
   const [resValue, setResValue] = useState("");
   const [resType, setResType] = useState("link");
   const [editMode, setEditMode] = useState(false);
   const topicKeys = Object.keys(courseData.lessons);
+  const savedOnceRef = useRef(false);
+
   const getSavedTopic = () => {
     try { const saved = localStorage.getItem(`lastTopic_${courseName}`); if (saved && topicKeys.includes(saved)) return saved; } catch {}
     return topicKeys[0];
@@ -424,8 +289,32 @@ export const CourseView = () => {
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
 
   useEffect(() => {
+    const lsId = localStorage.getItem("fs_courseId_" + courseName);
+    if (lsId) {
+      setFirestoreCourseId(lsId);
+      getCourse(lsId).then(fs => { if (fs?.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: fs.featuredImage })); }).catch(() => {});
+      return;
+    }
+    getCourses().then(courses => {
+      const match = courses.find(c => c.title === courseName || c.title === courseTitle);
+      if (match) {
+        setFirestoreCourseId(match.id);
+        localStorage.setItem("fs_courseId_" + courseName, match.id);
+        if (match.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: match.featuredImage }));
+      }
+    }).catch(() => {});
+  }, [courseName, courseTitle]);
+
+  useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify({ ...courseData, _title: courseTitle }));
   }, [courseData, courseTitle, storageKey]);
+
+  useEffect(() => {
+    if (!editMode && firestoreCourseId && savedOnceRef.current) {
+      updateCourse(firestoreCourseId, { _title: courseTitle, lessons: courseData.lessons, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color, featuredImage: courseData.featuredImage }).catch(() => {});
+    }
+    if (!editMode) savedOnceRef.current = true;
+  }, [editMode, firestoreCourseId]);
 
   useEffect(() => {
     if (!isMentor) localStorage.setItem(`lastTopic_${courseName}`, activeTopic);
@@ -516,6 +405,9 @@ export const CourseView = () => {
   const deleteCourse = () => {
     if (confirm(`Are you sure you want to delete "${courseName}"? This cannot be undone.`)) {
       localStorage.removeItem(storageKey);
+      if (firestoreCourseId) {
+        deleteCourseFromDb(firestoreCourseId).catch(() => {});
+      }
       navigate(`/dashboard/${role}/my-courses`);
     }
   };

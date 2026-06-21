@@ -7,7 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser } from "../firebase/auth";
-import { getCourses } from "../firebase/db";
+import { getCourses, addCourse, updateCourse, deleteCourse } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -674,15 +674,6 @@ const CreateProgramBtn = styled.button`
   &:hover { opacity: 0.9; }
 `;
 
-const courses = [
-  { title: "Advanced UI/UX Systems", desc: "Master scalable design systems and component-driven architecture.", fullDesc: "Dive deep into the world of modern UI/UX architecture. This course covers design token management, component-driven development, accessibility-first design, and cross-platform consistency. You'll build a production-grade component library from scratch.", badge: "Design", progress: 75, emoji: "🎨", instructor: "Marcus Chen", role: "Lead Designer", assignments: 2, duration: "8 weeks", lessons: 24, level: "Intermediate", syllabus: ["Design Token Architecture", "Component Composition Patterns", "Accessibility & Inclusive Design", "Design System Documentation", "Cross-Platform Consistency", "Versioning & Release Workflows"], enrolled: 12 },
-  { title: "Strategic Data Insights", desc: "Translate complex datasets into actionable business strategies.", fullDesc: "Learn how to transform raw data into strategic business decisions. This course covers exploratory data analysis, visualization best practices, statistical modeling, and storytelling with data. Work through real-world business cases and present your findings.", badge: "Business", progress: 40, emoji: "📊", instructor: "Aisha Patel", role: "Data Scientist", assignments: 1, duration: "6 weeks", lessons: 18, level: "Intermediate", syllabus: ["Exploratory Data Analysis", "Data Visualization Principles", "Statistical Foundations", "Business Case Frameworks", "Presentation & Storytelling", "Capstone Project"], enrolled: 8 },
-  { title: "Design Thinking Fundamentals", desc: "Learn human-centered design processes and ideation techniques.", fullDesc: "Master the five-stage design thinking process: Empathize, Define, Ideate, Prototype, and Test. You'll work through hands-on exercises, conduct user interviews, create journey maps, and prototype solutions. Ideal for anyone looking to solve problems creatively.", badge: "Design", progress: 92, emoji: "💡", instructor: "Dr. Sarah Jenkins", role: "UX Director", assignments: 1, duration: "5 weeks", lessons: 15, level: "Beginner", syllabus: ["Empathy & User Research", "Problem Definition", "Ideation & Brainstorming", "Rapid Prototyping", "User Testing & Iteration"], enrolled: 15 },
-  { title: "Full-Stack Web Development", desc: "Build modern web applications with React, Node, and cloud services.", fullDesc: "From zero to deployed — build a complete full-stack application using React for the frontend, Node.js/Express for the backend, and cloud services for deployment. Covers REST APIs, authentication, database design, and CI/CD pipelines.", badge: "Engineering", progress: 60, emoji: "⚛️", instructor: "James Wilson", role: "Software Architect", assignments: 1, duration: "10 weeks", lessons: 30, level: "Advanced", syllabus: ["React & Component Architecture", "Node.js & Express APIs", "Database Design & SQL", "Authentication & Security", "Testing & CI/CD", "Cloud Deployment"], enrolled: 22 },
-  { title: "Product Management 101", desc: "From ideation to launch — master the product lifecycle.", fullDesc: "Learn the end-to-end product management lifecycle: market research, user personas, feature prioritization, roadmap planning, sprint management, and launch strategy. Includes real-world case studies from successful product launches.", badge: "Business", progress: 15, emoji: "🚀", instructor: "Maria Gonzalez", role: "PM Lead", assignments: 1, duration: "7 weeks", lessons: 21, level: "Beginner", syllabus: ["Market Research & Analysis", "User Personas & Stories", "Feature Prioritization", "Roadmap Planning", "Agile & Sprint Management", "Launch & Go-to-Market"], enrolled: 5 },
-  { title: "Creative Brand Strategy", desc: "Develop compelling brand identities and marketing narratives.", fullDesc: "Build brands that resonate. This course covers brand positioning, visual identity systems, tone of voice, and narrative design. You'll create a complete brand guide for a real or fictional company, from mood boards to final deliverables.", badge: "Design", progress: 55, emoji: "✨", instructor: "Tom Nakamura", role: "Brand Director", assignments: 1, duration: "6 weeks", lessons: 18, level: "Intermediate", syllabus: ["Brand Positioning & Strategy", "Visual Identity Systems", "Tone of Voice & Messaging", "Mood Boards & Concepting", "Brand Guidelines", "Portfolio Presentation"], enrolled: 3 },
-];
-
 export const MyCourses = () => {
   const { role } = useParams();
   const navigate = useNavigate();
@@ -691,21 +682,45 @@ export const MyCourses = () => {
   const [bioView, setBioView] = useState(null);
   const isMentor = role === "mentor";
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ title: "", desc: "", badge: "Design", emoji: "🎨", duration: "", level: "Beginner" });
+  const [form, setForm] = useState({ title: "", desc: "", badge: "Design", emoji: "🎨", duration: "", level: "Beginner", featuredImage: "" });
 
+  const currentUser = getStoredUser();
+  const mentorName = currentUser?.name || "You";
   const mentorKey = (() => { try { const u = getStoredUser(); return `myCourses_${u?.email || "default"}`; } catch { return "myCourses_default"; } })();
-  const loadCourses = () => {
+  const loadLocalCourses = () => {
     try { const d = localStorage.getItem(mentorKey); if (d) return JSON.parse(d); } catch {}
-    return courses;
+    return null;
   };
 
-  const [coursesList, setCoursesList] = useState(loadCourses);
+  const [coursesList, setCoursesList] = useState([]);
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
 
-  useEffect(() => { localStorage.setItem(mentorKey, JSON.stringify(coursesList)); }, [coursesList, mentorKey]);
+  useEffect(() => {
+    getCourses().then(firestoreCourses => {
+      const localCourses = loadLocalCourses();
+      if (localCourses) {
+        const existingTitles = new Set(firestoreCourses.map(c => c.title));
+        const newLocals = localCourses.filter(c => !existingTitles.has(c.title));
+        const merged = [...newLocals, ...firestoreCourses];
+        setCoursesList(merged);
+        localStorage.setItem(mentorKey, JSON.stringify(merged));
+      } else {
+        setCoursesList(firestoreCourses);
+        localStorage.setItem(mentorKey, JSON.stringify(firestoreCourses));
+      }
+    }).catch(() => {
+      const fallback = loadLocalCourses() || [];
+      setCoursesList(fallback);
+    });
+  }, []);
 
-  const handleCreate = () => {
+  useEffect(() => {
+    localStorage.setItem(mentorKey, JSON.stringify(coursesList));
+  }, [coursesList, mentorKey]);
+
+  const handleCreate = async () => {
     if (!form.title.trim() || !form.desc.trim() || !form.duration.trim()) {
       alert("Please fill in all fields");
       return;
@@ -716,7 +731,8 @@ export const MyCourses = () => {
       fullDesc: form.desc,
       badge: form.badge,
       emoji: form.emoji,
-      instructor: "You",
+      featuredImage: form.featuredImage || "",
+      instructor: mentorName,
       role: "Mentor",
       assignments: 0,
       duration: form.duration + " weeks",
@@ -726,10 +742,15 @@ export const MyCourses = () => {
       progress: 0,
       enrolled: 0,
     };
-    setCoursesList(prev => [newCourse, ...prev]);
+    try {
+      const id = await addCourse(newCourse);
+      setCoursesList(prev => [{ ...newCourse, id }, ...prev]);
+    } catch {
+      alert("Failed to save program to server. Saved locally instead.");
+      setCoursesList(prev => [newCourse, ...prev]);
+    }
     setShowCreate(false);
-    setForm({ title: "", desc: "", badge: "Design", emoji: "🎨", duration: "", level: "Beginner" });
-    getCourses().catch(() => {});
+    setForm({ title: "", desc: "", badge: "Design", emoji: "🎨", duration: "", level: "Beginner", featuredImage: "" });
     alert("Program created!");
   };
 
@@ -737,9 +758,15 @@ export const MyCourses = () => {
     setEditTarget({ ...course, _origTitle: course.title });
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editTarget.title.trim()) return alert("Title is required");
-    setCoursesList(prev => prev.map(c => c.title === editTarget.title || c.title === editTarget._origTitle ? editTarget : c));
+    const updated = { ...editTarget };
+    delete updated._origTitle;
+    delete updated.id;
+    if (editTarget.id) {
+      try { await updateCourse(editTarget.id, updated); } catch { alert("Failed to save changes to server."); return; }
+    }
+    setCoursesList(prev => prev.map(c => (c.id && c.id === editTarget.id) || (!c.id && c.title === editTarget._origTitle) ? { ...editTarget } : c));
     setEditTarget(null);
     alert("Program updated!");
   };
@@ -752,10 +779,25 @@ export const MyCourses = () => {
     setDeleteTarget(course);
   };
 
-  const doDelete = () => {
-    setCoursesList(prev => prev.filter(c => c.title !== deleteTarget.title));
+  const doDelete = async () => {
+    if (deleteTarget.id) {
+      try { await deleteCourse(deleteTarget.id); } catch { alert("Failed to delete program from server."); return; }
+    }
+    setCoursesList(prev => prev.filter(c => (c.id && c.id !== deleteTarget.id) || (!c.id && c.title !== deleteTarget.title)));
     setDeleteTarget(null);
     alert("Program deleted!");
+  };
+
+  const doBulkDelete = async () => {
+    if (!confirm(`Delete ${selectedIds.length} selected program(s)? This cannot be undone.`)) return;
+    const toDelete = coursesList.filter(c => selectedIds.includes(c.id || c.title));
+    const firestoreIds = toDelete.filter(c => c.id).map(c => c.id);
+    for (const id of firestoreIds) {
+      try { await deleteCourse(id); } catch {}
+    }
+    setCoursesList(prev => prev.filter(c => !selectedIds.includes(c.id || c.title)));
+    setSelectedIds([]);
+    alert("Selected programs deleted!");
   };
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
 
@@ -765,10 +807,38 @@ export const MyCourses = () => {
       <Main>
         <TopBar searchPlaceholder="Search courses..." />
         <PageTitle data-aos="fade-down">{isMentor ? "My Programs" : "My Courses"}</PageTitle>
+        {isMentor && coursesList.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, color: "#594048" }}>
+              <input type="checkbox" checked={selectedIds.length === coursesList.length && coursesList.length > 0} onChange={(e) => {
+                if (e.target.checked) {
+                  setSelectedIds(coursesList.map(c => c.id || c.title));
+                } else {
+                  setSelectedIds([]);
+                }
+              }} style={{ width: 18, height: 18, cursor: "pointer" }} />
+              Select All ({coursesList.length})
+            </label>
+            {selectedIds.length > 0 && (
+              <button onClick={doBulkDelete} style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "#e53935", color: "white", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "inherit" }}>
+                🗑 Delete Selected ({selectedIds.length})
+              </button>
+            )}
+          </div>
+        )}
         <Grid>
           {coursesList.map((c, i) => isMentor ? (
-            <Card key={i} data-aos="fade-up" data-aos-delay={i * 50}>
-              <CardImage>{c.emoji}</CardImage>
+            <Card key={i} data-aos="fade-up" data-aos-delay={i * 50} style={{ position: "relative", outline: selectedIds.includes(c.id || c.title) ? "2px solid #b50064" : "none" }}>
+              <label style={{ position: "absolute", top: 12, left: 12, zIndex: 2, cursor: "pointer" }} onClick={(e) => e.stopPropagation()}>
+                <input type="checkbox" checked={selectedIds.includes(c.id || c.title)} onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedIds(prev => [...prev, c.id || c.title]);
+                  } else {
+                    setSelectedIds(prev => prev.filter(x => x !== (c.id || c.title)));
+                  }
+                }} style={{ width: 18, height: 18, cursor: "pointer" }} />
+              </label>
+              <CardImage>{c.featuredImage ? <img src={c.featuredImage} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:16,position:"absolute",inset:0}} /> : c.emoji}</CardImage>
               <Badge>{c.badge}</Badge>
               <CardTitle>{c.title}</CardTitle>
               <CardDesc>{c.desc}</CardDesc>
@@ -799,8 +869,8 @@ export const MyCourses = () => {
             </Card>
           ) : (
             <Card key={i} data-aos="fade-up" data-aos-delay={i * 50}>
-              <CardImage>
-                {c.emoji}
+              <CardImage style={c.featuredImage ? {overflow:"hidden"} : {}}>
+                {c.featuredImage ? <img src={c.featuredImage} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:16,position:"absolute",inset:0}} /> : c.emoji}
                 {enrolledCourses[c.title] && <span style={{ position: "absolute", top: 12, right: 12, background: "#b50064", color: "white", fontSize: "0.65rem", fontWeight: 700, padding: "4px 10px", borderRadius: "50px" }}>Active</span>}
               </CardImage>
               <Badge>{c.badge}</Badge>
@@ -957,6 +1027,19 @@ export const MyCourses = () => {
                 </EmojiGrid>
               </FormGroup>
 
+              <FormGroup>
+                <FormLabel>Featured Image</FormLabel>
+                {form.featuredImage && (
+                  <div style={{ position:"relative", marginBottom:8, maxHeight:140, overflow:"hidden", borderRadius:12 }}>
+                    <img src={form.featuredImage} alt="" style={{ width:"100%", maxHeight:140, objectFit:"cover", borderRadius:12, display:"block" }} />
+                    <button onClick={() => setForm({ ...form, featuredImage: "" })}
+                      style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"none", background:"rgba(0,0,0,0.5)", color:"#fff", cursor:"pointer", fontSize:"0.8rem" }}>✕</button>
+                  </div>
+                )}
+                <input type="file" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; const r=new FileReader(); r.onload=(ev) => setForm({ ...form, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
+                  style={{ fontSize:"0.85rem", fontFamily:"inherit" }} />
+              </FormGroup>
+
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
                 <FormGroup style={{ flex: 1 }}>
                   <FormLabel>Duration (weeks)</FormLabel>
@@ -1012,6 +1095,18 @@ export const MyCourses = () => {
                     <EmojiOption key={e} $selected={editTarget.emoji === e} onClick={() => setEditTarget({ ...editTarget, emoji: e })}>{e}</EmojiOption>
                   ))}
                 </EmojiGrid>
+              </FormGroup>
+              <FormGroup>
+                <FormLabel>Featured Image</FormLabel>
+                {editTarget.featuredImage && (
+                  <div style={{ position:"relative", marginBottom:8, maxHeight:140, overflow:"hidden", borderRadius:12 }}>
+                    <img src={editTarget.featuredImage} alt="" style={{ width:"100%", maxHeight:140, objectFit:"cover", borderRadius:12, display:"block" }} />
+                    <button onClick={() => setEditTarget({ ...editTarget, featuredImage: "" })}
+                      style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"none", background:"rgba(0,0,0,0.5)", color:"#fff", cursor:"pointer", fontSize:"0.8rem" }}>✕</button>
+                  </div>
+                )}
+                <input type="file" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; const r=new FileReader(); r.onload=(ev) => setEditTarget({ ...editTarget, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
+                  style={{ fontSize:"0.85rem", fontFamily:"inherit" }} />
               </FormGroup>
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
                 <FormGroup style={{ flex: 1 }}>

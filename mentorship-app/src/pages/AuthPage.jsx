@@ -8,6 +8,8 @@ import { sendPasswordResetEmail, createUserWithEmailAndPassword } from "firebase
 import { auth } from "../firebase/config";
 import { db } from "../firebase/config";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { logActivity } from "../firebase/db";
+import { sendWelcomeEmail, sendAdminNotifyEmail } from "../lib/email";
 
 const LOTTIE_URL = "https://assets-v2.lottiefiles.com/a/7400555a-117b-11ee-b7a8-3f5a379facbf/MaoSbTwAlQ.json";
 
@@ -69,6 +71,7 @@ export const AuthPage = () => {
           return;
         }
         setAuthMessage({ text: "", type: "" });
+        logActivity("Logged in", { detail: `User ${userData.name} logged in as ${userData.role}` });
         setLoading(false);
         navigate(`/dashboard/${userData.role}`);
         return;
@@ -97,9 +100,14 @@ export const AuthPage = () => {
         if (!isVerified) {
           setAuthMessage({ text: "Registration successful! Your account is pending verification by an administrator.", type: "warning" });
           localStorage.removeItem("user");
+          logActivity("Registered (pending verification)", { detail: `${fullName} registered as ${role}` });
+          sendWelcomeEmail({ name: fullName, email, role });
+          sendAdminNotifyEmail({ name: fullName, email, role });
           setLoading(false);
           return;
         }
+        logActivity("Registered", { detail: `${fullName} registered as ${role}` });
+        sendWelcomeEmail({ name: fullName, email, role });
         navigate(`/dashboard/${role}`);
       }
     } catch (err) {
@@ -142,7 +150,7 @@ export const AuthPage = () => {
       </GraphicSide>
 
       <FormSide>
-        <FormBox compact={isLogin}>
+        <FormBox $compact={isLogin}>
           <form onSubmit={handleSubmit} ref={formRef}>
             <Title>{isLogin ? "Welcome Back" : "Create an Account"}</Title>
 
@@ -160,7 +168,7 @@ export const AuthPage = () => {
                     type="button"
                     role="radio"
                     aria-checked={role === value}
-                    active={role === value}
+                    $active={role === value}
                     onClick={() => setRole(value)}
                   >
                     {label}
@@ -353,7 +361,7 @@ const FormSide = styled.div`
 
 const FormBox = styled.div`
   width: 100%;
-  max-width: ${({ compact }) => (compact ? "400px" : "560px")};
+  max-width: ${({ $compact }) => ($compact ? "400px" : "560px")};
   background: ${(props) => props.theme.colors.surface};
   padding: ${(props) => props.theme.spacing.xl};
   border-radius: ${(props) => props.theme.borderRadius};
@@ -583,9 +591,9 @@ const RolePill = styled.button`
   padding: 10px 8px;
   border: none;
   background: ${(props) =>
-    props.active ? props.theme.colors.primary : "transparent"};
+    props.$active ? props.theme.colors.primary : "transparent"};
   color: ${(props) =>
-    props.active
+    props.$active
       ? props.theme.colors.surface
       : props.theme.colors.textSecondary};
   font-family: inherit;
@@ -595,7 +603,7 @@ const RolePill = styled.button`
   transition: all 0.2s ease;
   &:hover {
     background: ${(props) =>
-      props.active
+      props.$active
         ? props.theme.colors.primary
         : props.theme.colors.background};
   }

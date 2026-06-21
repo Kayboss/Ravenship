@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
 import { logout, getStoredUser } from "../../firebase/auth";
+import { subscribeNotifications } from "../../firebase/db";
 
 const Bar = styled.header`
   display: flex;
@@ -267,28 +268,14 @@ const RelativeWrap = styled.div`
   position: relative;
 `;
 
-const defaultNotifications = [
-  { icon: "✅", text: "Your Design System Audit has been reviewed. Grade: 92/100", time: "5m ago" },
-  { icon: "📝", text: "New assignment posted: User Research Synthesis Report", time: "1h ago" },
-  { icon: "💬", text: "Mentor Marcus left feedback on your wireframes", time: "3h ago" },
-  { icon: "🎯", text: "You've reached 75% completion in Advanced UI/UX", time: "1d ago" },
-  { icon: "📅", text: "Reminder: Live Q&A session tomorrow at 3 PM", time: "1d ago" },
-];
-
-const defaultMessages = [
-  { icon: "👤", name: "Marcus Chen", text: "Great work on the wireframes! Let's refine the...", time: "2m ago", replies: ["Looks good, will review tonight"] },
-  { icon: "👤", name: "Aisha Patel", text: "The Q3 data analysis is ready for review", time: "1h ago", replies: [] },
-  { icon: "👤", name: "Dr. Sarah Jenkins", text: "Don't forget the user research due Friday", time: "4h ago", replies: ["Noted, thanks!"] },
-];
-
 export const TopBar = ({ searchPlaceholder = "Search..." }) => {
   const [openDropdown, setOpenDropdown] = useState(null);
 
   const loadMessages = () => {
-    try { const d = localStorage.getItem("topbar_messages"); if (d === null) return defaultMessages; return JSON.parse(d); } catch { return defaultMessages; }
+    try { const d = localStorage.getItem("topbar_messages"); if (d === null) return []; return JSON.parse(d); } catch { return []; }
   };
   const loadNotifications = () => {
-    try { const d = localStorage.getItem("topbar_notifications"); if (d === null) return defaultNotifications; return JSON.parse(d); } catch { return defaultNotifications; }
+    try { const d = localStorage.getItem("topbar_notifications"); if (d === null) return []; return JSON.parse(d); } catch { return []; }
   };
 
   const [messageList, setMessageList] = useState(loadMessages);
@@ -306,7 +293,6 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
   const navigate = useNavigate();
   const { role } = useParams();
   const ref = useRef(null);
-  const didMount = useRef(false);
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -317,14 +303,32 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
   }, []);
 
   useEffect(() => {
-    if (!didMount.current) { didMount.current = true; return; }
-    if (openDropdown === null) {
-      localStorage.setItem("topbar_notifications", "[]");
+    if (openDropdown === "notifications") {
       localStorage.setItem("topbar_unread_notifications", "0");
-      localStorage.setItem("topbar_messages", "[]");
+    }
+    if (openDropdown === "messages") {
       localStorage.setItem("topbar_unread_messages", "0");
     }
   }, [openDropdown]);
+
+  useEffect(() => {
+    const unsub = subscribeNotifications((data) => {
+      const user = getStoredUser();
+      const filtered = data.filter(n => !n.targetRole || n.targetRole === "all" || n.targetRole === user?.role);
+      const formatted = filtered.map(n => ({
+        icon: "🔔",
+        text: n.title ? `${n.title}: ${n.message}` : n.message,
+        time: n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : ""
+      }));
+      localStorage.setItem("topbar_notifications", JSON.stringify(formatted));
+      if (formatted.length > 0) {
+        const saved = localStorage.getItem("topbar_unread_notifications");
+        if (saved === null) localStorage.setItem("topbar_unread_notifications", String(formatted.length));
+      }
+      setNotificationList(formatted);
+    });
+    return () => unsub();
+  }, []);
 
   const user = getStoredUser() || { name: "User", email: "" };
 
@@ -369,7 +373,13 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
             <Dropdown>
               <DropdownHeader>Messages</DropdownHeader>
               {messageList.map((m, i) => (
-                <DropdownItem key={i}>
+                <DropdownItem key={i} onClick={() => {
+                  if (m.otherId) {
+                    localStorage.setItem("pending_chat_target", JSON.stringify({ id: m.otherId, name: m.name, photoURL: m.photoURL }));
+                    navigate(`/dashboard/${currentRole}/community`);
+                  }
+                  setOpenDropdown(null);
+                }}>
                   <DropdownIcon>{m.icon}</DropdownIcon>
                   <DropdownText><strong>{m.name}</strong></DropdownText>
                   <DropdownTime>{m.time}</DropdownTime>

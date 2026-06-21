@@ -6,10 +6,11 @@ import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser } from "../firebase/auth";
-import { updateUser } from "../firebase/db";
+import { updateUser, logActivity } from "../firebase/db";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
-import { uploadProfilePic, deleteProfilePic } from "../firebase/storage";
+import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import { toBase64ImageWithProgress } from "../lib/upload";
 
 const Page = styled.div`
   display: flex;
@@ -308,6 +309,8 @@ export const Settings = () => {
   const [customSkill, setCustomSkill] = useState("");
   const [bio, setBio] = useState(settings.bio || "");
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState("");
 
   let userEmail = "default";
   try { const u = getStoredUser(); if (u?.email) userEmail = u.email; } catch {}
@@ -367,6 +370,8 @@ export const Settings = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setUploadProgress(0);
+    setUploadStage("");
 
     if (currentPw || newPw || confirmPw) {
       if (newPw !== confirmPw) { setSaving(false); alert("Passwords do not match."); return; }
@@ -377,20 +382,47 @@ export const Settings = () => {
       const user = getStoredUser();
       let photoURL = photo;
       if (photoFile) {
-        photoURL = await uploadProfilePic(user.id, photoFile);
+        setUploadStage("Reading file...");
+        setUploadProgress(0);
+        photoURL = await toBase64ImageWithProgress(photoFile, setUploadProgress);
+        setUploadStage("Saving to server...");
+        setUploadProgress(80);
         setPhotoFile(null);
       }
       await updateUser(user.id, { name, phone, city, bio, photoURL: photoURL || "" });
+      setUploadProgress(95);
       const updated = { ...user, name, phone, city, bio, photoURL: photoURL || "" };
       localStorage.setItem("user", JSON.stringify(updated));
       localStorage.setItem("settings", JSON.stringify({
         dobMonth, dobDay, dobYear, interests, skills, photo: photoURL, bio,
       }));
       setUser(updated);
-    } catch {
+      logActivity("Updated profile", { detail: `${user.name} updated their profile settings` });
+      setUploadProgress(100);
+      setUploadStage("");
+    } catch (err) {
       setSaving(false);
-      alert("Network error. Could not save profile.");
+      setUploadStage("");
+      setUploadProgress(0);
+      console.error("Settings save error:", err);
+      alert(err?.message || "Network error. Could not save profile.");
       return;
+    }
+
+    if (currentPw && newPw) {
+      try {
+        const auth = getAuth();
+        const fbUser = auth.currentUser;
+        if (fbUser && fbUser.email) {
+          const credential = EmailAuthProvider.credential(fbUser.email, currentPw);
+          await reauthenticateWithCredential(fbUser, credential);
+          await updatePassword(fbUser, newPw);
+        }
+      } catch (err) {
+        setSaving(false);
+        alert("Password change failed: " + (err.message || "Unknown error"));
+        return;
+      }
     }
 
     setSaving(false);
@@ -425,6 +457,14 @@ export const Settings = () => {
                 <div>
                   <PhotoBtn htmlFor="photo-input">Upload Photo</PhotoBtn>
                   <input ref={fileRef} id="photo-input" type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhoto} />
+                  {(uploadProgress > 0 || saving) && (
+                    <div style={{marginTop:12,width:"100%"}}>
+                      <div style={{height:6,borderRadius:3,background:"#e0e0e0",overflow:"hidden"}}>
+                        <div style={{height:"100%",borderRadius:3,background:"#b50064",width:`${uploadProgress}%`,transition:"width 0.3s ease"}} />
+                      </div>
+                      {uploadStage && <div style={{fontSize:"0.75rem",color:"#594048",marginTop:4}}>{uploadStage}</div>}
+                    </div>
+                  )}
                   <PhotoHint>JPG, PNG or GIF. Max 5MB.</PhotoHint>
                 </div>
               </PhotoWrap>

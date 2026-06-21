@@ -18,6 +18,8 @@ export const loginWithEmail = async (email, password) => {
     verified: userData.verified,
     phone: userData.phone,
     city: userData.city,
+    bio: userData.bio,
+    photoURL: userData.photoURL || "",
   };
   localStorage.setItem("user", JSON.stringify(stored));
   return { user, userData };

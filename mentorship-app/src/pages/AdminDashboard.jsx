@@ -14,8 +14,10 @@ import {
   addNotification,
   getAnnouncements,
   getHelpGuides, addHelpGuide,
-  getAnalytics
+  getAnalytics, getSubmissions,
+  getActivities, getErrors, markErrorResolved, logActivity
 } from "../firebase/db";
+import { sendApprovedEmail } from "../lib/email";
 import { db } from "../firebase/config";
 import { collection, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from "firebase/firestore";
 
@@ -103,10 +105,30 @@ function DashboardOverview() {
   const [notifs, setNotifs] = useState([]);
   const navigate = useNavigate();
   const user = getStoredUser() || { name: "Admin" };
+  const [weekData, setWeekData] = useState([]);
+  const [sourceData, setSourceData] = useState([]);
   useEffect(() => {
     getAnalytics().then(d => setData(d)).catch(() => {});
     getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
     getAnnouncements().then(d => setNotifs(Array.isArray(d) ? d : [])).catch(() => {});
+    getSubmissions({}).then(subs => {
+      const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const counts = [0,0,0,0,0,0,0];
+      const now = new Date();
+      const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay()); startOfWeek.setHours(0,0,0,0);
+      subs.forEach(s => {
+        const ts = s.submittedAt?.toDate ? s.submittedAt.toDate() : new Date(s.submittedAt);
+        if (ts >= startOfWeek) counts[ts.getDay()]++;
+      });
+      const max = Math.max(...counts, 1);
+      setWeekData(days.map((d, i) => ({ day: d, val: Math.round((counts[i]/max)*100) })));
+    }).catch(() => {});
+    getUsers().then(allUsers => {
+      const cities = {};
+      allUsers.forEach(u => { const c = u.city || "Unknown"; cities[c] = (cities[c]||0)+1; });
+      const total = allUsers.length || 1;
+      setSourceData(Object.entries(cities).map(([l, v]) => ({ l, v: Math.round((v/total)*100), c: "#b50064" })));
+    }).catch(() => {});
   }, []);
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Good morning"; if (h < 18) return "Good afternoon"; return "Good evening"; })();
   const totalUsers = data ? data.total : users.length;
@@ -136,24 +158,22 @@ function DashboardOverview() {
           <KpiIcon $bg="#b50064">👥</KpiIcon>
           <KpiValue>{totalUsers}</KpiValue>
           <KpiLabel>Total Enrollment</KpiLabel>
-          <KpiTrend $positive>📈 +12%</KpiTrend>
         </KpiCard>
         <KpiCard $border="#0298D7">
           <KpiIcon $bg="#0298D7">🧠</KpiIcon>
           <KpiValue>{mentors} vs {mentees}</KpiValue>
           <KpiLabel>Mentors vs Mentees</KpiLabel>
-          <KpiTrend>1:8 Ratio</KpiTrend>
+          <KpiTrend>{mentors > 0 ? "1:" + Math.round(mentees / mentors) : "—"}</KpiTrend>
         </KpiCard>
         <KpiCard $border="#DC207E">
           <KpiIcon $bg="#DC207E">✅</KpiIcon>
-          <KpiValue>78.4%</KpiValue>
+          <KpiValue>{data?.completionRate ?? 0}%</KpiValue>
           <KpiLabel>Completion Rate</KpiLabel>
-          <KpiTrend $positive>📈 +5%</KpiTrend>
         </KpiCard>
         <KpiCard $border="#cca800">
-          <KpiIcon $bg="#cca800">⏱️</KpiIcon>
-          <KpiValue>4.2 Hrs</KpiValue>
-          <KpiLabel>Avg. Weekly Activity</KpiLabel>
+          <KpiIcon $bg="#cca800">📚</KpiIcon>
+          <KpiValue>{data?.totalCourses ?? 0}</KpiValue>
+          <KpiLabel>Total Courses</KpiLabel>
         </KpiCard>
       </KpiGrid>
 
@@ -185,15 +205,8 @@ function DashboardOverview() {
                         </div>
                       </UTd>
                       <UTd><RoleBadge $role={u.role}>{u.role === "admin" ? "Admin" : u.role === "mentor" ? "Mentor" : "Mentee"}</RoleBadge></UTd>
-                      <UTd>
-                        <div style={{display:"flex",alignItems:"center",gap:8}}>
-                          <div style={{width:64,height:6,borderRadius:3,background:"#e4e2e1",overflow:"hidden"}}>
-                            <div style={{height:"100%",borderRadius:3,background:u.role === "mentor" ? "#27AE60" : "#DC207E",width:`${Math.min(100, 50 + Math.floor(Math.random() * 50))}%`}} />
-                          </div>
-                          <span style={{fontSize:"0.72rem",color:"#594048"}}>{Math.floor(50 + Math.random() * 50)}%</span>
-                        </div>
-                      </UTd>
-                      <UTd><span style={{display:"flex",alignItems:"center",fontSize:"0.78rem",fontWeight:600,color:i % 3 === 0 ? "#594048" : "#27AE60"}}><StatusDot $online={i % 3 !== 0} />{i % 3 === 0 ? "Offline" : "Active"}</span></UTd>
+                      <UTd>{u.verified ? <span style={{color:"#27AE60",fontWeight:600,fontSize:"0.78rem"}}>✅ Verified</span> : <span style={{color:"#f57f17",fontWeight:600,fontSize:"0.78rem"}}>⏳ Pending</span>}</UTd>
+                      <UTd><span style={{display:"flex",alignItems:"center",fontSize:"0.78rem",fontWeight:600,color:u.verified ? "#27AE60" : "#594048"}}><StatusDot $online={!!u.verified} />{u.verified ? "Active" : "Inactive"}</span></UTd>
                       <UTd><span style={{fontSize:"1.2rem",color:"#594048",cursor:"pointer"}}>⋯</span></UTd>
                     </URow>
                   ))}
@@ -206,22 +219,24 @@ function DashboardOverview() {
             <ChartCard>
               <SectionTitle>Weekly Engagement</SectionTitle>
               <div style={{display:"flex",alignItems:"flex-end",height:160,gap:8}}>
-                {[60,40,85,95,70,55,30].map((h,i) => (
-                  <ChartBar key={i} $active={i === 3} style={{height:`${h}%`}} />
+                {weekData.map((d, i) => (
+                  <ChartBar key={i} $active={i === 3 || i === 5} style={{height:`${d.val}%`,flex:1}} />
                 ))}
               </div>
               <div style={{display:"flex",justifyContent:"space-between",marginTop:12,fontSize:"0.72rem",color:"#594048"}}>
-                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                {weekData.map((d,i) => <span key={i}>{d.day}</span>)}
               </div>
             </ChartCard>
             <ChartCard>
               <SectionTitle>Enrollment Sources</SectionTitle>
               <div style={{display:"flex",flexDirection:"column",gap:16}}>
-                {[{l:"Internal Referrals",v:64,c:"#0298D7"},{l:"LinkedIn Outreach",v:22,c:"#DC207E"},{l:"Community Hub",v:14,c:"#cca800"}].map(s => (
-                  <div key={s.l}>
+                {sourceData.length === 0 ? (
+                  <p style={{color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:24}}>No enrollment data yet.</p>
+                ) : sourceData.map((s, i) => (
+                  <div key={i}>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:"0.78rem",marginBottom:6}}><span style={{color:"#2c3e50"}}>{s.l}</span><span style={{fontWeight:700}}>{s.v}%</span></div>
                     <div style={{height:8,borderRadius:4,background:"#e4e2e1",overflow:"hidden"}}>
-                      <div style={{height:"100%",borderRadius:4,background:s.c,width:`${s.v}%`}} />
+                      <div style={{height:"100%",borderRadius:4,background:["#b50064","#0298D7","#cca800","#27AE60","#e53935","#8e44ad"][i%6],width:`${s.v}%`}} />
                     </div>
                   </div>
                 ))}
@@ -273,9 +288,14 @@ function MentorsSection() {
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
+    const target = users.find(u => u.id === id);
     const action = v ? verifyUser(id) : unverifyUser(id);
     action
       .then(() => { setUsers(prev => prev.map(u => u.id === id ? { ...u, verified: v } : u)); setVerifyMsg(null); })
+      .then(() => {
+        if (target) logActivity("User " + (v ? "verified" : "unverified"), { detail: `${target.name} (${target.role}) was ${v ? "verified" : "unverified"}` });
+        if (v && target) sendApprovedEmail({ name: target.name, email: target.email, role: target.role });
+      })
       .catch(e => setVerifyMsg(e.message))
       .finally(() => setVerifying(null));
   };
@@ -369,9 +389,14 @@ function MenteesSection() {
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
+    const target = users.find(u => u.id === id);
     const action = v ? verifyUser(id) : unverifyUser(id);
     action
       .then(() => { setUsers(prev => prev.map(u => u.id === id ? { ...u, verified: v } : u)); setVerifyMsg(null); })
+      .then(() => {
+        if (target) logActivity("User " + (v ? "verified" : "unverified"), { detail: `${target.name} (${target.role}) was ${v ? "verified" : "unverified"}` });
+        if (v && target) sendApprovedEmail({ name: target.name, email: target.email, role: target.role });
+      })
       .catch(e => setVerifyMsg(e.message))
       .finally(() => setVerifying(null));
   };
@@ -440,8 +465,8 @@ function MenteesSection() {
 }
 
 function GradebookSection() {
-  const assignments = ["Design System Audit", "UX Research", "Brand Strategy", "Brand Identity", "Data Strategy"];
   const [mentees, setMentees] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     setLoading(true);
@@ -460,6 +485,10 @@ function GradebookSection() {
       .then(setMentees)
       .catch(() => {})
       .finally(() => setLoading(false));
+    getCourses().then(courses => {
+      const names = [...new Set(courses.flatMap(c => c.assignments ? (typeof c.assignments === 'number' ? [] : c.assignments) : []))];
+      setAssignments(names.length ? names : ["Assignment 1", "Assignment 2", "Assignment 3", "Assignment 4", "Assignment 5"]);
+    }).catch(() => setAssignments(["Assignment 1", "Assignment 2", "Assignment 3", "Assignment 4", "Assignment 5"]));
   }, []);
   const total = mentees.length;
   const passing = mentees.filter(m => m.avg >= 60).length;
@@ -724,8 +753,6 @@ function CoursesSection() {
   useEffect(() => {
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
   }, []);
-  const SectionBox = styled.div`background:#fff;border-radius:20px;border:1px solid #e0e0e0;padding:24px;margin-bottom:24px;`;
-  const SectionBoxTitle = styled.h4`font-weight:700;font-size:1rem;color:#2c3e50;margin-bottom:16px;display:flex;align-items:center;gap:8px;`;
   return (
     <div style={{display:"flex",flexDirection:"column",gap:12}}>
       {courses.length === 0 ? <SectionBox data-aos="fade-up"><p style={{color:"#594048",fontSize:"0.85rem"}}>No courses yet.</p></SectionBox> : courses.map((c, i) => (
@@ -778,12 +805,8 @@ function ProgressSection() {
   const mentors = users.filter(u => u.role === "mentor");
   const mentees = users.filter(u => u.role === "mentee");
   const topMentors = [...mentors].sort((a, b) => (b.courseCount || courses.filter(c => c.instructor?.toLowerCase() === b.name?.toLowerCase()).length) - (a.courseCount || courses.filter(c => c.instructor?.toLowerCase() === a.name?.toLowerCase()).length)).slice(0, 5);
-  const topMentees = [...mentees].sort((a, b) => (b.progress || 0) - (a.progress || 0)).slice(0, 5);
+  const topMentees = [...mentees].sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0)).slice(0, 5);
   const topCourses = [...courses].sort((a, b) => ((b.enrolledMentees || b.enrolled || []).length) - ((a.enrolledMentees || a.enrolled || []).length)).slice(0, 5);
-  const SectionBox = styled.div`background:#fff;border-radius:20px;border:1px solid #e0e0e0;padding:24px;margin-bottom:24px;`;
-  const SectionBoxTitle = styled.h4`font-weight:700;font-size:1rem;color:#2c3e50;margin-bottom:16px;display:flex;align-items:center;gap:8px;`;
-  const RankRow = styled.div`display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0f0f0;&:last-child{border-bottom:none}`;
-  const RankNum = styled.div`width:28px;height:28px;border-radius:50%;background:${p => p.$c || "#b50064"};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.8rem;flex-shrink:0;`;
   return (
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
       <SectionBox data-aos="fade-up">
@@ -803,7 +826,7 @@ function ProgressSection() {
           <RankRow key={m.id}>
             <RankNum $c={i < 3 ? ["#FFD700","#C0C0C0","#CD7F32"][i] : "#b50064"}>{i + 1}</RankNum>
             <div style={{width:36,height:36,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.8rem",fontWeight:700,color:"#fff",flexShrink:0}}>{m.name?.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}</div>
-            <div style={{flex:1}}><strong style={{fontSize:"0.9rem",display:"block",color:"#2c3e50"}}>{m.name}</strong><span style={{fontSize:"0.78rem",color:"#594048"}}>Progress: {m.progress || 0}%</span></div>
+            <div style={{flex:1}}><strong style={{fontSize:"0.9rem",display:"block",color:"#2c3e50"}}>{m.name}</strong><span style={{fontSize:"0.78rem",color:"#594048"}}>{m.verified ? "Verified" : "Pending verification"}</span></div>
             <Badge $c={m.verified ? "#2e7d32" : "#f57f17"}>{m.verified ? "Verified" : "Pending"}</Badge>
           </RankRow>
         ))}
@@ -822,6 +845,87 @@ function ProgressSection() {
   );
 }
 
+function ActivitySection() {
+  const [activities, setActivities] = useState([]);
+  useEffect(() => {
+    getActivities(50).then(setActivities).catch(() => {});
+  }, []);
+  return (
+    <Card data-aos="fade-up">
+      <CardTitle>📊 Recent Activity Log</CardTitle>
+      <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Track all user actions across the platform.</p>
+      {activities.length === 0 ? <p style={{color:"#594048"}}>No activity recorded yet.</p> : (
+        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:600,overflowY:"auto"}}>
+          {activities.map((a, i) => {
+            const time = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+            return (
+              <div key={a.id || i} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:i%2===0?"#fafafa":"#fff",borderRadius:10,fontSize:"0.85rem"}}>
+                <div style={{width:32,height:32,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>{a.userName?.split(" ").map(w=>w[0]).join("").slice(0,2)}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <strong style={{color:"#2c3e50"}}>{a.action}</strong>
+                  <span style={{color:"#594048",marginLeft:6,fontSize:"0.78rem"}}>{a.detail || ""}</span>
+                  <div style={{fontSize:"0.72rem",color:"#999",marginTop:2}}>{a.userName} · {a.userRole}</div>
+                </div>
+                <span style={{fontSize:"0.7rem",color:"#999",whiteSpace:"nowrap"}}>{time.toLocaleDateString()} {time.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function ErrorsSection() {
+  const [errors, setErrors] = useState([]);
+  const [resolving, setResolving] = useState(null);
+  const load = () => getErrors(50).then(setErrors).catch(() => {});
+  useEffect(() => { load(); }, []);
+  const doResolve = (id) => {
+    setResolving(id);
+    markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? {...e, resolved: true} : e)); }).catch(() => {}).finally(() => setResolving(null));
+  };
+  return (
+    <Card data-aos="fade-up">
+      <CardTitle>⚠️ Error Log</CardTitle>
+      <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Unhandled errors and exceptions reported from the client.</p>
+      {errors.length === 0 ? <p style={{color:"#594048"}}>No errors recorded.</p> : (
+        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:600,overflowY:"auto"}}>
+          {errors.map((e, i) => {
+            const time = e.timestamp?.toDate ? e.timestamp.toDate() : new Date(e.timestamp);
+            return (
+              <div key={e.id || i} style={{padding:"12px 16px",background:e.resolved?"#f9f9f9":"#fff7f7",borderRadius:12,borderLeft:`4px solid ${e.resolved?"#2e7d32":"#e53935"}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,fontSize:"0.85rem",color:"#2c3e50",marginBottom:4}}>{e.message || "Unknown error"}</div>
+                    {e.url && <div style={{fontSize:"0.72rem",color:"#594048",marginBottom:2}}>URL: {e.url}</div>}
+                    {e.userName && <div style={{fontSize:"0.72rem",color:"#594048",marginBottom:2}}>User: {e.userName} ({e.userRole})</div>}
+                    {e.stack && (
+                      <details style={{marginTop:4}}>
+                        <summary style={{fontSize:"0.75rem",color:"#b50064",cursor:"pointer",fontWeight:600}}>Stack Trace</summary>
+                        <pre style={{fontSize:"0.65rem",color:"#594048",background:"#f0f0f0",padding:8,borderRadius:8,marginTop:4,maxHeight:120,overflow:"auto",whiteSpace:"pre-wrap",wordBreak:"break-all"}}>{e.stack}</pre>
+                      </details>
+                    )}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                    <Badge $c={e.resolved?"#2e7d32":"#e53935"}>{e.resolved?"Resolved":"Open"}</Badge>
+                    <span style={{fontSize:"0.7rem",color:"#999",whiteSpace:"nowrap"}}>{time.toLocaleDateString()} {time.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
+                  </div>
+                </div>
+                {!e.resolved && (
+                  <button disabled={resolving === e.id} onClick={() => doResolve(e.id)} style={{marginTop:8,padding:"4px 12px",borderRadius:6,border:"1px solid #2e7d32",background:"transparent",color:"#2e7d32",fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                    {resolving === e.id ? "..." : "✓ Mark Resolved"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 const tabs = [
   { key: "overview", label: "📊 Overview", comp: DashboardOverview },
   { key: "mentors", label: "👨‍🏫 Mentors", comp: MentorsSection },
@@ -830,9 +934,20 @@ const tabs = [
   { key: "progress", label: "📈 Progress", comp: ProgressSection },
   { key: "gradebook", label: "📋 Gradebook", comp: GradebookSection },
   { key: "notifications", label: "🔔 Notifications", comp: NotificationsSection },
-  { key: "analytics", label: "📈 Analytics", comp: AnalyticsSection },
   { key: "help", label: "❓ Help Center", comp: HelpCenterSection },
+  { key: "activity", label: "📊 Activity Log", comp: ActivitySection },
+  { key: "errors", label: "⚠️ Error Log", comp: ErrorsSection },
+  { key: "analytics", label: "📈 Analytics", comp: AnalyticsSection },
 ];
+
+const SectionBox = styled.div`background:#fff;border-radius:20px;border:1px solid #e0e0e0;padding:24px;margin-bottom:24px;`;
+const SectionBoxTitle = styled.h4`font-weight:700;font-size:1rem;color:#2c3e50;margin-bottom:16px;display:flex;align-items:center;gap:8px;`;
+const RankRow = styled.div`display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #f0f0f0;&:last-child{border-bottom:none}`;
+const RankNum = styled.div`width:28px;height:28px;border-radius:50%;background:${p => p.$c || "#b50064"};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.8rem;flex-shrink:0;`;
+const StatGrid = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:24px;`;
+const StatCard = styled.div`background:#fff;border-radius:16px;padding:20px;text-align:center;border:1px solid #e0e0e0;`;
+const StatNum = styled.div`font-size:1.8rem;font-weight:800;color:#2c3e50;`;
+const StatLabel = styled.div`font-size:0.75rem;color:#594048;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;margin-top:4px;`;
 
 const AdminPageLayout = styled.div`display:flex;min-height:100vh;background:${p => p.theme.colors.background};`;
 const AdminPageMain = styled.main`flex:1;margin-left:280px;padding:0 ${p => p.theme.spacing.xl} ${p => p.theme.spacing.xl};@media(min-width:${p => p.theme.breakpoints.mobile}) and (max-width:${p => p.theme.breakpoints.tablet}){margin-left:0;padding:${p => p.theme.spacing.lg}}@media(max-width:${p => p.theme.breakpoints.mobile}){margin-left:0;padding:${p => p.theme.spacing.sm}}`;
@@ -848,14 +963,16 @@ export default function AdminDashboard() {
     if (t && tabs.find(tab => tab.key === t)) { setActiveTab(t); }
     else { setActiveTab("overview"); }
   }, [location]);
-  const ActiveComponent = tabs.find(t => t.key === activeTab)?.comp || DashboardOverview;
   return (
     <AdminPageLayout>
       <AdminSidebar activeTab={activeTab} onTabChange={(k) => { setActiveTab(k); navigate(`#${k}`); }} />
       <AdminPageMain>
         <TopBar theme={theme} setTheme={setTheme} />
         <AdminPageTitle>{tabs.find(t => t.key === activeTab)?.label || "Dashboard"}</AdminPageTitle>
-        <ActiveComponent />
+        {tabs.map(tab => {
+          const Comp = tab.comp;
+          return <div key={tab.key} style={{ display: tab.key === activeTab ? "block" : "none" }}><Comp /></div>;
+        })}
       </AdminPageMain>
     </AdminPageLayout>
   );

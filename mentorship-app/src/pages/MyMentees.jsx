@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { MentorSidebar } from "../components/layout/MentorSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser } from "../firebase/auth";
+import { getUsers } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -299,51 +300,6 @@ const InfoLabel = styled.span`
   min-width: 70px;
 `;
 
-const defaultMentees = [
-  {
-    name: "Alex Rivera", email: "alex.riv@example.com", phone: "+1 (555) 234-5678", city: "San Francisco, CA",
-    bio: "Product designer transitioning from graphic design. Passionate about design systems and user research.",
-    courses: ["Advanced UI/UX Design", "Design System Audit"],
-    progress: 72, online: true, enrolledDate: "Jan 15, 2026",
-    initials: "AR", avatarColor: "#006590", skills: ["Figma", "Design Systems", "Prototyping"],
-  },
-  {
-    name: "Jamie Chen", email: "j.chen@corp.com", phone: "+1 (555) 876-5432", city: "New York, NY",
-    bio: "Brand strategist looking to deepen expertise in brand architecture and identity systems.",
-    courses: ["Brand Identity Architecture", "Brand Leadership"],
-    progress: 100, online: false, enrolledDate: "Oct 8, 2025",
-    initials: "JC", avatarColor: "#b50064", skills: ["Brand Strategy", "Positioning", "Workshop Facilitation"],
-  },
-  {
-    name: "Sarah Kim", email: "s.kim@design.io", phone: "+1 (555) 345-6789", city: "Austin, TX",
-    bio: "UX researcher with 3 years of experience. Currently focused on learning design thinking frameworks.",
-    courses: ["UX Research Methods"],
-    progress: 55, online: true, enrolledDate: "Mar 3, 2026",
-    initials: "SK", avatarColor: "#cca800", skills: ["User Research", "Usability Testing", "Data Analysis"],
-  },
-  {
-    name: "David Park", email: "d.park@tech.dev", phone: "+1 (555) 456-7890", city: "Seattle, WA",
-    bio: "Software engineer expanding into data strategy and product management.",
-    courses: ["Data Strategy", "Advanced UI/UX Design"],
-    progress: 88, online: false, enrolledDate: "Feb 20, 2026",
-    initials: "DP", avatarColor: "#0298D7", skills: ["SQL", "Data Modeling", "Product Thinking"],
-  },
-  {
-    name: "Olivia Foster", email: "o.foster@product.co", phone: "+1 (555) 567-8901", city: "Chicago, IL",
-    bio: "Product manager building user-centered design skills to bridge engineering and design.",
-    courses: ["Design System Audit", "UX Research Methods"],
-    progress: 40, online: true, enrolledDate: "Apr 1, 2026",
-    initials: "OF", avatarColor: "#8B5CF6", skills: ["Product Strategy", "Agile", "User Stories"],
-  },
-  {
-    name: "James Kim", email: "j.kim@engineering.dev", phone: "+1 (555) 678-9012", city: "Denver, CO",
-    bio: "Frontend developer learning UI/UX principles to build better user interfaces.",
-    courses: ["Advanced UI/UX Design"],
-    progress: 65, online: false, enrolledDate: "Nov 12, 2025",
-    initials: "JK", avatarColor: "#E67E22", skills: ["React", "CSS", "Accessibility"],
-  },
-];
-
 export const MyMentees = () => {
   const { role } = useParams();
   const [mentees, setMentees] = useState([]);
@@ -351,15 +307,25 @@ export const MyMentees = () => {
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true, offset: 50 });
-    const user = getStoredUser() || { email: "" };
-    const key = `mentees_${user.email || "default"}`;
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      setMentees(JSON.parse(stored));
-    } else {
-      localStorage.setItem(key, JSON.stringify(defaultMentees));
-      setMentees(defaultMentees);
-    }
+    getUsers().then(allUsers => {
+      const mentees = allUsers.filter(u => u.role === "mentee");
+      if (mentees.length > 0) {
+        setMentees(mentees.map(u => ({
+          name: u.name || u.email?.split("@")[0] || "Unknown",
+          email: u.email || "",
+          phone: u.phone || "",
+          city: u.city || "",
+          bio: u.bio || "",
+          courses: u.courses || [],
+          progress: u.progress || 0,
+          online: u.online || false,
+          enrolledDate: u.enrolledDate || "",
+          initials: (u.name || u.email || "U").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2),
+          avatarColor: u.avatarColor || "#006590",
+          skills: u.skills || [],
+        })));
+      }
+    }).catch(() => {});
   }, []);
 
   return (

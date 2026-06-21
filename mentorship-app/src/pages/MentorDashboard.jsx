@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getStoredUser } from "../firebase/auth";
-import { getUsers, getCourses, getSubmissions, addCourse } from "../firebase/db";
+import { getUsers, getCourses, getSubmissions, addCourse, getAllGradebook } from "../firebase/db";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
@@ -648,30 +648,10 @@ const AddSubtext = styled.p`
   color: ${(props) => props.theme.colors.textSecondary};
 `;
 
-const trendingValues = [40, 65, 50, 85, 45, 70, 60, 95];
-const gradingQueue = [
-  { initials: "JD", name: "UX Case Study", by: "John Doe", time: "2h ago" },
-  { initials: "AS", name: "Brand Strategy", by: "Alice Smith", time: "5h ago" },
-  { initials: "ML", name: "Python Final", by: "Mark Lee", time: "1d ago" },
-  { initials: "KR", name: "Research Paper", by: "Kate Ross", time: "1d ago" },
-];
-
-const mentees = [
-  { name: "Alex Rivera", email: "alex.riv@example.com", path: "Advanced UI Design", progress: 72, online: true, lastActive: "Today, 10:45 AM", initials: "AR", avatarColor: "#006590" },
-  { name: "Jamie Chen", email: "j.chen@corp.com", path: "Brand Leadership", progress: 100, online: false, lastActive: "2 days ago", initials: "JC", avatarColor: "#b50064" },
-  { name: "Sarah Kim", email: "s.kim@design.io", path: "UX Research", progress: 55, online: true, lastActive: "Today, 9:30 AM", initials: "SK", avatarColor: "#cca800" },
-  { name: "David Park", email: "d.park@tech.dev", path: "Data Strategy", progress: 88, online: false, lastActive: "Yesterday", initials: "DP", avatarColor: "#0298D7" },
-];
-
-const activeCourses = [
-  { title: "Advanced Interface Paradigms", badge: "Design", count: "45 Active", color1: "#b50064", color2: "#006590" },
-  { title: "Brand Identity Architecture", badge: "Strategy", count: "32 Active", color1: "#006590", color2: "#0298D7" },
-];
-
 export const MentorDashboard = () => {
   const navigate = useNavigate();
   const { role } = useParams();
-  let user = getStoredUser() || { name: "Prof. Sarah" };
+  let user = getStoredUser() || { name: "Mentor" };
   const mentorName = user.name || "Mentor";
   const [exporting, setExporting] = useState(false);
   const [scheduling, setScheduling] = useState(false);
@@ -679,14 +659,40 @@ export const MentorDashboard = () => {
   const [addingProgram, setAddingProgram] = useState(false);
   const [actionMsg, setActionMsg] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [kpis, setKpis] = useState({ totalMentees: 0, avgGrade: "—", completionRate: 0, pendingTasks: 0, trendValues: [] });
+  const [greeting, setGreeting] = useState("Good Morning");
   useEffect(() => {
+    const h = new Date().getHours();
+    setGreeting(h < 12 ? "Good Morning" : h < 18 ? "Good Afternoon" : "Good Evening");
     AOS.init({ duration: 800, once: true, offset: 50 });
-    Promise.all([getUsers(), getCourses(), getSubmissions()])
-      .then(([users, courses, submissions]) => {
+    Promise.all([getUsers(), getCourses(), getSubmissions({}), getAllGradebook()])
+      .then(([users, courses, submissions, gradebook]) => {
         const mentor = getStoredUser();
         const mentorId = mentor?.id || mentor?.uid || "";
-        const mentees = (users || []).filter(u => (u.assignedMentor === mentorId || u.mentorId === mentorId) && u.role !== "mentor");
+        const mentees = (users || []).filter(u => (u.assignedMentor === mentorId || u.mentorId === mentorId) && u.role !== "mentor" && u.role !== "admin");
         const pending = (submissions || []).filter(s => s.status === "pending" || s.grade === undefined);
+        const graded = (submissions || []).filter(s => s.score != null);
+        const completion = submissions.length ? Math.round((graded.length / submissions.length) * 100) : 0;
+        const allScores = gradebook.flatMap(g => Object.values(g.scores || {}).filter(v => typeof v === 'number'));
+        const avg = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
+        const gradeLetter = avg >= 90 ? "A" : avg >= 80 ? "B" : avg >= 70 ? "C" : avg >= 60 ? "D" : "F";
+        const gradeDisplay = avg ? `${gradeLetter} (${avg}%)` : "—";
+        const days = [0,0,0,0,0,0,0];
+        const now = new Date();
+        const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay()); startOfWeek.setHours(0,0,0,0);
+        submissions.forEach(s => {
+          const ts = s.submittedAt?.toDate ? s.submittedAt.toDate() : new Date(s.submittedAt);
+          if (ts >= startOfWeek) days[ts.getDay()]++;
+        });
+        const max = Math.max(...days, 1);
+        setKpis({
+          totalMentees: mentees.length,
+          avgGrade: gradeDisplay,
+          completionRate: completion,
+          pendingTasks: pending.length,
+          trendValues: days.map(v => Math.round((v/max)*100))
+        });
         setDashboardData({
           mentees,
           activeCourses: courses || [],
@@ -697,11 +703,26 @@ export const MentorDashboard = () => {
             time: "new"
           }))
         });
+        setLoading(false);
       })
-      .catch(() => {});
+      .catch(() => { setLoading(false); })
   }, []);
   const { gradingQueue = [], mentees = [], activeCourses = [] } = dashboardData || {};
 
+  if (loading) {
+    return (
+      <DashboardContainer>
+        <MentorSidebar />
+        <MainContent>
+          <TopBar searchPlaceholder="Search mentees, courses, or tasks..." />
+          <div style={{ textAlign: "center", paddingTop: 80, color: "#594048", fontSize: "1.1rem", fontWeight: 600 }}>
+            <div style={{ fontSize: "2rem", marginBottom: 12 }}>⏳</div>
+            Loading your dashboard...
+          </div>
+        </MainContent>
+      </DashboardContainer>
+    );
+  }
   return (
     <DashboardContainer>
       <MentorSidebar />
@@ -711,8 +732,8 @@ export const MentorDashboard = () => {
         <HeaderBar data-aos="fade-down">
           <div>
             <HeaderLabel>Mentor Central</HeaderLabel>
-            <HeaderTitle>Good Morning, {mentorName}</HeaderTitle>
-            <HeaderSub>You have 12 assignments to grade and 4 mentee meetings today.</HeaderSub>
+            <HeaderTitle>{greeting}, {mentorName}</HeaderTitle>
+            <HeaderSub>You have {kpis.pendingTasks} submission{kpis.pendingTasks !== 1 ? "s" : ""} to grade and {kpis.totalMentees} active mentee{kpis.totalMentees !== 1 ? "s" : ""}.</HeaderSub>
           </div>
           <HeaderActions2>
             <OutlineBtn disabled={exporting} onClick={() => { setExporting(true); setActionMsg(null); setTimeout(() => { setExporting(false); setActionMsg("Report exported"); setTimeout(() => setActionMsg(null), 2000); }, 800); }}>{exporting ? "Exporting..." : "Export Report"}</OutlineBtn>
@@ -734,36 +755,36 @@ export const MentorDashboard = () => {
             <MetricGrid>
               <Metric>
                 <MetricLabel>👥 Total Mentees</MetricLabel>
-                <MetricValue>128</MetricValue>
-                <MetricTrend $positive>📈 12% vs last month</MetricTrend>
+                <MetricValue>{kpis.totalMentees}</MetricValue>
+                <MetricTrend $positive>{kpis.totalMentees > 0 ? `${kpis.totalMentees} active` : "No mentees yet"}</MetricTrend>
               </Metric>
               <Metric>
                 <MetricLabel>⭐ Avg. Grade</MetricLabel>
-                <MetricValue>A-</MetricValue>
-                <MetricTrend>Stable performance</MetricTrend>
+                <MetricValue>{kpis.avgGrade}</MetricValue>
+                <MetricTrend>{kpis.avgGrade !== "—" ? "From graded submissions" : "No grades yet"}</MetricTrend>
               </Metric>
               <Metric>
                 <MetricLabel>📝 Completion Rate</MetricLabel>
-                <MetricValue>94.2%</MetricValue>
-                <MetricTrend $positive>📈 3% increase</MetricTrend>
+                <MetricValue>{kpis.completionRate}%</MetricValue>
+                <MetricTrend $positive>{kpis.completionRate > 0 ? `${kpis.completionRate}% complete` : "No submissions"}</MetricTrend>
               </Metric>
               <Metric>
                 <MetricLabel>⏰ Pending Tasks</MetricLabel>
-                <MetricValue>24</MetricValue>
-                <MetricTrend>High priority</MetricTrend>
+                <MetricValue>{kpis.pendingTasks}</MetricValue>
+                <MetricTrend>{kpis.pendingTasks > 0 ? "Needs attention" : "All caught up!"}</MetricTrend>
               </Metric>
             </MetricGrid>
             <TrendChart>
-              {trendingValues.map((v, i) => (
-                <TrendBar key={i} $height={v} $active={i === 7} />
-              ))}
+              {kpis.trendValues.length ? kpis.trendValues.map((v, i) => (
+                <TrendBar key={i} $height={v} $active={i === new Date().getDay()} />
+              )) : <p style={{color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:16}}>No submission activity this week.</p>}
             </TrendChart>
           </GlassCard>
 
           <GlassCard data-aos="fade-up" data-aos-delay="100" style={{ display: "flex", flexDirection: "column" }}>
             <CardHeader>
               <CardTitle>Grading Queue</CardTitle>
-              <NewCount>12 New</NewCount>
+              <NewCount>{kpis.pendingTasks} New</NewCount>
             </CardHeader>
             <GradingList>
               {gradingQueue.map((item, i) => (
@@ -805,27 +826,27 @@ export const MentorDashboard = () => {
                   <Tr key={i}>
                     <Td>
                       <StudentInfo>
-                        <StudentAvatar $color={m.avatarColor} $bg={m.avatarColor}>{m.initials}</StudentAvatar>
+                        <StudentAvatar style={{background:m.role==="mentor"?"#b50064":"#0298D7"}}>{m.name ? m.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase() : "?"}</StudentAvatar>
                         <div>
                           <StudentName>{m.name}</StudentName>
                           <StudentEmail>{m.email}</StudentEmail>
                         </div>
                       </StudentInfo>
                     </Td>
-                    <Td><PathBadge>{m.path}</PathBadge></Td>
+                    <Td><PathBadge style={{background:"#0298D7"}}>{m.role || "Mentee"}</PathBadge></Td>
                     <Td>
                       <ProgressCell>
                         <ProgressBar2>
-                          <ProgressFill2 $width={m.progress} />
+                          <ProgressFill2 $width={m.verified ? 100 : 0} />
                         </ProgressBar2>
-                        <ProgressLabel $width={m.progress}>{m.progress}%</ProgressLabel>
+                        <ProgressLabel $width={m.verified ? 100 : 0}>{m.verified ? "Verified" : "Pending"}</ProgressLabel>
                       </ProgressCell>
                     </Td>
-                    <Td style={{ color: "#594048" }}>{m.lastActive}</Td>
+                    <Td style={{ color: "#594048" }}>{m.city || "—"}</Td>
                     <Td>
-                      <span style={{ fontWeight: 700, fontSize: "0.8rem", color: m.online ? "#27AE60" : "#594048" }}>
-                        <StatusDot $online={m.online} />
-                        {m.online ? "Online" : "Offline"}
+                      <span style={{ fontWeight: 700, fontSize: "0.8rem", color: m.verified ? "#27AE60" : "#594048" }}>
+                        <StatusDot $online={!!m.verified} />
+                        {m.verified ? "Active" : "Inactive"}
                       </span>
                     </Td>
                     <Td><ChatBtn disabled={chattingId === m.name} onClick={() => { setChattingId(m.name); setActionMsg(null); setTimeout(() => { setChattingId(null); setActionMsg(`Chat with ${m.name} coming soon`); setTimeout(() => setActionMsg(null), 2000); }, 600); }}>{chattingId === m.name ? "..." : "💬"}</ChatBtn></Td>
@@ -839,7 +860,7 @@ export const MentorDashboard = () => {
               <MenteeCard key={i}>
                 <MenteeCardRow>
                   <MenteeCardInfo>
-                    <StudentAvatar $color={m.avatarColor} $bg={m.avatarColor}>{m.initials}</StudentAvatar>
+                    <StudentAvatar style={{background:m.role==="mentor"?"#b50064":"#0298D7"}}>{m.name ? m.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase() : "?"}</StudentAvatar>
                     <div>
                       <StudentName>{m.name}</StudentName>
                       <StudentEmail>{m.email}</StudentEmail>
@@ -848,20 +869,20 @@ export const MentorDashboard = () => {
                   <ChatBtn disabled={chattingId === m.name} onClick={() => { setChattingId(m.name); setActionMsg(null); setTimeout(() => { setChattingId(null); setActionMsg(`Chat with ${m.name} coming soon`); setTimeout(() => setActionMsg(null), 2000); }, 600); }}>{chattingId === m.name ? "..." : "💬"}</ChatBtn>
                 </MenteeCardRow>
                 <MenteeCardRow>
-                  <PathBadge>{m.path}</PathBadge>
-                  <span style={{ fontWeight: 700, fontSize: "0.8rem", color: m.online ? "#27AE60" : "#594048" }}>
-                    <StatusDot $online={m.online} />
-                    {m.online ? "Online" : "Offline"}
+                  <PathBadge style={{background:"#0298D7"}}>{m.role || "Mentee"}</PathBadge>
+                  <span style={{ fontWeight: 700, fontSize: "0.8rem", color: m.verified ? "#27AE60" : "#594048" }}>
+                    <StatusDot $online={!!m.verified} />
+                    {m.verified ? "Active" : "Inactive"}
                   </span>
                 </MenteeCardRow>
                 <MenteeCardRow>
                   <ProgressCell style={{ minWidth: 0, flex: 1, gap: 8 }}>
                     <ProgressBar2 style={{ flex: 1 }}>
-                      <ProgressFill2 $width={m.progress} />
+                      <ProgressFill2 $width={m.verified ? 100 : 0} />
                     </ProgressBar2>
-                    <ProgressLabel $width={m.progress}>{m.progress}%</ProgressLabel>
+                    <ProgressLabel $width={m.verified ? 100 : 0}>{m.verified ? "Verified" : "Pending"}</ProgressLabel>
                   </ProgressCell>
-                  <span style={{ fontSize: "0.75rem", color: "#594048" }}>{m.lastActive}</span>
+                  <span style={{ fontSize: "0.75rem", color: "#594048" }}>{m.city || "—"}</span>
                 </MenteeCardRow>
               </MenteeCard>
             ))}
@@ -875,11 +896,11 @@ export const MentorDashboard = () => {
           </CardHeader>
           <CoursesGrid>
             {activeCourses.map((c, i) => (
-              <CourseCard key={i} $color1={c.color1} $color2={c.color2} onClick={() => navigate(`/dashboard/${role}/my-courses`)}>
+              <CourseCard key={i} onClick={() => navigate(`/dashboard/${role}/course/${encodeURIComponent(c.title)}`)} style={c.featuredImage ? {backgroundImage:`url(${c.featuredImage})`,backgroundSize:"cover",backgroundPosition:"center"} : {background:`linear-gradient(135deg, ${c.color || "#b50064"}, ${c.color2 || "#006590"})`}}>
                 <CourseOverlay>
                   <CourseBadge2>{c.badge}</CourseBadge2>
-                  <CourseTitle2>{c.title}</CourseTitle2>
-                  <CourseCount>{c.count}</CourseCount>
+                  <CourseTitle2>{c.emoji} {c.title}</CourseTitle2>
+                  <CourseCount>{(c.enrolledMentees || c.enrolled || []).length || c.enrolled || 0} enrolled</CourseCount>
                 </CourseOverlay>
               </CourseCard>
             ))}

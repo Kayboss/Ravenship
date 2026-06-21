@@ -1,7 +1,7 @@
 import { db } from "./config";
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, limit, serverTimestamp, arrayUnion, arrayRemove, Timestamp
+  query, where, orderBy, limit, serverTimestamp, arrayUnion, arrayRemove, Timestamp, onSnapshot
 } from "firebase/firestore";
 import { getStoredUser } from "./auth";
 
@@ -149,6 +149,7 @@ export const addPost = async (data) => {
     authorId: user?.id || "",
     authorName: user?.name || "Unknown",
     authorRole: user?.role || "",
+    authorPhotoURL: user?.photoURL || "",
     likes: [],
     comments: [],
     createdAt: serverTimestamp()
@@ -183,6 +184,14 @@ export const addComment = async (postId, text) => {
       createdAt: new Date().toISOString()
     })
   });
+};
+
+export const updatePost = async (postId, data) => {
+  await updateDoc(doc(db, "posts", postId), data);
+};
+
+export const deletePost = async (postId) => {
+  await deleteDoc(doc(db, "posts", postId));
 };
 
 // ── Events ──
@@ -263,6 +272,7 @@ export const getAnalytics = async () => {
   const courses = await getCourses();
   const mentors = users.filter(u => u.role === "mentor").length;
   const mentees = users.filter(u => u.role === "mentee").length;
+  const admins = users.filter(u => u.role === "admin").length;
   const verified = users.filter(u => u.verified).length;
   const submissions = await getSubmissions();
   const graded = submissions.filter(s => s.score != null).length;
@@ -270,10 +280,173 @@ export const getAnalytics = async () => {
     total: users.length,
     mentors,
     mentees,
+    admins,
     verified,
+    pending: users.length - verified,
     totalCourses: courses.length,
     totalSubmissions: submissions.length,
     gradedSubmissions: graded,
     completionRate: submissions.length ? Math.round((graded / submissions.length) * 100) : 0
   };
+};
+
+// ── Conversations / Messages ──
+
+export const getOrCreateConversation = async (participantIds) => {
+  if (participantIds.length !== 2) throw new Error("Need exactly 2 participants");
+  const q = query(
+    collection(db, "conversations"),
+    where("participants", "array-contains", participantIds[0])
+  );
+  const snap = await getDocs(q);
+  const existing = snap.docs.find(d => {
+    const data = d.data();
+    return data.participants?.length === 2 && data.participants.includes(participantIds[1]);
+  });
+  if (existing) return existing.id;
+
+  const [user1, user2] = await Promise.all([getUser(participantIds[0]), getUser(participantIds[1])]);
+  const ref = await addDoc(collection(db, "conversations"), {
+    participants: participantIds,
+    participantInfo: {
+      [participantIds[0]]: { name: user1?.name || "Unknown", photoURL: user1?.photoURL || "" },
+      [participantIds[1]]: { name: user2?.name || "Unknown", photoURL: user2?.photoURL || "" }
+    },
+    typing: {},
+    lastMessage: null,
+    lastUpdated: serverTimestamp()
+  });
+  return ref.id;
+};
+
+export const sendMessage = async (conversationId, text) => {
+  const user = getStoredUser();
+  if (!user) return;
+  const msgData = {
+    senderId: user.id,
+    senderName: user.name,
+    text,
+    status: "sent",
+    createdAt: serverTimestamp()
+  };
+  await addDoc(collection(db, "conversations", conversationId, "messages"), msgData);
+  await updateDoc(doc(db, "conversations", conversationId), {
+    lastMessage: { text, senderId: user.id, senderName: user.name, status: "sent" },
+    lastUpdated: serverTimestamp()
+  });
+};
+
+export const markMessagesRead = async (conversationId, userId) => {
+  const snap = await getDocs(collection(db, "conversations", conversationId, "messages"));
+  const updates = [];
+  snap.docs.forEach(d => {
+    const data = d.data();
+    if (data.senderId !== userId && data.status !== "read") {
+      updates.push(updateDoc(doc(db, "conversations", conversationId, "messages", d.id), { status: "read", readAt: serverTimestamp() }));
+    }
+  });
+  if (updates.length) await Promise.all(updates);
+};
+
+export const subscribeConversation = (conversationId, callback) => {
+  return onSnapshot(doc(db, "conversations", conversationId), (snap) => {
+    callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+  });
+};
+
+export const setTyping = async (conversationId, userId, isTyping) => {
+  await updateDoc(doc(db, "conversations", conversationId), {
+    [`typing.${userId}`]: isTyping
+  });
+};
+
+// ── Notifications (realtime) ──
+
+export const subscribeNotifications = (callback) => {
+  return onSnapshot(collection(db, "notifications"), (snap) => {
+    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    data.sort((a, b) => {
+      const tA = a.createdAt?.toDate?.()?.getTime() || 0;
+      const tB = b.createdAt?.toDate?.()?.getTime() || 0;
+      return tB - tA;
+    });
+    callback(data);
+  });
+};
+
+export const subscribeMessages = (conversationId, callback) => {
+  const q = query(
+    collection(db, "conversations", conversationId, "messages"),
+    orderBy("createdAt", "asc")
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+};
+
+export const subscribeConversations = (userId, callback) => {
+  const q = query(
+    collection(db, "conversations"),
+    where("participants", "array-contains", userId)
+  );
+  return onSnapshot(q, (snap) => {
+    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    data.sort((a, b) => {
+      const tA = a.lastUpdated?.toDate?.()?.getTime() || 0;
+      const tB = b.lastUpdated?.toDate?.()?.getTime() || 0;
+      return tB - tA;
+    });
+    callback(data);
+  });
+};
+
+// ── Activity Logging ──
+
+export const logActivity = async (action, details = {}) => {
+  try {
+    const user = getStoredUser();
+    await addDoc(collection(db, "activity"), {
+      action,
+      ...details,
+      userId: user?.id || "anonymous",
+      userName: user?.name || "Unknown",
+      userRole: user?.role || "guest",
+      timestamp: serverTimestamp(),
+    });
+  } catch {} // silent — never break UX for logging
+};
+
+export const getActivities = async (limitCount = 100) => {
+  const q = query(collection(db, "activity"), orderBy("timestamp", "desc"), limit(limitCount));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+// ── Error Tracking ──
+
+export const logError = async (error, context = {}) => {
+  try {
+    const user = getStoredUser();
+    await addDoc(collection(db, "errors"), {
+      message: error?.message || String(error),
+      stack: error?.stack || "",
+      ...context,
+      url: window.location.href,
+      userId: user?.id || "anonymous",
+      userName: user?.name || "Unknown",
+      userAgent: navigator.userAgent,
+      resolved: false,
+      timestamp: serverTimestamp(),
+    });
+  } catch {} // silent
+};
+
+export const getErrors = async (limitCount = 100) => {
+  const q = query(collection(db, "errors"), orderBy("timestamp", "desc"), limit(limitCount));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const markErrorResolved = async (errorId) => {
+  await updateDoc(doc(db, "errors", errorId), { resolved: true });
 };

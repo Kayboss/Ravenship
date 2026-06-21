@@ -5,7 +5,7 @@ import "aos/dist/aos.css";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser } from "../firebase/auth";
-import { getPosts, addPost, togglePostLike, getEvents, getUsers } from "../firebase/db";
+import { getPosts, addPost, updatePost, deletePost, togglePostLike, getEvents, getUsers, getOrCreateConversation, sendMessage, subscribeMessages, subscribeConversations, markMessagesRead, subscribeConversation, setTyping } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -578,106 +578,171 @@ const ChatSend = styled.button`
   &:hover { opacity: 0.9; }
 `;
 
-const posts = [
-  { name: "Marcus Chen", role: "Lead Designer", avatarColor: "#b50064", time: "2h ago", text: "Just published a new case study on our design system evolution! Check it out — I'd love feedback from the community. We've been iterating on component consistency for the past 3 sprints.", likes: 12, liked: false, comments: ["Love the case study!", "Great insights Marcus"] },
-  { name: "Aisha Patel", role: "Data Scientist", avatarColor: "#006590", time: "5h ago", text: "Great workshop today on predictive modeling. Here are my notes and a sample notebook for anyone who wants to practice. 🧠📊", image: true, likes: 8, liked: true, comments: ["Thanks for sharing!"] },
-  { name: "Dr. Sarah Jenkins", role: "UX Director", avatarColor: "#ffd200", time: "1d ago", text: "Reminder: Design Thinking session this Friday will cover advanced prototyping techniques. Come prepared with your case study materials!", likes: 5, liked: false, comments: [] },
-];
+const ExpandBtn = styled.button`
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: ${(props) => props.theme.colors.textSecondary};
+  transition: all 0.15s;
+  &:hover { background: ${(props) => props.theme.colors.primary}15; color: ${(props) => props.theme.colors.primary}; }
+`;
 
-const members = [
-  { name: "Alex Rivera", role: "UI Design Track", online: true },
-  { name: "Priya Sharma", role: "Data Track", online: true },
-  { name: "James Kim", role: "Engineering Track", online: false },
-  { name: "Olivia Foster", role: "Product Track", online: true },
-  { name: "Liam O'Brien", role: "Design Track", online: false },
-];
+const ChatPopupOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+`;
 
-const events = [
-  { name: "Design Critique Session", day: "14", month: "Oct", meta: "2:00 PM · Virtual · 12 attending" },
-  { name: "Guest Speaker: AI in Design", day: "18", month: "Oct", meta: "3:00 PM · Room 401 · 28 attending" },
-  { name: "Portfolio Review Workshop", day: "21", month: "Oct", meta: "10:00 AM · Design Lab · 15 spots left" },
-];
-
-const contacts = [
-  { name: "Alex Rivera", role: "UI Design Track", online: true, initials: "AR" },
-  { name: "Priya Sharma", role: "Data Track", online: true, initials: "PS" },
-  { name: "Marcus Chen", role: "Lead Designer", online: true, initials: "MC" },
-  { name: "Olivia Foster", role: "Product Track", online: false, initials: "OF" },
-  { name: "James Kim", role: "Engineering Track", online: false, initials: "JK" },
-];
-
-const conversationData = {
-  "Alex Rivera": [
-    { text: "Hey! Have you started the design system audit?", mine: false, time: "10:14 AM" },
-    { text: "Yes, I'm halfway through the component review.", mine: true, time: "10:16 AM" },
-    { text: "Nice! Let me know if you need any help with the Figma library.", mine: false, time: "10:18 AM" },
-  ],
-  "Priya Sharma": [
-    { text: "The Q3 dataset is ready. Want me to share the dashboard?", mine: false, time: "9:30 AM" },
-    { text: "Yes please! That would be great.", mine: true, time: "9:32 AM" },
-  ],
-  "Marcus Chen": [
-    { text: "Great work on the wireframes! Let's refine the navigation flow.", mine: false, time: "2m ago" },
-    { text: "Thanks! I'll push the latest changes tonight.", mine: true, time: "1m ago" },
-  ],
-  "Olivia Foster": [
-    { text: "Are you joining the product strategy session?", mine: false, time: "Yesterday" },
-    { text: "Absolutely, already registered!", mine: true, time: "Yesterday" },
-  ],
-  "James Kim": [
-    { text: "Can someone share the Figma link?", mine: false, time: "2:22 PM" },
-    { text: "Here it is: https://figma.com/team/mentorship", mine: true, time: "2:25 PM" },
-  ],
-};
+const ChatPopupCard = styled.div`
+  background: ${(props) => props.theme.colors.surface};
+  border-radius: 24px;
+  width: 520px;
+  max-width: 100%;
+  height: 600px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+`;
 
 export const Community = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatContact, setChatContact] = useState(null);
   const [chatMsgs, setChatMsgs] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [chatConvId, setChatConvId] = useState(null);
+  const [conversations, setConversations] = useState([]);
   const [memberFilter, setMemberFilter] = useState("all");
-  const [friendState, setFriendState] = useState({
-    friends: ["Priya Sharma", "Marcus Chen"],
-    sentRequests: ["Olivia Foster"],
-    receivedRequests: ["James Kim", "Liam O'Brien"],
-  });
   const [profileView, setProfileView] = useState(null);
   const [postList, setPostList] = useState([]);
-  const [memberList, setMemberList] = useState(members);
+  const [memberList, setMemberList] = useState([]);
   const [eventList, setEventList] = useState([]);
   const [newPostText, setNewPostText] = useState("");
   const [newPostImage, setNewPostImage] = useState(null);
   const [commentsOpen, setCommentsOpen] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
   const [likingId, setLikingId] = useState(null);
-  const conversationsRef = useRef({ ...conversationData });
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editingPostText, setEditingPostText] = useState("");
+  const unsubMessagesRef = useRef(null);
+  const unsubConvRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const [otherTyping, setOtherTyping] = useState(false);
+  const [chatPopupOpen, setChatPopupOpen] = useState(false);
   const user = getStoredUser() || { name: "You", role: "Mentee", avatarColor: "#b50064" };
-
-  const syncTopBarMessages = () => {
-    const names = Object.keys(conversationsRef.current);
-    const msgs = names.map(name => {
-      const ms = conversationsRef.current[name];
-      const last = ms[ms.length - 1];
-      return { icon: "👤", name, text: last?.text || "", time: last?.time || "", replies: ms.filter(m => m.mine).map(m => m.text) };
-    });
-    localStorage.setItem("topbar_messages", JSON.stringify(msgs));
-  };
+  const isPostAuthor = (p) => user?.id && (p.authorId === user.id || p.authorId === user.uid);
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
-    syncTopBarMessages();
-    getPosts().then(d => setPostList(Array.isArray(d) ? d : posts)).catch(() => setPostList(posts));
-    getUsers().then(d => setMemberList(Array.isArray(d) ? d : members)).catch(() => {});
-    getEvents().then(d => setEventList(Array.isArray(d) ? d : events)).catch(() => {});
+    getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(() => {});
+    getUsers().then(d => setMemberList(Array.isArray(d) ? d : [])).catch(() => {});
+    getEvents().then(d => setEventList(Array.isArray(d) ? d : [])).catch(() => {});
+    const pending = localStorage.getItem("pending_chat_target");
+    if (pending) {
+      try {
+        const target = JSON.parse(pending);
+        localStorage.removeItem("pending_chat_target");
+        if (target?.id && target?.name) openChat(target).then(() => setChatPopupOpen(true));
+      } catch { localStorage.removeItem("pending_chat_target"); }
+    }
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const unsub = subscribeConversations(user.id, (data) => {
+      setConversations(data);
+      const msgs = data.map(c => {
+        const otherId = c.participants?.find(id => id !== user.id);
+        const info = otherId ? c.participantInfo?.[otherId] : null;
+        return { icon: "👤", name: info?.name || "Unknown", text: c.lastMessage?.text || "", time: "", otherId, photoURL: info?.photoURL || "", replies: c.lastMessage ? [c.lastMessage.text] : [] };
+      });
+      localStorage.setItem("topbar_messages", JSON.stringify(msgs));
+    });
+    return () => unsub();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!chatConvId || !user?.id) return;
+    if (unsubConvRef.current) unsubConvRef.current();
+    unsubConvRef.current = subscribeConversation(chatConvId, (conv) => {
+      if (!conv) return;
+      const otherId = conv.participants?.find(id => id !== user.id);
+      const isTyping = otherId && conv.typing?.[otherId] === true;
+      setOtherTyping(!!isTyping);
+    });
+    return () => { if (unsubConvRef.current) unsubConvRef.current(); };
+  }, [chatConvId, user?.id]);
+
+  const fmtTime = (ts) => {
+    if (!ts) return "";
+    if (ts?.toDate) ts = ts.toDate();
+    const d = new Date(ts);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return "Just now";
+    if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+    return d.toLocaleDateString();
+  };
 
   const toggleLike = (index) => {
     const post = postList[index];
     if (!post || !post.id || likingId === post.id) return;
     setLikingId(post.id);
     togglePostLike(post.id)
-      .then(() => { setLikingId(null); setPostList(prev => prev.map((p, i) => i === index ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p)); })
+      .then(() => {
+        setLikingId(null);
+        setPostList(prev => prev.map((p, i) => {
+          if (i !== index) return p;
+          const wasLiked = p.liked ?? (user?.id && p.likes?.includes(user.id));
+          const newLikes = wasLiked
+            ? (p.likes || []).filter(id => id !== user.id)
+            : [...(p.likes || []), user.id];
+          return { ...p, liked: !wasLiked, likes: newLikes };
+        }));
+      })
       .catch(() => setLikingId(null));
+  };
+
+  const startEdit = (post) => {
+    setEditingPostId(post.id);
+    setEditingPostText(post.text);
+  };
+
+  const cancelEdit = () => {
+    setEditingPostId(null);
+    setEditingPostText("");
+  };
+
+  const saveEdit = (index) => {
+    const post = postList[index];
+    if (!post || !editingPostText.trim()) return;
+    updatePost(post.id, { text: editingPostText })
+      .then(() => {
+        setPostList(prev => prev.map((p, i) => i === index ? { ...p, text: editingPostText } : p));
+        cancelEdit();
+      })
+      .catch(() => {});
+  };
+
+  const handleDelete = (index) => {
+    const post = postList[index];
+    if (!post) return;
+    if (!window.confirm("Delete this post?")) return;
+    deletePost(post.id)
+      .then(() => setPostList(prev => prev.filter((_, i) => i !== index)))
+      .catch(() => {});
   };
 
   const toggleComments = (index) => {
@@ -703,69 +768,74 @@ export const Community = () => {
 
   const submitPost = () => {
     if (!newPostText.trim()) return;
-    addPost({text: newPostText})
-      .then(d => { setPostList(prev => [d, ...prev]); setNewPostText(""); setNewPostImage(null); })
+    addPost({ text: newPostText, image: newPostImage })
+      .then(postId => {
+        const newPost = {
+          id: postId,
+          text: newPostText,
+          image: newPostImage,
+          authorName: user.name,
+          authorRole: user.role,
+          authorPhotoURL: user.photoURL || "",
+          likes: [],
+          comments: [],
+          liked: false,
+          createdAt: new Date().toISOString()
+        };
+        setPostList(prev => [newPost, ...prev]);
+        setNewPostText("");
+        setNewPostImage(null);
+      })
       .catch(() => {});
   };
 
-  const filteredMembers = memberFilter === "online" ? members.filter(m => m.online) : members;
+  const filteredMembers = memberFilter === "online" ? memberList.filter(m => m.online) : memberList;
 
-  const getRelation = (name) => {
-    if (friendState.friends.includes(name)) return "friend";
-    if (friendState.sentRequests.includes(name)) return "sent";
-    if (friendState.receivedRequests.includes(name)) return "received";
-    return "none";
-  };
-
-  const sendRequest = (name, e) => {
-    if (e?.stopPropagation) e.stopPropagation();
-    if (getRelation(name) !== "none") return;
-    setFriendState(prev => ({ ...prev, sentRequests: [...prev.sentRequests, name] }));
-  };
-
-  const acceptRequest = (name, e) => {
-    if (e?.stopPropagation) e.stopPropagation();
-    setFriendState(prev => ({
-      friends: [...prev.friends, name],
-      sentRequests: prev.sentRequests.filter(n => n !== name),
-      receivedRequests: prev.receivedRequests.filter(n => n !== name),
-    }));
-  };
-
-  const declineRequest = (name, e) => {
-    if (e?.stopPropagation) e.stopPropagation();
-    setFriendState(prev => ({
-      ...prev,
-      receivedRequests: prev.receivedRequests.filter(n => n !== name),
-    }));
-  };
-
-  const unfriend = (name, e) => {
-    if (e?.stopPropagation) e.stopPropagation();
-    setFriendState(prev => ({ ...prev, friends: prev.friends.filter(n => n !== name) }));
-  };
-
-  const cancelRequest = (name, e) => {
-    if (e?.stopPropagation) e.stopPropagation();
-    setFriendState(prev => ({ ...prev, sentRequests: prev.sentRequests.filter(n => n !== name) }));
-  };
-
-  const friendsOnly = contacts.filter(c => friendState.friends.includes(c.name));
-
-  const openChat = (contact) => {
+  const openChat = async (contact) => {
+    if (!user?.id || !contact?.id || contact.id === user.id) return;
     setChatContact(contact);
-    setChatMsgs(conversationsRef.current[contact.name] || []);
+    try {
+      const convId = await getOrCreateConversation([user.id, contact.id]);
+      setChatConvId(convId);
+      if (unsubMessagesRef.current) unsubMessagesRef.current();
+      markMessagesRead(convId, user.id);
+      unsubMessagesRef.current = subscribeMessages(convId, (msgs) => {
+        setChatMsgs(msgs.map(m => ({
+          id: m.id,
+          text: m.text,
+          mine: m.senderId === user.id,
+          senderName: m.senderName,
+          time: m.createdAt?.toDate ? m.createdAt.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "",
+          status: m.status || "sent"
+        })));
+      });
+    } catch (e) {
+      console.error("Failed to open chat", e);
+    }
     setChatOpen(true);
   };
 
-  const sendChat = () => {
-    if (!chatInput.trim() || !chatContact) return;
-    const newMsg = { text: chatInput, mine: true, time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
-    setChatMsgs(prev => [...prev, newMsg]);
-    if (!conversationsRef.current[chatContact.name]) conversationsRef.current[chatContact.name] = [];
-    conversationsRef.current = { ...conversationsRef.current, [chatContact.name]: [...conversationsRef.current[chatContact.name], newMsg] };
+  const sendChat = async () => {
+    if (!chatInput.trim() || !chatConvId) return;
+    const text = chatInput;
     setChatInput("");
-    syncTopBarMessages();
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    try {
+      await setTyping(chatConvId, user.id, false);
+      await sendMessage(chatConvId, text);
+    } catch (e) {
+      console.error("Failed to send message", e);
+    }
+  };
+
+  const handleChatInput = (e) => {
+    setChatInput(e.target.value);
+    if (!chatConvId || !user?.id) return;
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    setTyping(chatConvId, user.id, true);
+    typingTimeoutRef.current = setTimeout(() => {
+      setTyping(chatConvId, user.id, false);
+    }, 2000);
   };
 
   return (
@@ -778,7 +848,9 @@ export const Community = () => {
           <div>
             <CreatePostCard data-aos="fade-up">
               <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                <Avatar $color={user.avatarColor} style={{ width: 40, height: 40, fontSize: "0.8rem", flexShrink: 0 }}>U</Avatar>
+                <Avatar $color={user.avatarColor} style={{ width: 40, height: 40, fontSize: "0.8rem", flexShrink: 0 }}>
+                  {user.photoURL ? <img src={user.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : "U"}
+                </Avatar>
                 <div style={{ flex: 1 }}>
                   <PostInput placeholder="Share something with the community..." value={newPostText} onChange={(e) => setNewPostText(e.target.value)} />
                   {newPostImage && (
@@ -800,23 +872,41 @@ export const Community = () => {
             {postList.map((p, i) => (
               <FeedCard key={i} data-aos="fade-up" data-aos-delay={i * 50}>
                 <PostHeader>
-                  <Avatar $color={p.avatarColor}>{p.name.split(" ").map(w => w[0]).join("")}</Avatar>
+                  <Avatar $color={p.avatarColor || "#b50064"}>
+                    {p.authorPhotoURL ? <img src={p.authorPhotoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : (p.authorName || p.name || "U").split(" ").map(w => w[0]).join("")}
+                  </Avatar>
                   <div>
-                    <PostAuthor>{p.name}</PostAuthor>
-                    <PostTime>{p.role} · {p.time}</PostTime>
+                    <PostAuthor>{p.authorName || p.name}</PostAuthor>
+                    <PostTime>{p.authorRole || p.role} · {p.time || fmtTime(p.createdAt)}</PostTime>
                   </div>
                 </PostHeader>
-                <PostText>{p.text}</PostText>
+                {editingPostId === p.id ? (
+                  <>
+                    <PostInput value={editingPostText} onChange={(e) => setEditingPostText(e.target.value)} />
+                    <div style={{display:"flex", gap:8, justifyContent:"flex-end", marginTop:8}}>
+                      <PostSubmitBtn onClick={() => saveEdit(i)}>Save</PostSubmitBtn>
+                      <PostSubmitBtn as="button" onClick={cancelEdit} style={{background:"transparent",color:"inherit",border:"1px solid",opacity:0.6}}>Cancel</PostSubmitBtn>
+                    </div>
+                  </>
+                ) : (
+                  <PostText>{p.text}</PostText>
+                )}
                 {p.image && <PostImagePreview>{typeof p.image === "string" && p.image.startsWith("data:") ? <img src={p.image} alt="Post" /> : <span>📊 Chart Preview</span>}</PostImagePreview>}
                 <PostActions>
-                  <ActionBtn $active={p.liked} onClick={() => toggleLike(i)}>{p.liked ? "❤️" : "🤍"} {p.likes}</ActionBtn>
+                  <ActionBtn $active={p.liked ?? (user?.id && p.likes?.includes(user.id))} onClick={() => toggleLike(i)}>{(p.liked ?? (user?.id && p.likes?.includes(user.id))) ? "❤️" : "🤍"} {p.likes?.length ?? 0}</ActionBtn>
                   <ActionBtn $active={commentsOpen[i]} onClick={() => toggleComments(i)}>💬 {p.comments.length}</ActionBtn>
+                  {isPostAuthor(p) && (
+                    <>
+                      <ActionBtn onClick={() => startEdit(p)}>✏️</ActionBtn>
+                      <ActionBtn onClick={() => handleDelete(i)}>🗑️</ActionBtn>
+                    </>
+                  )}
                 </PostActions>
                 {commentsOpen[i] && (
                   <CommentSection>
                     {p.comments.length === 0 && <CommentItem style={{ color: "var(--color-text-secondary, #594048)" }}>No comments yet.</CommentItem>}
                     {p.comments.map((c, j) => (
-                      <CommentItem key={j}><CommentAuthor>{c.author || "Anonymous"}</CommentAuthor>{c.text || c}</CommentItem>
+                      <CommentItem key={j}><CommentAuthor>{c.authorName || c.author || "Anonymous"}</CommentAuthor>{c.text || c}</CommentItem>
                     ))}
                     <CommentInputRow>
                       <CommentInput placeholder="Write a comment..." value={commentInputs[i] || ""} onChange={(e) => setCommentInputs(prev => ({ ...prev, [i]: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && addComment(i)} />
@@ -834,66 +924,62 @@ export const Community = () => {
                 <FilterTab $active={memberFilter === "all"} onClick={() => setMemberFilter("all")}>All Members</FilterTab>
                 <FilterTab $active={memberFilter === "online"} onClick={() => setMemberFilter("online")}>Online Now</FilterTab>
               </FilterRow>
-              {filteredMembers.map((m, i) => {
-                const rel = getRelation(m.name);
-                return (
+              {filteredMembers.map((m, i) => (
                   <MemberRow key={i} onClick={() => setProfileView(m)}>
-                    <Avatar $color={m.online ? undefined : props => props.theme.colors.outline} style={{ width: 32, height: 32, fontSize: "0.7rem" }}>
-                      {m.name.split(" ").map(w => w[0]).join("")}
+                    <Avatar style={{ width: 32, height: 32, fontSize: "0.7rem" }}>
+                      {m.photoURL ? <img src={m.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : m.name?.split(" ").map(w => w[0]).join("")}
                     </Avatar>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <MemberName>{m.name}</MemberName>
                       <MemberRole>{m.role}</MemberRole>
                     </div>
-                    {rel === "none" && <ActionIcon $variant="none" onClick={(e) => sendRequest(m.name, e)} title="Add friend">+</ActionIcon>}
-                    {rel === "sent" && <ActionIcon $variant="sent" onClick={(e) => cancelRequest(m.name, e)} title="Cancel request">⏳</ActionIcon>}
-                    {rel === "friend" && <ActionIcon $variant="friend" onClick={(e) => unfriend(m.name, e)} title="Unfriend">✓</ActionIcon>}
                     <OnlineDot $online={m.online} />
                   </MemberRow>
-                );
-              })}
-            </SideCard>
-            {friendState.receivedRequests.length > 0 && (
-              <SideCard $variant="online">
-                <SideTitle>📩 Friend Requests</SideTitle>
-                {friendState.receivedRequests.map((name, i) => (
-                  <RequestRow key={i}>
-                    <Avatar style={{ width: 28, height: 28, fontSize: "0.65rem" }}>{name.split(" ").map(w => w[0]).join("")}</Avatar>
-                    <MemberName style={{ flex: 1, fontSize: "0.8rem" }}>{name}</MemberName>
-                    <RequestActions>
-                      <SmallBtn $primary onClick={(e) => acceptRequest(name, e)}>Accept</SmallBtn>
-                      <SmallBtn onClick={(e) => declineRequest(name, e)}>Decline</SmallBtn>
-                    </RequestActions>
-                  </RequestRow>
                 ))}
-              </SideCard>
-            )}
-            <SideCard $variant="chat">
+            </SideCard>
+              <SideCard $variant="chat">
               <SideTitle>💬 Messages</SideTitle>
               {!chatOpen ? (
-                friendsOnly.length > 0 ? friendsOnly.map((c, i) => (
-                  <ContactRow key={i} onClick={() => openChat(c)}>
-                    <Avatar style={{ width: 32, height: 32, fontSize: "0.7rem" }}>{c.initials}</Avatar>
-                    <ContactName>{c.name}</ContactName>
-                    <ContactOnline $online={c.online} />
-                  </ContactRow>
-                )) : <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary, #594048)", textAlign: "center", padding: "16px 0" }}>No friends yet. Add friends from the Members list to start chatting!</p>
+                conversations.length > 0 ? conversations.map((c, i) => {
+                  const otherId = c.participants?.find(id => id !== user.id);
+                  const info = otherId ? c.participantInfo?.[otherId] : null;
+                  return (
+                    <ContactRow key={c.id} onClick={() => openChat({ id: otherId, name: info?.name || "Unknown", photoURL: info?.photoURL || "" })}>
+                      <Avatar style={{ width: 32, height: 32, fontSize: "0.7rem" }}>{info?.photoURL ? <img src={info.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : (info?.name || "?").split(" ").map(w => w[0]).join("")}</Avatar>
+                      <ContactName>{info?.name || "Unknown"}</ContactName>
+                      <p style={{fontSize:"0.7rem",color:"var(--color-text-secondary, #594048)",flexShrink:0}}>{c.lastMessage?.text ? "💬" : ""}</p>
+                    </ContactRow>
+                  );
+                }) : <p style={{ fontSize: "0.8rem", color: "var(--color-text-secondary, #594048)", textAlign: "center", padding: "16px 0" }}>No conversations yet. Click a member to start chatting!</p>
               ) : (
                 <ChatBox>
                   <ChatHeader>
                     <BackBtn onClick={() => { setChatOpen(false); setChatContact(null); }}>←</BackBtn>
                     Chatting with {chatContact?.name}
+                    <ExpandBtn onClick={() => setChatPopupOpen(true)} title="Expand chat">⛶</ExpandBtn>
                   </ChatHeader>
                   <ChatMessages>
                     {chatMsgs.map((msg, i) => (
-                      <ChatMsg key={i} $mine={msg.mine}>
+                      <ChatMsg key={msg.id || i} $mine={msg.mine}>
                         {msg.text}
-                        <ChatTime>{msg.time}</ChatTime>
+                        <ChatTime>
+                          {msg.time}
+                          {msg.mine && (
+                            <span style={{marginLeft:4,fontSize:"0.7rem",color:msg.status === "read" ? "var(--color-primary, #b50064)" : "inherit"}}>
+                              {msg.status === "read" ? "✓✓" : "✓"}
+                            </span>
+                          )}
+                        </ChatTime>
                       </ChatMsg>
                     ))}
+                    {otherTyping && (
+                      <ChatMsg $mine={false} style={{background:"transparent",fontStyle:"italic",opacity:0.6,padding:"4px 14px"}}>
+                        {chatContact?.name} is typing...
+                      </ChatMsg>
+                    )}
                   </ChatMessages>
                   <ChatInputRow>
-                    <ChatInput placeholder="Type a message..." value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendChat()} />
+                    <ChatInput placeholder="Type a message..." value={chatInput} onChange={handleChatInput} onKeyDown={(e) => e.key === "Enter" && sendChat()} />
                     <ChatSend onClick={sendChat}>➤</ChatSend>
                   </ChatInputRow>
                 </ChatBox>
@@ -901,7 +987,7 @@ export const Community = () => {
             </SideCard>
             <SideCard $variant="events">
               <SideTitle>📅 Upcoming Events</SideTitle>
-              {events.map((e, i) => (
+              {eventList.map((e, i) => (
                 <EventItem key={i}>
                   <EventDate>
                     <EventDay>{e.day}</EventDay>
@@ -921,29 +1007,52 @@ export const Community = () => {
         <ProfilePopup onClick={() => setProfileView(null)}>
           <ProfileCard onClick={(e) => e.stopPropagation()}>
             <ProfileClose onClick={() => setProfileView(null)}>✕</ProfileClose>
-            <ProfileAvatarLarge>{profileView.name.split(" ").map(w => w[0]).join("")}</ProfileAvatarLarge>
+            <ProfileAvatarLarge>
+              {profileView.photoURL ? <img src={profileView.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : profileView.name.split(" ").map(w => w[0]).join("")}
+            </ProfileAvatarLarge>
             <ProfileNameLarge>{profileView.name}</ProfileNameLarge>
             <ProfileRoleLarge>{profileView.role}</ProfileRoleLarge>
             <ProfileBadge $online={profileView.online}>{profileView.online ? "🟢 Online" : "⚪ Offline"}</ProfileBadge>
-            {getRelation(profileView.name) === "friend" && (
-              <ProfileActionBtn $primary onClick={() => { const c = contacts.find(c => c.name === profileView.name) || { name: profileView.name, role: profileView.role, online: profileView.online, initials: profileView.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) }; openChat(c); setProfileView(null); }}>
-                💬 Send Message
-              </ProfileActionBtn>
-            )}
-            {getRelation(profileView.name) === "none" && (
-              <ProfileActionBtn $primary onClick={() => { sendRequest(profileView.name); setProfileView(null); }}>+ Send Friend Request</ProfileActionBtn>
-            )}
-            {getRelation(profileView.name) === "sent" && (
-              <ProfileActionBtn onClick={() => { cancelRequest(profileView.name); setProfileView(null); }}>⏳ Cancel Request</ProfileActionBtn>
-            )}
-            {getRelation(profileView.name) === "received" && (
-              <ProfileActionBtn $primary onClick={() => { acceptRequest(profileView.name); setProfileView(null); }}>✓ Accept Request</ProfileActionBtn>
-            )}
-            {getRelation(profileView.name) === "friend" && (
-              <ProfileActionBtn onClick={() => { unfriend(profileView.name); setProfileView(null); }}>Remove Friend</ProfileActionBtn>
-            )}
+            <ProfileActionBtn $primary onClick={() => { openChat(profileView); setProfileView(null); }}>
+              💬 Send Message
+            </ProfileActionBtn>
           </ProfileCard>
         </ProfilePopup>
+      )}
+      {chatPopupOpen && chatContact && (
+        <ChatPopupOverlay onClick={() => setChatPopupOpen(false)}>
+          <ChatPopupCard onClick={(e) => e.stopPropagation()}>
+            <ChatHeader>
+              <BackBtn onClick={() => setChatPopupOpen(false)}>←</BackBtn>
+              Chatting with {chatContact?.name}
+              <ExpandBtn onClick={() => setChatPopupOpen(false)} title="Close">✕</ExpandBtn>
+            </ChatHeader>
+            <ChatMessages style={{ maxHeight: "none", flex: 1 }}>
+              {chatMsgs.map((msg, i) => (
+                <ChatMsg key={msg.id || i} $mine={msg.mine}>
+                  {msg.text}
+                  <ChatTime>
+                    {msg.time}
+                    {msg.mine && (
+                      <span style={{marginLeft:4,fontSize:"0.7rem",color:msg.status === "read" ? "var(--color-primary, #b50064)" : "inherit"}}>
+                        {msg.status === "read" ? "✓✓" : "✓"}
+                      </span>
+                    )}
+                  </ChatTime>
+                </ChatMsg>
+              ))}
+              {otherTyping && (
+                <ChatMsg $mine={false} style={{background:"transparent",fontStyle:"italic",opacity:0.6,padding:"4px 14px"}}>
+                  {chatContact?.name} is typing...
+                </ChatMsg>
+              )}
+            </ChatMessages>
+            <ChatInputRow>
+              <ChatInput placeholder="Type a message..." value={chatInput} onChange={handleChatInput} onKeyDown={(e) => e.key === "Enter" && sendChat()} />
+              <ChatSend onClick={sendChat}>➤</ChatSend>
+            </ChatInputRow>
+          </ChatPopupCard>
+        </ChatPopupOverlay>
       )}
     </Page>
   );

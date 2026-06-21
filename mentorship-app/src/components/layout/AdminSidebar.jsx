@@ -151,6 +151,8 @@ const navItems = [
   { label: "Community",     path: "/dashboard/admin/community",    icon: "👥" },
   { label: "Notifications", path: "/dashboard/admin#notifications", icon: "🔔" },
   { label: "Help Center",   path: "/dashboard/admin#help",         icon: "❓" },
+  { label: "Activity Log",  path: "/dashboard/admin#activity",     icon: "📊" },
+  { label: "Error Log",     path: "/dashboard/admin#errors",       icon: "⚠️" },
 ];
 
 export const AdminSidebar = () => {

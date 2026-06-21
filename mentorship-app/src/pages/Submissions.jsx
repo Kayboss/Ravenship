@@ -6,6 +6,7 @@ import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { updateSubmission } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -244,17 +245,11 @@ const PreviewClose = styled.button`
   font-family: inherit; font-weight: 600; cursor: pointer;
 `;
 
-const initialSubmissions = [
-  { id: 1, title: "Design System Audit Report", course: "Advanced UI/UX Systems", file: "audit-report.pdf", size: "2.4 MB", date: "Oct 10, 2024", status: "reviewed", color: "#b50064", icon: "📄" },
-  { id: 2, title: "User Research Findings", course: "Design Thinking Fundamentals", file: "research-synthesis.docx", size: "1.8 MB", date: "Oct 8, 2024", status: "pending", color: "#006590", icon: "📄" },
-  { id: 3, title: "React State Lab Solution", course: "Full-Stack Web Development", file: "state-management.zip", size: "4.2 MB", date: "Oct 5, 2024", status: "pending", color: "#ffd200", icon: "📄" },
-];
-
 export const Submissions = () => {
   const { role } = useParams();
   const isMentor = role === "mentor";
   const { enrolledCourses } = useCourses();
-  const [submissions, setSubmissions] = useState(initialSubmissions);
+  const [submissions, setSubmissions] = useState([]);
   const [drag, setDrag] = useState(false);
   const [form, setForm] = useState({ title: "", course: "" });
   const [fileName, setFileName] = useState("");
@@ -272,10 +267,15 @@ export const Submissions = () => {
   const submitGrade = () => {
     const score = parseInt(gradeScore);
     if (isNaN(score) || score < 0 || score > 100) return alert("Enter a grade between 0 and 100");
+    const subId = gradeTarget.id;
+    const orig = gradeTarget;
     setSubmissions(prev => prev.map(s =>
-      s.id === gradeTarget.id ? { ...s, status: "reviewed", grade: score, feedback: gradeFeedback } : s
+      s.id === subId ? { ...s, status: "reviewed", grade: score, feedback: gradeFeedback } : s
     ));
     setGradeTarget(null);
+    if (orig.firestoreId) {
+      updateSubmission(orig.firestoreId, { status: "reviewed", grade: score, feedback: gradeFeedback }).catch(() => {});
+    }
   };
 
   const activeCourses = useMemo(() =>

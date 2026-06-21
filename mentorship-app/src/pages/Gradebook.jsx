@@ -3,7 +3,7 @@ import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { useParams } from "react-router-dom";
-import { AdminSidebar } from "../components/layout/AdminSidebar.jsx";
+import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser } from "../firebase/auth";
 import { getUsers, getCourses, getAllGradebook, updateGradebook, getSubmissions } from "../firebase/db";
@@ -294,7 +294,7 @@ export const Gradebook = () => {
 
   return (
     <Page>
-      <AdminSidebar />
+      <SidebarByRole />
       <Main>
         <TopBar searchPlaceholder="Search gradebook..." />
         <PageTitle data-aos="fade-down">Gradebook</PageTitle>

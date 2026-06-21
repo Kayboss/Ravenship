@@ -7,7 +7,7 @@ import { MenteeSidebar } from "../components/layout/MenteeSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { getStoredUser } from "../firebase/auth";
-import { getCourses, getSubmissions, updateSubmission } from "../firebase/db";
+import { getCourses, getSubmissions, updateSubmission, getAllGradebook } from "../firebase/db";
 
 const DashboardContainer = styled.div`
   display: flex;
@@ -537,12 +537,6 @@ const courseMeta = {
   "Creative Brand Strategy": { desc: "Developing compelling brand identities and marketing narratives.", next: "Visual Identity", badge: "Design", emoji: "✨" },
 };
 
-const defaultDueAssignments = [
-  { id: 1, title: "Design System Component Audit", course: "Advanced UI/UX Systems", due: "Oct 22, 2024", marks: 100, urgent: false, icon: "🎨", color: "#b50064" },
-  { id: 2, title: "User Research Synthesis Report", course: "Design Thinking Fundamentals", due: "Oct 25, 2024", marks: 80, urgent: false, icon: "📝", color: "#006590" },
-  { id: 3, title: "Data Visualization Challenge", course: "Strategic Data Insights", due: "Oct 28, 2024", marks: 90, urgent: false, icon: "📊", color: "#b50064" },
-];
-
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const weekHours = [40, 80, 60, 100, 50, 30, 20];
 
@@ -555,7 +549,10 @@ export const MenteeDashboard = () => {
   const [dashData, setDashData] = useState(null);
   const [dashError, setDashError] = useState(null);
   const [dueAssignments, setDueAssignments] = useState([]);
-  const [menteeName, setMenteeName] = useState("Sarah");
+  const [coursesList, setCoursesList] = useState([]);
+  const [menteeName, setMenteeName] = useState("Mentee");
+  const [menteeStats, setMenteeStats] = useState({ hours: "0h", skills: "0", submissionsCount: 0, weekData: [0,0,0,0,0,0,0] });
+  const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   useEffect(() => {
     AOS.init({ duration: 800, once: true, offset: 50 });
     const user = getStoredUser();
@@ -564,33 +561,34 @@ export const MenteeDashboard = () => {
     Promise.all([
       getCourses(),
       menteeId ? getSubmissions({ menteeId }) : Promise.resolve([]),
+      menteeId ? getAllGradebook(menteeId) : Promise.resolve([]),
     ])
-      .then(([courses, submissions]) => {
+      .then(([courses, submissions, gradebook]) => {
         setDashData({ courses, submissions });
-        if (submissions && submissions.length > 0) {
-          const pending = submissions
-            .filter((s) => s.status === "pending" || s.status === "assigned")
-            .map((s) => ({
-              id: s.id,
-              title: s.title || s.name || "Assignment",
-              course: s.courseName || s.course || "",
-              due: s.dueDate || s.due || "TBD",
-              marks: s.marks || s.totalMarks || 100,
-              urgent: s.urgent || false,
-              icon: s.icon || "📝",
-              color: s.color || "#006590",
-            }));
-          setDueAssignments(pending);
-        } else {
-          setDueAssignments(defaultDueAssignments);
-        }
+        setCoursesList(Array.isArray(courses) ? courses : []);
+        const pending = (submissions || []).filter(s => s.status === "pending" || s.status === "assigned").map(s => ({
+          id: s.id,
+          title: s.title || s.name || "Assignment",
+          course: s.courseName || s.course || "",
+          due: s.dueDate || s.due || "TBD",
+          marks: s.marks || s.totalMarks || 100,
+          urgent: s.urgent || false,
+          icon: s.icon || "📝",
+          color: s.color || "#006590",
+        }));
+        setDueAssignments(pending);
+        const graded = (submissions || []).filter(s => s.score != null);
+        const allScores = gradebook.flatMap(g => Object.values(g.scores || {}).filter(v => typeof v === 'number'));
+        const avgScore = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
+        const hours = submissions ? Math.round(submissions.length * 1.5 * 10) / 10 : 0;
+        setMenteeStats({ hours: `${hours}h`, skills: `${graded.length || allScores.length}`, submissionsCount: submissions?.length || 0, weekData: [0,0,0,0,0,0,0] });
       })
       .catch(() => {});
   }, []);
 
   const enrolledList = Object.entries(enrolledCourses).map(([title, data]) => {
-    const meta = courseMeta[title] || { desc: "", next: "", badge: "", emoji: "📚" };
-    return { title, ...meta, progress: data.progress || 0 };
+    const course = coursesList.find(c => c.title === title);
+    return { title, desc: course?.desc || "", next: "", badge: course?.badge || "", emoji: course?.emoji || "📚", progress: data.progress || 0 };
   });
 
   return (
@@ -602,21 +600,21 @@ export const MenteeDashboard = () => {
         <HeroSection data-aos="fade-down">
           <HeroTitle>Welcome back, {menteeName}! 👋</HeroTitle>
           <HeroText>
-            You've made incredible progress this week! You're in the top 5% of mentees in the Design Thinking track. Keep that momentum going!
+            You have {dueAssignments.length} pending assignment{dueAssignments.length !== 1 ? "s" : ""} and {menteeStats.skills} completed submission{menteeStats.skills !== "1" ? "s" : ""}. Keep up the momentum!
           </HeroText>
           <HeroStats>
             <StatCard>
               <StatIcon>⏱️</StatIcon>
               <div>
-                <StatValue>24.5h</StatValue>
-                <StatLabel>Hours Learned</StatLabel>
+                <StatValue>{menteeStats.hours}</StatValue>
+                <StatLabel>Est. Hours</StatLabel>
               </div>
             </StatCard>
             <StatCard>
               <StatIcon>⭐</StatIcon>
               <div>
-                <StatValue>12</StatValue>
-                <StatLabel>Skills Earned</StatLabel>
+                <StatValue>{menteeStats.skills}</StatValue>
+                <StatLabel>Completed</StatLabel>
               </div>
             </StatCard>
           </HeroStats>
@@ -697,11 +695,11 @@ export const MenteeDashboard = () => {
               <div style={{ marginTop: 32 }}>
                 <StatLabel2>Weekly Activity</StatLabel2>
                 <ActivityChart>
-                  {weekHours.map((h, i) => (
+                  {menteeStats.weekData.length ? menteeStats.weekData.map((h, i) => (
                     <Bar key={i} $height={h} $active={i === 3}>
-                      <BarTooltip>{h === 100 ? "6h" : `${Math.round(h / 100 * 6 * 10) / 10}h`}</BarTooltip>
+                      <BarTooltip>{h || "0"} submissions</BarTooltip>
                     </Bar>
-                  ))}
+                  )) : <p style={{color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:16,gridColumn:"1/-1"}}>No activity yet this week.</p>}
                 </ActivityChart>
                 <DayLabels>
                   {weekDays.map((d, i) => (
@@ -718,25 +716,7 @@ export const MenteeDashboard = () => {
             <SectionTitle>Recent Grades & Feedback</SectionTitle>
           </SectionHeader>
           <GradesCard>
-            <GradeItem>
-              <GradeInfo>
-                <GradeIcon>📝</GradeIcon>
-                <GradeDetails>
-                  <GradeName>User Research Report</GradeName>
-                  <GradeSub>Assignment #04 • Completed Oct 05</GradeSub>
-                </GradeDetails>
-              </GradeInfo>
-              <GradeScore>
-                <ScoreValue>98/100</ScoreValue>
-                <ScoreBadge>A+ Excellence</ScoreBadge>
-              </GradeScore>
-            </GradeItem>
-            <FeedbackBanner>
-              <MentorAvatar>MC</MentorAvatar>
-              <FeedbackText>
-                "Your user empathy maps were exceptionally detailed, Sarah. The way you synthesized the interview data into actionable personas was impressive. Great work!" — <strong>Marcus Chen, Lead Mentor</strong>
-              </FeedbackText>
-            </FeedbackBanner>
+            <p style={{ textAlign: "center", color: "#594048", padding: 32, fontSize: "0.9rem" }}>No grades yet. Complete assignments to see feedback here.</p>
           </GradesCard>
         </div>
       </MainContent>
