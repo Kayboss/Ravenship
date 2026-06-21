@@ -1093,11 +1093,11 @@ const AdminPageTitle = styled.h2`font-size:1.6rem;font-weight:700;color:${p => p
 
 export default function AdminDashboard() {
   const [theme, setTheme] = useState("dark");
-  const [authReady, setAuthReady] = useState(false);
+  const [containerKey, setContainerKey] = useState(0);
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
   const location = useLocation();
-  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
+  useEffect(() => { onAuthReady(() => setContainerKey(k => k + 1)); }, []);
   useEffect(() => {
     const t = location.hash.replace("#", "");
     if (t && tabs.find(tab => tab.key === t)) { setActiveTab(t); }
@@ -1109,10 +1109,10 @@ export default function AdminDashboard() {
       <AdminPageMain>
         <TopBar theme={theme} setTheme={setTheme} />
         <AdminPageTitle>{tabs.find(t => t.key === activeTab)?.label || "Dashboard"}</AdminPageTitle>
-        {authReady ? tabs.map(tab => {
+        <div key={containerKey}>{tabs.map(tab => {
           const Comp = tab.comp;
           return <div key={tab.key} style={{ display: tab.key === activeTab ? "block" : "none" }}><Comp /></div>;
-        }) : <p style={{textAlign:"center",padding:40,color:"#594048"}}>Loading dashboard...</p>}
+        })}</div>
       </AdminPageMain>
     </AdminPageLayout>
   );
