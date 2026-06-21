@@ -16,6 +16,16 @@ export default function AdminErrors() {
   };
   return (
     <Card data-aos="fade-up">
+      <style>{`
+        .err-row{padding:12px 16px;border-radius:12;border-left:4px solid;overflow:hidden}
+        .err-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+        .err-info{flex:1;min-width:0}
+        .err-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+        @media(max-width:480px){
+          .err-top{flex-direction:column;gap:8px}
+          .err-meta{flex-direction:row;align-items:center;align-self:flex-start}
+        }
+      `}</style>
       <CardTitle>⚠️ Error Log</CardTitle>
       <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Unhandled errors and exceptions reported from the client.</p>
       {errors.length === 0 ? <p style={{color:"#594048"}}>No errors recorded.</p> : (
@@ -23,11 +33,11 @@ export default function AdminErrors() {
           {errors.map((e, i) => {
             const time = e.timestamp?.toDate ? e.timestamp.toDate() : new Date(e.timestamp);
             return (
-              <div key={e.id || i} style={{padding:"12px 16px",background:e.resolved?"#f9f9f9":"#fff7f7",borderRadius:12,borderLeft:`4px solid ${e.resolved?"#2e7d32":"#e53935"}`,overflow:"hidden"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
-                  <div style={{flex:1,minWidth:0}}>
+              <div key={e.id || i} className="err-row" style={{background:e.resolved?"#f9f9f9":"#fff7f7",borderLeftColor:e.resolved?"#2e7d32":"#e53935"}}>
+                <div className="err-top">
+                  <div className="err-info">
                     <div style={{fontWeight:700,fontSize:"0.85rem",color:"#2c3e50",marginBottom:4}}>{e.message || "Unknown error"}</div>
-                    {e.url && <div style={{fontSize:"0.72rem",color:"#594048",marginBottom:2}}>URL: {e.url}</div>}
+                    {e.url && <div style={{fontSize:"0.72rem",color:"#594048",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>URL: {e.url}</div>}
                     {e.userName && <div style={{fontSize:"0.72rem",color:"#594048",marginBottom:2}}>User: {e.userName} ({e.userRole})</div>}
                     {e.stack && (
                       <details style={{marginTop:4}}>
@@ -36,13 +46,13 @@ export default function AdminErrors() {
                       </details>
                     )}
                   </div>
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                  <div className="err-meta">
                     <Badge $c={e.resolved?"#2e7d32":"#e53935"}>{e.resolved?"Resolved":"Open"}</Badge>
-                    <span style={{fontSize:"0.7rem",color:"#999",whiteSpace:"nowrap"}}>{time.toLocaleDateString()} {time.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
+                    <span style={{fontSize:"0.68rem",color:"#999",whiteSpace:"nowrap"}}>{time.toLocaleDateString()} {time.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
                   </div>
                 </div>
                 {!e.resolved && (
-                  <button disabled={resolving === e.id} onClick={() => doResolve(e.id)} style={{marginTop:8,padding:"4px 12px",borderRadius:6,border:"1px solid #2e7d32",background:"transparent",color:"#2e7d32",fontSize:"0.75rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                  <button disabled={resolving === e.id} onClick={() => doResolve(e.id)} style={{marginTop:8,padding:"6px 14px",borderRadius:6,border:"1px solid #2e7d32",background:"transparent",color:"#2e7d32",fontSize:"0.78rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",minHeight:34}}>
                     {resolving === e.id ? "..." : "✓ Mark Resolved"}
                   </button>
                 )}
