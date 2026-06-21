@@ -5,7 +5,7 @@ import "aos/dist/aos.css";
 import { useParams, Link } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getCounsellingRequests, deleteCounsellingRequest } from "../firebase/db";
+import { getCounsellingRequests, deleteCounsellingRequest, getSponsorshipRequests, deleteSponsorshipRequest } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -162,6 +162,60 @@ const EmptyMsg = styled.p`
   font-style: italic;
 `;
 
+const ViewBtn = styled.button`
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  &:hover { opacity: 0.85; }
+`;
+
+const PdfOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+`;
+
+const PdfModalInner = styled.div`
+  background: #fff;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 800px;
+  height: 90vh;
+  position: relative;
+  overflow: hidden;
+`;
+
+const PdfCloseBtn = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: #e53935;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  &:hover { opacity: 0.85; }
+`;
+
 export const HelpCenter = () => {
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
   const [openFaq, setOpenFaq] = React.useState(null);
@@ -171,13 +225,21 @@ export const HelpCenter = () => {
 
   const [requests, setRequests] = useState([]);
   const [loadingReqs, setLoadingReqs] = useState(true);
+  const [sponsorReqs, setSponsorReqs] = useState([]);
+  const [loadingSponsors, setLoadingSponsors] = useState(true);
+  const [pdfModal, setPdfModal] = useState(null);
 
   const fetchRequests = async () => {
     try {
-      const data = await getCounsellingRequests();
-      setRequests(data);
+      const [cData, sData] = await Promise.all([
+        getCounsellingRequests(),
+        getSponsorshipRequests()
+      ]);
+      setRequests(cData);
+      setSponsorReqs(sData);
     } catch { /* ignore */ }
     setLoadingReqs(false);
+    setLoadingSponsors(false);
   };
 
   useEffect(() => {
@@ -187,6 +249,11 @@ export const HelpCenter = () => {
   const handleDelete = async (id) => {
     await deleteCounsellingRequest(id);
     setRequests(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleDeleteSponsor = async (id) => {
+    await deleteSponsorshipRequest(id);
+    setSponsorReqs(prev => prev.filter(r => r.id !== id));
   };
 
   const formatDate = (ts) => {
@@ -228,9 +295,9 @@ export const HelpCenter = () => {
             </Card>
           )}
           <Card data-aos="fade-up">
-            <CardTitle>📧 Email Support</CardTitle>
-            <CardDesc>Send us an email and we'll respond within 24 hours.</CardDesc>
-            <ContactBtn href="mailto:support@mentorship.com">support@mentorship.com</ContactBtn>
+            <CardTitle>📋 Sponsorship Request</CardTitle>
+            <CardDesc>Apply for sponsorship to support your education, training, or personal development goals.</CardDesc>
+            <ContactBtn as={Link} to={`/dashboard/${role}/sponsorship-request`}>Request Sponsorship</ContactBtn>
           </Card>
           <Card data-aos="fade-up">
             <CardTitle>📚 Quick Guide</CardTitle>
@@ -245,28 +312,69 @@ export const HelpCenter = () => {
         </Grid>
 
         {isAdmin && (
-          <AdminSection data-aos="fade-up">
-            <AdminSectionTitle>📋 Incoming Counselling Requests</AdminSectionTitle>
-            {loadingReqs ? (
-              <p style={{ color: "#594048", fontSize: "0.85rem" }}>Loading...</p>
-            ) : requests.length === 0 ? (
-              <EmptyMsg>No counselling requests yet.</EmptyMsg>
-            ) : (
-              <RequestTable>
-                {requests.map(req => (
-                  <RequestRow key={req.id}>
-                    <RequestInfo>
-                      <p><strong>{req.name}</strong> &lt;{req.email}&gt;</p>
-                      <p>Type: {req.type}</p>
-                      <p>Preferred date: {req.dateTime}</p>
-                      <span>Submitted {formatDate(req.createdAt)}</span>
-                    </RequestInfo>
-                    <DeleteBtn onClick={() => handleDelete(req.id)}>Delete</DeleteBtn>
-                  </RequestRow>
-                ))}
-              </RequestTable>
-            )}
-          </AdminSection>
+          <>
+            <AdminSection data-aos="fade-up">
+              <AdminSectionTitle>📋 Incoming Counselling Requests</AdminSectionTitle>
+              {loadingReqs ? (
+                <p style={{ color: "#594048", fontSize: "0.85rem" }}>Loading...</p>
+              ) : requests.length === 0 ? (
+                <EmptyMsg>No counselling requests yet.</EmptyMsg>
+              ) : (
+                <RequestTable>
+                  {requests.map(req => (
+                    <RequestRow key={req.id}>
+                      <RequestInfo>
+                        <p><strong>{req.name}</strong> &lt;{req.email}&gt;</p>
+                        <p>Type: {req.type}</p>
+                        <p>Preferred date: {req.dateTime}</p>
+                        <span>Submitted {formatDate(req.createdAt)}</span>
+                      </RequestInfo>
+                      <DeleteBtn onClick={() => handleDelete(req.id)}>Delete</DeleteBtn>
+                    </RequestRow>
+                  ))}
+                </RequestTable>
+              )}
+            </AdminSection>
+
+            <AdminSection data-aos="fade-up">
+              <AdminSectionTitle>📋 Incoming Sponsorship Requests</AdminSectionTitle>
+              {loadingSponsors ? (
+                <p style={{ color: "#594048", fontSize: "0.85rem" }}>Loading...</p>
+              ) : sponsorReqs.length === 0 ? (
+                <EmptyMsg>No sponsorship requests yet.</EmptyMsg>
+              ) : (
+                <RequestTable>
+                  {sponsorReqs.map(req => (
+                    <RequestRow key={req.id}>
+                      <RequestInfo>
+                        <p><strong>{req.userName || req.name}</strong> &lt;{req.userEmail || req.email}&gt;</p>
+                        <p>Type: {req.type} | Amount: {req.amount}</p>
+                        <p>Purpose: {req.purpose}</p>
+                        <span>Submitted {formatDate(req.createdAt)}</span>
+                      </RequestInfo>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <ViewBtn onClick={() => setPdfModal(req)}>View PDF</ViewBtn>
+                        <DeleteBtn onClick={() => handleDeleteSponsor(req.id)}>Delete</DeleteBtn>
+                      </div>
+                    </RequestRow>
+                  ))}
+                </RequestTable>
+              )}
+            </AdminSection>
+          </>
+        )}
+
+        {pdfModal && (
+          <PdfOverlay onClick={() => setPdfModal(null)}>
+            <PdfModalInner onClick={e => e.stopPropagation()}>
+              <PdfCloseBtn onClick={() => setPdfModal(null)}>&times;</PdfCloseBtn>
+              {pdfModal.pdfData ? (
+                <iframe src={pdfModal.pdfData} title="Sponsorship Request PDF" style={{ width: "100%", height: "100%", border: "none", borderRadius: 12 }} />
+              ) : (
+                <p style={{ padding: 40, textAlign: "center", color: "#594048" }}>No PDF data available for this request.</p>
+              )}
+            </PdfModalInner>
+          </PdfOverlay>
         )}
       </Main>
     </Page>

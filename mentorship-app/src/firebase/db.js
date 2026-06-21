@@ -517,3 +517,30 @@ export const getCounsellingRequests = async () => {
 export const deleteCounsellingRequest = async (id) => {
   await deleteDoc(doc(db, "counsellingRequests", id));
 };
+
+// ── Sponsorship Requests ──
+
+export const addSponsorshipRequest = async (data) => {
+  const user = getStoredUser();
+  const ref = await addDoc(collection(db, "sponsorshipRequests"), {
+    ...data,
+    userId: user?.id || "",
+    userName: user?.name || data.name || "",
+    userEmail: user?.email || data.email || "",
+    userPhone: user?.phone || data.phone || "",
+    userCity: user?.city || data.city || "",
+    userPhotoURL: user?.photoURL || data.photoURL || "",
+    createdAt: serverTimestamp()
+  });
+  return ref.id;
+};
+
+export const getSponsorshipRequests = async () => {
+  const q = query(collection(db, "sponsorshipRequests"), orderBy("createdAt", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const deleteSponsorshipRequest = async (id) => {
+  await deleteDoc(doc(db, "sponsorshipRequests", id));
+};
