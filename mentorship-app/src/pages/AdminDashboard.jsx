@@ -115,9 +115,7 @@ function DashboardOverview() {
   const user = getStoredUser() || { name: "Admin" };
   const [weekData, setWeekData] = useState([]);
   const [sourceData, setSourceData] = useState([]);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (!ready) return;
+  useEffect(() => {
     getAnalytics().then(d => setData(d)).catch(() => {});
     getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
     Promise.all([
@@ -151,7 +149,7 @@ function DashboardOverview() {
       const total = allUsers.length || 1;
       setSourceData(Object.entries(cities).map(([l, v]) => ({ l, v: Math.round((v/total)*100), c: "#b50064" })));
     }).catch(() => {});
-  }, [ready]);
+  }, []);
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Good morning"; if (h < 18) return "Good afternoon"; return "Good evening"; })();
   const totalUsers = data ? data.total : users.length;
   const mentors = data ? data.mentors : users.filter(u => u.role === "mentor").length;
@@ -303,12 +301,10 @@ function MentorsSection() {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (!ready) return;
+  useEffect(() => {
     getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor") : [])).catch(() => {});
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [ready]);
+  }, []);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
@@ -406,12 +402,10 @@ function MenteesSection() {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (!ready) return;
+  useEffect(() => {
     getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentee") : [])).catch(() => {});
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [ready]);
+  }, []);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
@@ -494,9 +488,7 @@ function GradebookSection() {
   const [mentees, setMentees] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (!ready) return;
+  useEffect(() => {
     setLoading(true);
     getAllGradebook()
       .then(entries => {
@@ -517,7 +509,7 @@ function GradebookSection() {
       const names = [...new Set(courses.flatMap(c => c.assignments ? (typeof c.assignments === 'number' ? [] : c.assignments) : []))];
       setAssignments(names.length ? names : ["Assignment 1", "Assignment 2", "Assignment 3", "Assignment 4", "Assignment 5"]);
     }).catch(() => setAssignments(["Assignment 1", "Assignment 2", "Assignment 3", "Assignment 4", "Assignment 5"]));
-  }, [ready]);
+  }, []);
   const total = mentees.length;
   const passing = mentees.filter(m => m.avg >= 60).length;
   const avg = Math.round(mentees.reduce((s, m) => s + m.avg, 0) / (total || 1));
@@ -576,13 +568,11 @@ function NotificationsSection() {
   const [notifMsg, setNotifMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [deleting, setDeleting] = useState(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (!ready) return;
+  useEffect(() => {
     getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
       .then(snap => setList(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
       .catch(() => {});
-  }, [ready]);
+  }, []);
   const send = () => {
     if (!title.trim() || !message.trim()) { setNotifMsg("Title and message are required"); return; }
     setSending(true);
@@ -632,11 +622,9 @@ function NotificationsSection() {
 
 function AnalyticsSection() {
   const [data, setData] = useState(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (!ready) return;
+  useEffect(() => {
     getAnalytics().then(d => setData(d)).catch(() => {});
-  }, [ready]);
+  }, []);
   if (!data) return <Card><p style={{ color: "#594048" }}>Loading...</p></Card>;
   return (
     <>
@@ -680,8 +668,6 @@ function HelpCenterSection() {
   const [sponsorReqs, setSponsorReqs] = useState([]);
   const [pdfModal, setPdfModal] = useState(null);
   const activeTab = loc.hash.includes("?tab=") ? loc.hash.split("?tab=")[1] : "messages";
-  const [ready, setReady] = useState(false);
-
   const load = () => {
     getDocs(collection(db, "helpMessages"))
       .then(snap => setMsgs(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
@@ -690,8 +676,7 @@ function HelpCenterSection() {
     getCounsellingRequests().then(d => setCounselReqs(Array.isArray(d) ? d : [])).catch(() => {});
     getSponsorshipRequests().then(d => setSponsorReqs(Array.isArray(d) ? d : [])).catch(() => {});
   };
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (ready) load(); }, [ready]);
+  useEffect(() => { load(); }, []);
 
   const fmtDate = (ts) => {
     if (!ts?.toDate) return "";
@@ -857,11 +842,9 @@ function HelpCenterSection() {
 function CoursesSection() {
   const [courses, setCourses] = useState([]);
   const [expandedCourse, setExpandedCourse] = useState(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (!ready) return;
+  useEffect(() => {
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [ready]);
+  }, []);
   return (
     <div style={{display:"flex",flexDirection:"column",gap:12}}>
       {courses.length === 0 ? <SectionBox data-aos="fade-up"><p style={{color:"#594048",fontSize:"0.85rem"}}>No courses yet.</p></SectionBox> : courses.map((c, i) => (
@@ -907,12 +890,10 @@ function CoursesSection() {
 function ProgressSection() {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (!ready) return;
+  useEffect(() => {
     getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
-  }, [ready]);
+  }, []);
   const mentors = users.filter(u => u.role === "mentor");
   const mentees = users.filter(u => u.role === "mentee");
   const topMentors = [...mentors].sort((a, b) => (b.courseCount || courses.filter(c => c.instructor?.toLowerCase() === b.name?.toLowerCase()).length) - (a.courseCount || courses.filter(c => c.instructor?.toLowerCase() === a.name?.toLowerCase()).length)).slice(0, 5);
@@ -958,11 +939,9 @@ function ProgressSection() {
 
 function ActivitySection() {
   const [activities, setActivities] = useState([]);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (!ready) return;
+  useEffect(() => {
     getActivities(50).then(setActivities).catch(() => {});
-  }, [ready]);
+  }, []);
   return (
     <Card data-aos="fade-up">
       <CardTitle>📊 Recent Activity Log</CardTitle>
@@ -992,10 +971,8 @@ function ActivitySection() {
 function ErrorsSection() {
   const [errors, setErrors] = useState([]);
   const [resolving, setResolving] = useState(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
   const load = () => getErrors(50).then(setErrors).catch(() => {});
-  useEffect(() => { if (ready) load(); }, [ready]);
+  useEffect(() => { load(); }, []);
   const doResolve = (id) => {
     setResolving(id);
     markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? {...e, resolved: true} : e)); }).catch(() => {}).finally(() => setResolving(null));
@@ -1049,14 +1026,11 @@ function MentorshipSection() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [groupName, setGroupName] = useState("");
-  const [ready, setReady] = useState(false);
-
   const load = () => {
     getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(() => {});
     getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(() => {});
   };
-  useEffect(() => { onAuthReady(() => setReady(true)); }, []);
-  useEffect(() => { if (ready) load(); }, [ready]);
+  useEffect(() => { load(); }, []);
 
   useEffect(() => {
     if (selectedMentor) {
@@ -1209,13 +1183,16 @@ const AdminPageTitle = styled.h2`font-size:1.6rem;font-weight:700;color:${p => p
 export default function AdminDashboard() {
   const [theme, setTheme] = useState("dark");
   const [activeTab, setActiveTab] = useState("overview");
+  const [authOk, setAuthOk] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  useEffect(() => { onAuthReady(() => setAuthOk(true)); }, []);
   useEffect(() => {
     const t = location.hash.replace("#", "");
     if (t && tabs.find(tab => tab.key === t)) { setActiveTab(t); }
     else { setActiveTab("overview"); }
   }, [location]);
+  if (!authOk) return null;
   return (
     <AdminPageLayout>
       <AdminSidebar activeTab={activeTab} onTabChange={(k) => { setActiveTab(k); navigate(`#${k}`); }} />
