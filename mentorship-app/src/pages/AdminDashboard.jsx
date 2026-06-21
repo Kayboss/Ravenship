@@ -118,7 +118,19 @@ function DashboardOverview() {
   useEffect(() => {
     getAnalytics().then(d => setData(d)).catch(() => {});
     getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
-    getAnnouncements().then(d => setNotifs(Array.isArray(d) ? d : [])).catch(() => {});
+    Promise.all([
+      getAnnouncements(),
+      getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
+    ]).then(([ann, notifSnap]) => {
+      const notifs = notifSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const merged = [...(Array.isArray(ann) ? ann : []), ...notifs];
+      merged.sort((a, b) => {
+        const ta = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+        const tb = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+        return tb - ta;
+      });
+      setNotifs(merged);
+    }).catch(() => {});
     getSubmissions({}).then(subs => {
       const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
       const counts = [0,0,0,0,0,0,0];
@@ -256,7 +268,7 @@ function DashboardOverview() {
         <Card style={{display:"flex",flexDirection:"column",marginBottom:0}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <CardTitle style={{margin:0}}>📢 Announcements</CardTitle>
-            <span style={{fontSize:"1.3rem",cursor:"pointer",color:"#b50064"}}>+</span>
+            <span style={{fontSize:"1.3rem",cursor:"pointer",color:"#b50064"}} onClick={() => navigate("#notifications")}>+</span>
           </div>
           <div style={{flex:1,display:"flex",flexDirection:"column",gap:16}}>
             {notifs.length === 0 ? (
@@ -273,7 +285,7 @@ function DashboardOverview() {
             ))}
           </div>
           <div style={{borderTop:"1px solid #e0e0e0",marginTop:16,paddingTop:16}}>
-            <button style={{width:"100%",border:"none",background:"transparent",color:"#b50064",fontWeight:600,cursor:"pointer",fontSize:"0.82rem",fontFamily:"inherit"}}>Manage All Feed Items</button>
+            <button style={{width:"100%",border:"none",background:"transparent",color:"#b50064",fontWeight:600,cursor:"pointer",fontSize:"0.82rem",fontFamily:"inherit"}} onClick={() => navigate("#notifications")}>Manage All Feed Items</button>
           </div>
         </Card>
       </DashboardGrid>
