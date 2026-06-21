@@ -167,7 +167,7 @@ export const CounsellingRequest = () => {
               </div>
               <div>
                 <Label>Date / Time You Want to Meet the Counsellor</Label>
-                <Input type="text" placeholder="e.g. Monday 14th July, 10:00 AM" value={form.dateTime} onChange={e => setForm({ ...form, dateTime: e.target.value })} />
+                <Input type="date" value={form.dateTime} onChange={e => setForm({ ...form, dateTime: e.target.value })} />
               </div>
               {formMsg && <p style={{ fontSize: "0.85rem", color: formMsg.includes("submitted") ? "#2e7d32" : "#e53935", fontWeight: 600 }}>{formMsg}</p>}
               <SubmitBtn type="submit" disabled={sending}>{sending ? "Submitting..." : "Submit Request"}</SubmitBtn>
