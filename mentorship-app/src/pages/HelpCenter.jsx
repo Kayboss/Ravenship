@@ -95,7 +95,7 @@ const ContactBtn = styled.a`
   font-weight: 600;
   font-size: 0.85rem;
   margin-top: 8px;
-  &:hover { opacity: 0.9; }
+  &:hover { background: #1565c0; color: #fff; }
 `;
 
 
