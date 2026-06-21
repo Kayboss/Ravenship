@@ -17,7 +17,9 @@ import {
   getAnalytics, getSubmissions,
   getActivities, getErrors, markErrorResolved, logActivity,
   getMentors, getUnassignedMentees, getMenteesByMentor,
-  assignMenteeToMentor, removeMenteeFromMentor
+  assignMenteeToMentor, removeMenteeFromMentor,
+  getCounsellingRequests, deleteCounsellingRequest,
+  getSponsorshipRequests, deleteSponsorshipRequest
 } from "../firebase/db";
 import { sendApprovedEmail } from "../lib/email";
 import { db } from "../firebase/config";
@@ -41,6 +43,10 @@ const Select = styled.select`padding:8px 12px;border-radius:10px;border:1px soli
 const ModalOverlay = styled.div`position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;`;
 const ModalBox = styled.div`background:#fff;border-radius:20px;padding:32px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.15);`;
 const ModalTitle = styled.h3`font-weight:700;font-size:1.1rem;color:#2c3e50;margin-bottom:20px;`;
+const ViewBtn = styled.button`background:#1565c0;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:0.78rem;cursor:pointer;font-family:inherit;white-space:nowrap;&:hover{opacity:0.85}`;
+const PdfOverlay = styled.div`position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;`;
+const PdfModalInner = styled.div`background:#fff;border-radius:16px;width:90%;max-width:800px;height:90vh;position:relative;overflow:hidden;`;
+const PdfCloseBtn = styled.button`position:absolute;top:10px;right:14px;background:#e53935;color:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:1.2rem;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;font-family:inherit;&:hover{opacity:0.85}`;
 
 const BioModal = ({ user, onClose }) => {
   if (!user) return null;
@@ -646,6 +652,9 @@ function HelpCenterSection() {
   const [removingGuide, setRemovingGuide] = useState(null);
   const [toggling, setToggling] = useState(null);
   const [helpError, setHelpError] = useState(null);
+  const [counselReqs, setCounselReqs] = useState([]);
+  const [sponsorReqs, setSponsorReqs] = useState([]);
+  const [pdfModal, setPdfModal] = useState(null);
   const activeTab = loc.hash.includes("?tab=") ? loc.hash.split("?tab=")[1] : "messages";
 
   const load = () => {
@@ -653,8 +662,23 @@ function HelpCenterSection() {
       .then(snap => setMsgs(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
       .catch(() => {});
     getHelpGuides().then(d => setGuides(Array.isArray(d) ? d : [])).catch(() => {});
+    getCounsellingRequests().then(d => setCounselReqs(Array.isArray(d) ? d : [])).catch(() => {});
+    getSponsorshipRequests().then(d => setSponsorReqs(Array.isArray(d) ? d : [])).catch(() => {});
   };
   useEffect(() => { load(); }, []);
+
+  const fmtDate = (ts) => {
+    if (!ts?.toDate) return "";
+    return ts.toDate().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
+  const handleDeleteCounsel = async (id) => {
+    await deleteCounsellingRequest(id);
+    setCounselReqs(prev => prev.filter(r => r.id !== id));
+  };
+  const handleDeleteSponsor = async (id) => {
+    await deleteSponsorshipRequest(id);
+    setSponsorReqs(prev => prev.filter(r => r.id !== id));
+  };
 
   const addGuide = () => {
     if (!title.trim() || !content.trim()) { setGuideMsg("Title and content required"); return; }
@@ -744,6 +768,61 @@ function HelpCenterSection() {
             </div>
           )}
         </div>
+      )}
+
+      <div style={{marginTop:32}}>
+        <h4 style={{fontWeight:700,fontSize:"1rem",color:"#2c3e50",marginBottom:16}}>📋 Incoming Counselling Requests</h4>
+        {counselReqs.length === 0 ? <p style={{color:"#594048",fontSize:"0.85rem"}}>No counselling requests yet.</p> : (
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {counselReqs.map(req => (
+              <div key={req.id} style={{padding:"14px 16px",background:"#f9f9f9",borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16}}>
+                <div style={{flex:1}}>
+                  <p style={{margin:0,fontSize:"0.85rem",color:"#2c3e50"}}><strong>{req.name}</strong> &lt;{req.email}&gt;</p>
+                  <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Type: {req.type}</p>
+                  {req.reasons && <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Reasons: {req.reasons}</p>}
+                  <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Preferred date: {req.dateTime}</p>
+                  <span style={{fontSize:"0.75rem",color:"#999"}}>Submitted {fmtDate(req.createdAt)}</span>
+                </div>
+                <Btn $red style={{fontSize:"0.75rem",padding:"4px 12px"}} onClick={() => handleDeleteCounsel(req.id)}>Delete</Btn>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{marginTop:32}}>
+        <h4 style={{fontWeight:700,fontSize:"1rem",color:"#2c3e50",marginBottom:16}}>📋 Incoming Sponsorship Requests</h4>
+        {sponsorReqs.length === 0 ? <p style={{color:"#594048",fontSize:"0.85rem"}}>No sponsorship requests yet.</p> : (
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {sponsorReqs.map(req => (
+              <div key={req.id} style={{padding:"14px 16px",background:"#f9f9f9",borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16}}>
+                <div style={{flex:1}}>
+                  <p style={{margin:0,fontSize:"0.85rem",color:"#2c3e50"}}><strong>{req.userName || req.name}</strong> &lt;{req.userEmail || req.email}&gt;</p>
+                  <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Type: {req.type} | Amount: {req.amount}</p>
+                  <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Purpose: {req.purpose}</p>
+                  <span style={{fontSize:"0.75rem",color:"#999"}}>Submitted {fmtDate(req.createdAt)}</span>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <ViewBtn onClick={() => setPdfModal(req)}>View PDF</ViewBtn>
+                  <Btn $red style={{fontSize:"0.75rem",padding:"4px 12px"}} onClick={() => handleDeleteSponsor(req.id)}>Delete</Btn>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {pdfModal && (
+        <PdfOverlay onClick={() => setPdfModal(null)}>
+          <PdfModalInner onClick={e => e.stopPropagation()}>
+            <PdfCloseBtn onClick={() => setPdfModal(null)}>&times;</PdfCloseBtn>
+            {pdfModal.pdfData ? (
+              <iframe src={pdfModal.pdfData} title="Sponsorship Request PDF" style={{width:"100%",height:"100%",border:"none",borderRadius:12}} />
+            ) : (
+              <p style={{padding:40,textAlign:"center",color:"#594048"}}>No PDF data available for this request.</p>
+            )}
+          </PdfModalInner>
+        </PdfOverlay>
       )}
     </Card>
   );
