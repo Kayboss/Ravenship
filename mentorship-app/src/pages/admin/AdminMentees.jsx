@@ -34,24 +34,33 @@ export default function AdminMentees() {
   };
   return (
     <>
-    <style>{`@media(max-width:560px){.mentee-grid{grid-template-columns:1fr !important}}`}</style>
+    <style>{`
+      @media(max-width:560px){.mentee-grid{grid-template-columns:1fr !important}}
+      .mentee-header{display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer}
+      .mentee-info{display:flex;gap:16px;align-items:center;flex:1;min-width:0}
+      .mentee-meta{display:flex;gap:8px;align-items:center;flex-shrink:0}
+      @media(max-width:480px){
+        .mentee-header{flex-direction:column;gap:10px}
+        .mentee-meta{align-self:flex-start}
+      }
+    `}</style>
     <div className="mentee-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       {verifyMsg && <p style={{gridColumn:"1/-1",fontSize:"0.85rem",color:"#e53935",fontWeight:600,margin:0}}>{verifyMsg}</p>}
       {users.length === 0 ? <p style={{ gridColumn:"1/-1",color: "#594048", fontSize: "0.9rem" }}>No mentees registered.</p> : users.map((u) => {
         const menteeCourses = courses.filter(c => (c.enrolledMentees || c.enrolled || []).some(e => e.userId === u.id || e.email === u.email));
         return (
           <Card key={u.id} data-aos="fade-up" style={{marginBottom:0}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",cursor:"pointer"}} onClick={() => setExpandedMentee(expandedMentee === u.id ? null : u.id)}>
-              <div style={{display:"flex",gap:16,alignItems:"center"}}>
+            <div className="mentee-header" onClick={() => setExpandedMentee(expandedMentee === u.id ? null : u.id)}>
+              <div className="mentee-info">
                 <div style={{width:52,height:52,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",fontWeight:700,color:"#fff",flexShrink:0}}>
                   {u.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
                 </div>
-                <div>
-                  <h4 style={{margin:0,fontSize:"1rem",fontWeight:700,color:"#2c3e50"}}>{u.name}</h4>
-                  <span style={{fontSize:"0.8rem",color:"#594048"}}>{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.city ? ` · ${u.city}` : ""}</span>
+                <div style={{minWidth:0}}>
+                  <h4 style={{margin:0,fontSize:"1rem",fontWeight:700,color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</h4>
+                  <span style={{fontSize:"0.8rem",color:"#594048",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.city ? ` · ${u.city}` : ""}</span>
                 </div>
               </div>
-              <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+              <div className="mentee-meta">
                 <Badge $c={u.verified ? "#2e7d32" : "#f57f17"}>{u.verified ? "✅ Verified" : "⏳ Pending"}</Badge>
                 <span style={{fontSize:"0.75rem",color:"#999"}}>{menteeCourses.length} course{menteeCourses.length !== 1 ? "s" : ""}</span>
               </div>
