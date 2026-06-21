@@ -64,6 +64,23 @@ export default function AdminOverview() {
   const mentees = data ? data.mentees : users.filter(u => u.role === "mentee").length;
   return (
     <>
+      <style>{`
+        .um-header{padding:16px 20px;borderBottom:1px solid #e0e0e0;display:flex;justifyContent:space-between;alignItems:center;flexWrap:wrap;gap:12px}
+        .um-table-wrap{overflowX:auto}
+        .um-cards{display:none}
+        @media(max-width:768px){
+          .um-table-wrap{display:none}
+          .um-cards{display:flex;flexDirection:column;gap:10px;padding:12px 16px}
+          .um-card{padding:14px;background:#f9f9f9;border-radius:12px;cursor:pointer;transition:background 0.15s}
+          .um-card:active{background:#f0f0f0}
+          .um-card-top{display:flex;alignItems:center;gap:10px;marginBottom:8px}
+          .um-card-avatar{width:38px;height:38px;border-radius:50%;display:flex;alignItems:center;justifyContent:center;font-size:0.8rem;font-weight:700;color:#fff;flexShrink:0}
+          .um-card-name{fontWeight:700;fontSize:0.9rem;color:#2c3e50}
+          .um-card-email{fontSize:0.75rem;color:#594048}
+          .um-card-meta{display:flex;alignItems:center;gap:8px;flexWrap:wrap}
+        }
+        @media(min-width:769px){.um-cards{display:none!important}}
+      `}</style>
       <Card data-aos="fade-down">
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
           <div style={{flex:1,minWidth:200}}>
@@ -108,21 +125,22 @@ export default function AdminOverview() {
       <DashboardGrid data-aos="fade-up">
         <div style={{display:"flex",flexDirection:"column",gap:24}}>
           <Card style={{padding:0,overflow:"hidden",marginBottom:0}}>
-            <div style={{padding:"16px 20px",borderBottom:"1px solid #e0e0e0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <CardTitle style={{margin:0}}>User Management</CardTitle>
+            <div className="um-header">
+              <CardTitle style={{margin:0,fontSize:"clamp(0.9rem, 3vw, 1.05rem)"}}>User Management</CardTitle>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",cursor:"pointer",fontSize:"0.78rem",fontFamily:"inherit"}}>
+                <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{padding:"8px 10px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",cursor:"pointer",fontSize:"0.78rem",fontFamily:"inherit",minHeight:36}}>
                   <option value="all">All Roles</option>
                   <option value="admin">Admins</option>
                   <option value="mentor">Mentors</option>
                   <option value="mentee">Mentees</option>
                 </select>
-                <button style={{padding:"6px 16px",borderRadius:8,border:"none",background:"#b50064",color:"#fff",fontWeight:600,cursor:"pointer",fontSize:"0.78rem"}} onClick={() => navigate("/dashboard/admin/mentors")}>View All</button>
+                <button style={{padding:"8px 16px",borderRadius:8,border:"none",background:"#b50064",color:"#fff",fontWeight:600,cursor:"pointer",fontSize:"0.78rem",minHeight:36}} onClick={() => navigate("/dashboard/admin/mentors")}>View All</button>
               </div>
             </div>
-            <div style={{overflowX:"auto"}}>
+
+            <div className="um-table-wrap">
               <UserTable>
-                <thead><tr><UTh>User</UTh><UTh>Role</UTh><UTh>Progress</UTh><UTh>Status</UTh><UTh></UTh></tr></thead>
+                <thead><tr><UTh>User</UTh><UTh>Role</UTh><UTh>Progress</UTh><UTh>Status</UTh></tr></thead>
                 <tbody>
                   {filteredUsers.slice(0,6).map((u,i) => (
                     <URow key={u.id || i} onClick={() => navigate(u.role === "mentor" ? "/dashboard/admin/mentors" : "/dashboard/admin/mentees")}>
@@ -140,12 +158,40 @@ export default function AdminOverview() {
                       <UTd><RoleBadge $role={u.role}>{u.role === "admin" ? "Admin" : u.role === "mentor" ? "Mentor" : "Mentee"}</RoleBadge></UTd>
                       <UTd>{u.verified ? <span style={{color:"#27AE60",fontWeight:600,fontSize:"0.78rem"}}>✅ Verified</span> : <span style={{color:"#f57f17",fontWeight:600,fontSize:"0.78rem"}}>⏳ Pending</span>}</UTd>
                       <UTd><span style={{display:"flex",alignItems:"center",fontSize:"0.78rem",fontWeight:600,color:u.verified ? "#27AE60" : "#594048"}}><StatusDot $online={!!u.verified} />{u.verified ? "Active" : "Inactive"}</span></UTd>
-                      <UTd><span style={{fontSize:"1.2rem",color:"#594048",cursor:"pointer"}}>⋯</span></UTd>
                     </URow>
                   ))}
                 </tbody>
               </UserTable>
             </div>
+
+            <div className="um-cards">
+              {filteredUsers.slice(0,6).map((u,i) => (
+                <div key={u.id || i} className="um-card" onClick={() => navigate(u.role === "mentor" ? "/dashboard/admin/mentors" : "/dashboard/admin/mentees")}>
+                  <div className="um-card-top">
+                    <div className="um-card-avatar" style={{background:u.role === "mentor" ? "#b50064" : "#0298D7"}}>
+                      {u.name?.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) || "?"}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div className="um-card-name" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
+                      <div className="um-card-email" style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.email}</div>
+                    </div>
+                  </div>
+                  <div className="um-card-meta">
+                    <RoleBadge $role={u.role}>{u.role === "admin" ? "Admin" : u.role === "mentor" ? "Mentor" : "Mentee"}</RoleBadge>
+                    <span style={{display:"flex",alignItems:"center",fontSize:"0.75rem",fontWeight:600,color:u.verified ? "#27AE60" : "#f57f17"}}>
+                      <StatusDot $online={!!u.verified} />{u.verified ? "Verified" : "Pending"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {filteredUsers.length === 0 && <p style={{color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:20}}>No users found.</p>}
+            </div>
+
+            {filteredUsers.length > 6 && (
+              <div style={{borderTop:"1px solid #e0e0e0",padding:"12px 20px",textAlign:"center"}}>
+                <button style={{border:"none",background:"transparent",color:"#b50064",fontWeight:600,cursor:"pointer",fontSize:"0.82rem",fontFamily:"inherit"}} onClick={() => navigate("/dashboard/admin/mentors")}>View All Users ({filteredUsers.length})</button>
+              </div>
+            )}
           </Card>
 
           <ChartGrid>
