@@ -17,8 +17,9 @@ export default function AdminActivity() {
         .act-content{flex:1;min-width:0}
         .act-time{font-size:0.68rem;color:#999;white-space:nowrap;flex-shrink:0}
         @media(max-width:480px){
-          .act-row{flex-wrap:wrap;gap:8px}
-          .act-time{width:100%;margin-top:2px}
+          .act-row{flex-wrap:wrap;gap:6px;padding:10px 10px}
+          .act-content{width:calc(100% - 44px)}
+          .act-time{width:100%;margin-top:4px;padding-left:44px;white-space:normal;word-break:break-all}
         }
       `}</style>
       <CardTitle>📊 Recent Activity Log</CardTitle>
