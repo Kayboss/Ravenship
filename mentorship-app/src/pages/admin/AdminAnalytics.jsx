@@ -8,7 +8,7 @@ export default function AdminAnalytics() {
   const [data, setData] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getAnalytics().then(d => setData(d)).catch(() => {});
+    getAnalytics().then(d => setData(d)).catch(e => console.error("getAnalytics error:", e));
   }, []);
   if (!data) return <Card><p style={{ color: "#594048" }}>Loading...</p></Card>;
   return (

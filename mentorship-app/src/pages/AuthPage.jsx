@@ -201,11 +201,11 @@ export const AuthPage = () => {
                 <Column>
                   <InputGroup>
                     <label>Full Name</label>
-                    <input type="text" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                    <input type="text" name="fullName" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
                   </InputGroup>
                   <InputGroup>
                     <label>Telephone</label>
-                    <input type="tel" placeholder="+1 555-123-4567" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+                    <input type="tel" name="phone" placeholder="+1 555-123-4567" value={phone} onChange={(e) => setPhone(e.target.value)} required />
                   </InputGroup>
                   <InputGroup>
                     <label>Email Address</label>
@@ -215,7 +215,7 @@ export const AuthPage = () => {
                 <Column>
                   <InputGroup>
                     <label>City</label>
-                    <input type="text" placeholder="Your city" value={city} onChange={(e) => setCity(e.target.value)} required />
+                    <input type="text" name="city" placeholder="Your city" value={city} onChange={(e) => setCity(e.target.value)} required />
                   </InputGroup>
                   <InputGroup>
                     <label>Password</label>
@@ -229,7 +229,7 @@ export const AuthPage = () => {
                   <InputGroup>
                     <label>Confirm Password</label>
                     <PasswordWrapper>
-                      <input type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                      <input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" placeholder="••••••••" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
                       <ToggleVis type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} aria-label={showConfirmPassword ? "Hide password" : "Show password"}>
                         {showConfirmPassword ? EyeOff : EyeOn}
                       </ToggleVis>

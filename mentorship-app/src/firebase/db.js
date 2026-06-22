@@ -178,15 +178,21 @@ export const setGradebookEntry = async (menteeId, courseId, scores) => {
 // ── Community Posts ──
 
 export const getPosts = async () => {
-  const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  try {
+    const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error("getPosts failed:", e);
+    const snap = await getDocs(collection(db, "posts"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
 };
 
 export const addPost = async (data) => {
   const user = getStoredUser();
-  const ref = await addDoc(collection(db, "posts"), {
-    ...data,
+  const postData = {
+    text: data.text || "",
     authorId: user?.id || "",
     authorName: user?.name || "Unknown",
     authorRole: user?.role || "",
@@ -194,7 +200,9 @@ export const addPost = async (data) => {
     likes: [],
     comments: [],
     createdAt: serverTimestamp()
-  });
+  };
+  if (data.image) postData.image = data.image;
+  const ref = await addDoc(collection(db, "posts"), postData);
   return ref.id;
 };
 
@@ -238,9 +246,15 @@ export const deletePost = async (postId) => {
 // ── Events ──
 
 export const getEvents = async () => {
-  const q = query(collection(db, "events"), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  try {
+    const q = query(collection(db, "events"), orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error("getEvents failed:", e);
+    const snap = await getDocs(collection(db, "events"));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
 };
 
 export const addEvent = async (data) => {
@@ -406,7 +420,7 @@ export const markMessagesRead = async (conversationId, userId) => {
 export const subscribeConversation = (conversationId, callback) => {
   return onSnapshot(doc(db, "conversations", conversationId), (snap) => {
     callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-  });
+  }, (e) => console.error("subscribeConversation error:", e));
 };
 
 export const setTyping = async (conversationId, userId, isTyping) => {
@@ -426,7 +440,7 @@ export const subscribeNotifications = (callback) => {
       return tB - tA;
     });
     callback(data);
-  });
+  }, (e) => console.error("subscribeNotifications error:", e));
 };
 
 export const subscribeMessages = (conversationId, callback) => {
@@ -436,7 +450,7 @@ export const subscribeMessages = (conversationId, callback) => {
   );
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  });
+  }, (e) => console.error("subscribeMessages error:", e));
 };
 
 export const subscribeConversations = (userId, callback) => {
@@ -452,7 +466,7 @@ export const subscribeConversations = (userId, callback) => {
       return tB - tA;
     });
     callback(data);
-  });
+  }, (e) => console.error("subscribeConversations error:", e));
 };
 
 // ── Activity Logging ──

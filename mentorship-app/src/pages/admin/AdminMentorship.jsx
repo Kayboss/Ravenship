@@ -16,15 +16,15 @@ export default function AdminMentorship() {
   const [groupName, setGroupName] = useState("");
   useEffect(() => { AOS.init({ once: true }); }, []);
   const load = () => {
-    getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(() => {});
-    getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(() => {});
+    getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(e => console.error("getMentors error:", e));
+    getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(e => console.error("getUnassignedMentees error:", e));
   };
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
     if (selectedMentor) {
       setGroupName(selectedMentor.groupName || "");
-      getMenteesByMentor(selectedMentor.id).then(d => setAssignedMentees(Array.isArray(d) ? d : [])).catch(() => {});
+      getMenteesByMentor(selectedMentor.id).then(d => setAssignedMentees(Array.isArray(d) ? d : [])).catch(e => console.error("getMenteesByMentor error:", e));
     } else {
       setAssignedMentees([]);
       setGroupName("");
@@ -64,7 +64,7 @@ export default function AdminMentorship() {
       await removeMenteeFromMentor(selectedMentor.id, menteeId);
       setMsg(`Removed ${menteeName} from ${selectedMentor.name}`);
       setAssignedMentees(prev => prev.filter(u => u.id !== menteeId));
-      getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(() => {});
+      getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(e => console.error("getUnassignedMentees refresh error:", e));
     } catch (e) { setMsg(e.message); }
     setLoading(false);
   };
@@ -75,9 +75,14 @@ export default function AdminMentorship() {
         .ms-panels{display:grid;grid-template-columns:1fr 1fr;gap:24px}
         .ms-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f9f9f9;border-radius:10}
         .ms-row-name{flex:1;min-width:0;font-weight:600;font-size:0.85rem;color:#2c3e50;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .ms-group-row{display:flex;align-items:center;gap:12px;flexWrap:wrap}
         @media(max-width:600px){
           .ms-panels{grid-template-columns:1fr !important}
           .ms-row{flex-wrap:wrap;gap:8px}
+          .ms-group-row{flex-direction:column;align-items:stretch}
+          .ms-group-row > label{text-align:left}
+          .ms-group-row > input{width:100% !important;max-width:100% !important}
+          .ms-group-row > button{width:100%;min-height:40px}
         }
       `}</style>
       <CardTitle>🔗 Mentor–Mentee Assignments</CardTitle>
@@ -97,7 +102,7 @@ export default function AdminMentorship() {
 
       {selectedMentor && (
         <div style={{display:"flex",flexDirection:"column",gap:20}}>
-          <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+          <div className="ms-group-row">
             <label style={{fontWeight:600,fontSize:"0.85rem",color:"#2c3e50"}}>Group Name:</label>
             <Input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Cohort Alpha, Group A..." style={{flex:"1 1 200px",maxWidth:300,minWidth:0}} />
             <Btn disabled={loading} onClick={saveGroupName}>{loading ? "Saving..." : "Save"}</Btn>

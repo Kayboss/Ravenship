@@ -25,10 +25,10 @@ export default function AdminHelpCenter() {
   const load = () => {
     getDocs(collection(db, "helpMessages"))
       .then(snap => setMsgs(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-      .catch(() => {});
-    getHelpGuides().then(d => setGuides(Array.isArray(d) ? d : [])).catch(() => {});
-    getCounsellingRequests().then(d => setCounselReqs(Array.isArray(d) ? d : [])).catch(() => {});
-    getSponsorshipRequests().then(d => setSponsorReqs(Array.isArray(d) ? d : [])).catch(() => {});
+      .catch(e => console.error("getHelpMessages error:", e));
+    getHelpGuides().then(d => setGuides(Array.isArray(d) ? d : [])).catch(e => console.error("getHelpGuides error:", e));
+    getCounsellingRequests().then(d => setCounselReqs(Array.isArray(d) ? d : [])).catch(e => console.error("getCounsellingRequests error:", e));
+    getSponsorshipRequests().then(d => setSponsorReqs(Array.isArray(d) ? d : [])).catch(e => console.error("getSponsorshipRequests error:", e));
   };
   useEffect(() => { load(); }, []);
 
@@ -74,6 +74,25 @@ export default function AdminHelpCenter() {
 
   return (
     <Card data-aos="fade-up">
+      <style>{`
+        .hc-msg-header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+        .hc-msg-footer{display:flex;justify-content:space-between;align-items:center;gap:8px}
+        .hc-msg-type{font-weight:700;font-size:0.85rem;color:#2c3e50;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+        .hc-guide-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#f9f9f9;border-radius:12;gap:12px}
+        .hc-guide-info{flex:1;min-width:0}
+        .hc-req-row{padding:14px 16px;background:#f9f9f9;border-radius:12;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+        .hc-req-info{flex:1;min-width:0}
+        .hc-req-info p{margin:2px 0;font-size:0.85rem;color:#594048;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .hc-req-info p:first-child{margin-top:0}
+        .hc-req-actions{display:flex;gap:8px;flex-shrink:0;align-items:center}
+        @media(max-width:480px){
+          .hc-msg-header{flex-wrap:wrap}
+          .hc-msg-footer{flex-wrap:wrap;gap:6px}
+          .hc-guide-row{flex-wrap:wrap}
+          .hc-req-row{flex-wrap:wrap}
+          .hc-req-info p{white-space:normal}
+        }
+      `}</style>
       <CardTitle>❓ Help Center Management</CardTitle>
       {helpError && <p style={{ fontSize: "0.85rem", color: "#e53935", fontWeight: 600, marginBottom: 12 }}>{helpError}</p>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" }}>
@@ -88,14 +107,14 @@ export default function AdminHelpCenter() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {msgs.map(m => (
                 <div key={m.id} style={{ padding: "14px 16px", background: "#f9f9f9", borderRadius: 12, borderLeft: `4px solid ${m.status === "open" ? "#f57f17" : "#2e7d32"}` }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <strong style={{ fontSize: "0.85rem", color: "#2c3e50" }}>{m.type} {m.userName ? `— ${m.userName}` : ""}</strong>
+                  <div className="hc-msg-header">
+                    <span className="hc-msg-type">{m.type}{m.userName ? ` — ${m.userName}` : ""}</span>
                     <Badge $c={m.status === "open" ? "#f57f17" : "#2e7d32"}>{m.status === "open" ? "Open" : "Resolved"}</Badge>
                   </div>
                   <p style={{ fontSize: "0.85rem", color: "#594048", marginBottom: 4 }}>{m.message}</p>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "0.75rem", color: "#999" }}>{m.userEmail} · {new Date(m.createdAt?.toDate ? m.createdAt.toDate() : m.createdAt).toLocaleDateString()}</span>
-                    <Btn $outline disabled={toggling === m.id} style={{ fontSize: "0.75rem", padding: "4px 12px" }} onClick={() => toggleStatus(m.id)}>
+                  <div className="hc-msg-footer">
+                    <span style={{ fontSize: "0.72rem", color: "#999", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{m.userEmail} · {new Date(m.createdAt?.toDate ? m.createdAt.toDate() : m.createdAt).toLocaleDateString()}</span>
+                    <Btn $outline disabled={toggling === m.id} style={{ fontSize: "0.75rem", padding: "6px 12px", minHeight: 34, flexShrink: 0 }} onClick={() => toggleStatus(m.id)}>
                       {toggling === m.id ? "..." : m.status === "open" ? "✓ Resolve" : "Reopen"}
                     </Btn>
                   </div>
@@ -113,21 +132,23 @@ export default function AdminHelpCenter() {
             <Input placeholder="Guide title..." value={title} onChange={e => setTitle(e.target.value)} />
             <Textarea placeholder="Guide content (markdown or plain text)..." value={content} onChange={e => setContent(e.target.value)} />
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <Select value={targetRole} onChange={e => setTargetRole(e.target.value)}>
+              <Select value={targetRole} onChange={e => setTargetRole(e.target.value)} style={{flex:"1 1 120px"}}>
                 <option value="all">All Users</option><option value="mentor">Mentors</option><option value="mentee">Mentees</option>
               </Select>
-              <Btn disabled={addingGuide} onClick={addGuide}>{addingGuide ? "Saving..." : "Add Guide"}</Btn>
+              <Btn disabled={addingGuide} onClick={addGuide} style={{minHeight:38}}>{addingGuide ? "Saving..." : "Add Guide"}</Btn>
             </div>
             {guideMsg && <p style={{ fontSize: "0.85rem", color: guideMsg === "Guide created!" ? "#2e7d32" : "#e53935", fontWeight: 600 }}>{guideMsg}</p>}
           </div>
           {guides.length === 0 ? <p style={{ color: "#594048" }}>No guides created yet.</p> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {guides.map(g => (
-                <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", background: "#f9f9f9", borderRadius: 12 }}>
-                  <div><strong style={{ fontSize: "0.9rem", display: "block" }}>{g.title}</strong>
-                    <span style={{ fontSize: "0.8rem", color: "#594048" }}>{g.content.slice(0, 100)}{g.content.length > 100 ? "..." : ""}</span>
-                    <span style={{ fontSize: "0.75rem", color: "#999", marginLeft: 8 }}>→ {g.targetRole}</span></div>
-                  <Btn $red disabled={removingGuide === g.id} onClick={() => removeGuide(g.id)}>{removingGuide === g.id ? "..." : "✕"}</Btn>
+                <div key={g.id} className="hc-guide-row">
+                  <div className="hc-guide-info">
+                    <strong style={{ fontSize: "0.9rem", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</strong>
+                    <span style={{ fontSize: "0.8rem", color: "#594048", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.content.slice(0, 100)}{g.content.length > 100 ? "..." : ""}</span>
+                    <span style={{ fontSize: "0.75rem", color: "#999" }}>→ {g.targetRole}</span>
+                  </div>
+                  <Btn $red disabled={removingGuide === g.id} onClick={() => removeGuide(g.id)} style={{minHeight:34,flexShrink:0}}>{removingGuide === g.id ? "..." : "✕"}</Btn>
                 </div>
               ))}
             </div>
@@ -140,15 +161,15 @@ export default function AdminHelpCenter() {
         {counselReqs.length === 0 ? <p style={{color:"#594048",fontSize:"0.85rem"}}>No counselling requests yet.</p> : (
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {counselReqs.map(req => (
-              <div key={req.id} style={{padding:"14px 16px",background:"#f9f9f9",borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16}}>
-                <div style={{flex:1}}>
-                  <p style={{margin:0,fontSize:"0.85rem",color:"#2c3e50"}}><strong>{req.name}</strong> &lt;{req.email}&gt;</p>
-                  <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Type: {req.type}</p>
-                  {req.reasons && <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Reasons: {req.reasons}</p>}
-                  <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Preferred date: {req.dateTime}</p>
+              <div key={req.id} className="hc-req-row">
+                <div className="hc-req-info">
+                  <p><strong>{req.name}</strong> &lt;{req.email}&gt;</p>
+                  <p>Type: {req.type}</p>
+                  {req.reasons && <p>Reasons: {req.reasons}</p>}
+                  <p>Preferred date: {req.dateTime}</p>
                   <span style={{fontSize:"0.75rem",color:"#999"}}>Submitted {fmtDate(req.createdAt)}</span>
                 </div>
-                <Btn $red style={{fontSize:"0.75rem",padding:"4px 12px"}} onClick={() => handleDeleteCounsel(req.id)}>Delete</Btn>
+                <Btn $red style={{fontSize:"0.75rem",padding:"6px 12px",minHeight:34}} onClick={() => handleDeleteCounsel(req.id)}>Delete</Btn>
               </div>
             ))}
           </div>
@@ -160,16 +181,16 @@ export default function AdminHelpCenter() {
         {sponsorReqs.length === 0 ? <p style={{color:"#594048",fontSize:"0.85rem"}}>No sponsorship requests yet.</p> : (
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {sponsorReqs.map(req => (
-              <div key={req.id} style={{padding:"14px 16px",background:"#f9f9f9",borderRadius:12,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16}}>
-                <div style={{flex:1}}>
-                  <p style={{margin:0,fontSize:"0.85rem",color:"#2c3e50"}}><strong>{req.userName || req.name}</strong> &lt;{req.userEmail || req.email}&gt;</p>
-                  <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Type: {req.type} | Amount: {req.amount}</p>
-                  <p style={{margin:"2px 0",fontSize:"0.85rem",color:"#594048"}}>Purpose: {req.purpose}</p>
+              <div key={req.id} className="hc-req-row">
+                <div className="hc-req-info">
+                  <p><strong>{req.userName || req.name}</strong> &lt;{req.userEmail || req.email}&gt;</p>
+                  <p>Type: {req.type} | Amount: {req.amount}</p>
+                  <p>Purpose: {req.purpose}</p>
                   <span style={{fontSize:"0.75rem",color:"#999"}}>Submitted {fmtDate(req.createdAt)}</span>
                 </div>
-                <div style={{display:"flex",gap:8}}>
-                  <ViewBtn onClick={() => setPdfModal(req)}>View PDF</ViewBtn>
-                  <Btn $red style={{fontSize:"0.75rem",padding:"4px 12px"}} onClick={() => handleDeleteSponsor(req.id)}>Delete</Btn>
+                <div className="hc-req-actions">
+                  <ViewBtn onClick={() => setPdfModal(req)} style={{minHeight:34}}>View PDF</ViewBtn>
+                  <Btn $red style={{fontSize:"0.75rem",padding:"6px 12px",minHeight:34}} onClick={() => handleDeleteSponsor(req.id)}>Delete</Btn>
                 </div>
               </div>
             ))}

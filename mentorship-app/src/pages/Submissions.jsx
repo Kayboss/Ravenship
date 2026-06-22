@@ -274,7 +274,7 @@ export const Submissions = () => {
     ));
     setGradeTarget(null);
     if (orig.firestoreId) {
-      updateSubmission(orig.firestoreId, { status: "reviewed", grade: score, feedback: gradeFeedback }).catch(() => {});
+      updateSubmission(orig.firestoreId, { status: "reviewed", grade: score, feedback: gradeFeedback }).catch(e => console.error("updateSubmission error:", e));
     }
   };
 

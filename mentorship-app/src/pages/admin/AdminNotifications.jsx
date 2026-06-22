@@ -18,7 +18,7 @@ export default function AdminNotifications() {
   useEffect(() => {
     getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
       .then(snap => setList(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-      .catch(() => {});
+      .catch(e => console.error("getNotifications error:", e));
   }, []);
   const send = () => {
     if (!title.trim() || !message.trim()) { setNotifMsg("Title and message are required"); return; }

@@ -296,7 +296,7 @@ export const CourseView = () => {
     const lsId = localStorage.getItem("fs_courseId_" + courseName);
     if (lsId) {
       setFirestoreCourseId(lsId);
-      getCourse(lsId).then(fs => { if (fs?.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: fs.featuredImage })); }).catch(() => {});
+      getCourse(lsId).then(fs => { if (fs?.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: fs.featuredImage })); }).catch(e => console.error("getCourse error:", e));
       return;
     }
     getCourses().then(courses => {
@@ -306,7 +306,7 @@ export const CourseView = () => {
         localStorage.setItem("fs_courseId_" + courseName, match.id);
         if (match.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: match.featuredImage }));
       }
-    }).catch(() => {});
+    }).catch(e => console.error("getCourses/match error:", e));
   }, [courseName, courseTitle]);
 
   useEffect(() => {
@@ -315,7 +315,7 @@ export const CourseView = () => {
 
   useEffect(() => {
     if (!editMode && firestoreCourseId && savedOnceRef.current) {
-      updateCourse(firestoreCourseId, { _title: courseTitle, lessons: courseData.lessons, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color, featuredImage: courseData.featuredImage }).catch(() => {});
+      updateCourse(firestoreCourseId, { _title: courseTitle, lessons: courseData.lessons, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color, featuredImage: courseData.featuredImage }).catch(e => console.error("updateCourse error:", e));
     }
     if (!editMode) savedOnceRef.current = true;
   }, [editMode, firestoreCourseId]);
@@ -410,7 +410,7 @@ export const CourseView = () => {
     if (confirm(`Are you sure you want to delete "${courseName}"? This cannot be undone.`)) {
       localStorage.removeItem(storageKey);
       if (firestoreCourseId) {
-        deleteCourseFromDb(firestoreCourseId).catch(() => {});
+        deleteCourseFromDb(firestoreCourseId).catch(e => console.error("deleteCourseFromDb error:", e));
       }
       navigate(`/dashboard/${role}/my-courses`);
     }
@@ -520,7 +520,7 @@ export const CourseView = () => {
             <h4 style={{ fontWeight: 700, marginBottom: 16, color: "#2c3e50" }}>Course Settings</h4>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: 6, color: "#333" }}>Course Title</label>
-              <input value={courseTitle} onChange={(e) => setCourseTitle(e.target.value)}
+              <input id="course-title" name="courseTitle" value={courseTitle} onChange={(e) => setCourseTitle(e.target.value)}
                 style={{ width: "100%", padding: "10px 14px", borderRadius: 12, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.9rem", boxSizing: "border-box" }} />
             </div>
             <div style={{ marginBottom: 16 }}>
@@ -532,7 +532,7 @@ export const CourseView = () => {
                     style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                 </div>
               )}
-              <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => setCourseData(prev => ({ ...prev, featuredImage: ev.target.result })); reader.readAsDataURL(file); } }}
+              <input type="file" id="featured-image" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => setCourseData(prev => ({ ...prev, featuredImage: ev.target.result })); reader.readAsDataURL(file); } }}
                 style={{ fontSize: "0.85rem", fontFamily: "inherit" }} />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
@@ -547,7 +547,7 @@ export const CourseView = () => {
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: 6, color: "#333" }}>Accent Color</label>
-                <select value={courseData.color} onChange={(e) => setCourseData(prev => ({ ...prev, color: e.target.value }))}
+                <select id="course-color" name="courseColor" value={courseData.color} onChange={(e) => setCourseData(prev => ({ ...prev, color: e.target.value }))}
                   style={{ width: "100%", padding: "10px 14px", borderRadius: 12, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.9rem" }}>
                   <option value="#b50064">Pink</option>
                   <option value="#006590">Teal</option>
@@ -570,19 +570,19 @@ export const CourseView = () => {
               </div>
             ))}
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <input id="resTitle" placeholder="Resource title..." value={resTitle} onChange={e => setResTitle(e.target.value)}
+              <input id="resTitle" name="resTitle" placeholder="Resource title..." value={resTitle} onChange={e => setResTitle(e.target.value)}
                 style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.85rem" }} />
-              <input id="resValue" placeholder={resType === "link" ? "https://..." : "File path..."} value={resValue} onChange={e => setResValue(e.target.value)}
+              <input id="resValue" name="resValue" placeholder={resType === "link" ? "https://..." : "File path..."} value={resValue} onChange={e => setResValue(e.target.value)}
                 style={{ flex: 2, padding: "8px 12px", borderRadius: 10, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.85rem" }} />
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
-              <select value={resType} onChange={e => setResType(e.target.value)}
+              <select id="res-type" name="resType" value={resType} onChange={e => setResType(e.target.value)}
                 style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.85rem", background: "#fff" }}>
                 <option value="link">🔗 Link</option>
                 <option value="file">📄 Upload File</option>
               </select>
               {resType === "file" && (
-                <input type="file" onChange={e => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = ev => setResValue(ev.target.result); r.readAsDataURL(f); } }}
+                <input type="file" id="res-file" name="resFile" onChange={e => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = ev => setResValue(ev.target.result); r.readAsDataURL(f); } }}
                   style={{ fontSize: "0.85rem", fontFamily: "inherit" }} />
               )}
               <button onClick={() => { if (!resTitle.trim() || !resValue.trim()) return alert("Title and value required"); setCourseData(prev => ({ ...prev, resources: [...prev.resources, { title: resTitle.trim(), type: resType, value: resValue }] })); setResTitle(""); setResValue(""); }}
@@ -607,7 +607,7 @@ export const CourseView = () => {
             ))}
             {editMode && (
               <div style={{ display: "flex", gap: 4, marginTop: 8, padding: "0 4px" }}>
-                <input value={newTopicName} onChange={(e) => setNewTopicName(e.target.value)} placeholder="New topic..."
+                <input id="new-topic" name="newTopic" value={newTopicName} onChange={(e) => setNewTopicName(e.target.value)} placeholder="New topic..."
                   style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.8rem" }} />
                 <button onClick={addNewTopic} style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#b50064", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: "0.8rem" }}>+</button>
               </div>
@@ -636,7 +636,7 @@ export const CourseView = () => {
                 )}
               </div>
               {editMode ? (
-                <input value={lesson.desc} onChange={(e) => updateLessonField("desc", e.target.value)}
+                <input id="lesson-desc" name="lessonDesc" value={lesson.desc} onChange={(e) => updateLessonField("desc", e.target.value)}
                   style={{ width: "100%", padding: "8px 12px", borderRadius: 10, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.95rem", color: "#594048", marginTop: 8 }} />
               ) : (
                 <TopicDesc>{lesson.desc}</TopicDesc>
@@ -647,7 +647,7 @@ export const CourseView = () => {
               <div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, marginBottom: 6, color: "#333" }}>Video URL (YouTube / Vimeo / direct link)</label>
-                  <input value={lesson.videoUrl || ""} onChange={(e) => updateLessonField("videoUrl", e.target.value)} placeholder="https://www.youtube.com/watch?v=..."
+                  <input id="video-url" name="videoUrl" value={lesson.videoUrl || ""} onChange={(e) => updateLessonField("videoUrl", e.target.value)} placeholder="https://www.youtube.com/watch?v=..."
                     style={{ width: "100%", padding: "10px 14px", borderRadius: 12, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.9rem", boxSizing: "border-box" }} />
                 </div>
                 <h4 style={{ fontWeight: 700, color: "#2c3e50", marginBottom: 12 }}>Lesson Content</h4>
@@ -659,14 +659,14 @@ export const CourseView = () => {
                         style={{ background: "none", border: "none", cursor: "pointer", color: "#e53935", fontSize: "0.8rem" }}>Remove</button>
                     </div>
                     {s.type === "text" ? (
-                      <textarea value={s.content} onChange={(e) => updateSectionItem(i, "content", e.target.value)}
+                      <textarea id={`section-text-${i}`} name={`sectionText${i}`} value={s.content} onChange={(e) => updateSectionItem(i, "content", e.target.value)}
                         style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.9rem", minHeight: 80, resize: "vertical", boxSizing: "border-box" }} />
                     ) : (
                       <div>
                         {s.items.map((item, j) => (
                           <div key={j} style={{ display: "flex", gap: 6, marginBottom: 6 }}>
                             <span style={{ color: "#b50064" }}>•</span>
-                            <input value={item} onChange={(e) => updateListItem(i, j, e.target.value)}
+                            <input id={`list-item-${i}-${j}`} name={`listItem${i}${j}`} value={item} onChange={(e) => updateListItem(i, j, e.target.value)}
                               style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "1px solid #e0e0e0", fontFamily: "inherit", fontSize: "0.85rem" }} />
                             <button onClick={() => removeListItem(i, j)} style={{ background: "none", border: "none", cursor: "pointer", color: "#e53935", fontSize: "0.8rem" }}>✕</button>
                           </div>

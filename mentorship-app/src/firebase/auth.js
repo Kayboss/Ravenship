@@ -1,6 +1,6 @@
 import { auth, db } from "./config";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 
 export const loginWithEmail = async (email, password) => {
   const credential = await signInWithEmailAndPassword(auth, email, password);
@@ -26,9 +26,30 @@ export const loginWithEmail = async (email, password) => {
 };
 
 export const logout = async () => {
+  const user = getStoredUser();
+  if (user?.id) {
+    try { await updateDoc(doc(db, "users", user.id), { online: false }); } catch {}
+  }
   await signOut(auth);
   localStorage.removeItem("user");
   localStorage.removeItem("token");
+};
+
+let presenceUnsub = null;
+export const watchPresence = () => {
+  if (presenceUnsub) presenceUnsub();
+  const unsub = onAuthStateChanged(auth, async (fbUser) => {
+    if (fbUser) {
+      try { await updateDoc(doc(db, "users", fbUser.uid), { online: true }); } catch {}
+    }
+  });
+  const handleBeforeUnload = () => {
+    const user = getStoredUser();
+    if (user?.id) updateDoc(doc(db, "users", user.id), { online: false }).catch(() => {});
+  };
+  window.addEventListener("beforeunload", handleBeforeUnload);
+  presenceUnsub = () => { unsub(); window.removeEventListener("beforeunload", handleBeforeUnload); };
+  return presenceUnsub;
 };
 
 export const onAuthChange = (callback) => {

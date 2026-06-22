@@ -238,9 +238,9 @@ export const SponsorshipRequest = () => {
     if (user?.id && role === "mentee") {
       getUser(user.id).then(u => {
         if (u?.mentorId) {
-          getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(() => {});
+          getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(e => console.error("getUser/mentor groupName error:", e));
         }
-      }).catch(() => {});
+      }).catch(e => console.error("getUser/mentee error:", e));
     }
   }, [user?.id, role]);
 

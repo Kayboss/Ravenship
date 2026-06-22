@@ -284,7 +284,7 @@ export const Gradebook = () => {
         });
         setMentees(result);
       })
-      .catch(() => {});
+      .catch(e => console.error("getGradebook error:", e));
   }, []);
 
   const allAssignments = mentees.length > 0

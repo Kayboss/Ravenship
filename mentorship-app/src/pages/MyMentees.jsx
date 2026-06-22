@@ -331,7 +331,7 @@ export const MyMentees = () => {
           skills: u.skills || [],
         })));
       }
-    }).catch(() => {});
+    }).catch(e => console.error("getMentees error:", e));
   }, []);
 
   return (

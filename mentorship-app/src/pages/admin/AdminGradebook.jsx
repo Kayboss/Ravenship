@@ -24,7 +24,7 @@ export default function AdminGradebook() {
         });
       })
       .then(setMentees)
-      .catch(() => {})
+      .catch(e => console.error("getUsers/mentees error:", e))
       .finally(() => setLoading(false));
     getCourses().then(courses => {
       const names = [...new Set(courses.flatMap(c => c.assignments ? (typeof c.assignments === 'number' ? [] : c.assignments) : []))];

@@ -23,8 +23,8 @@ export default function AdminOverview() {
   const [sourceData, setSourceData] = useState([]);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getAnalytics().then(d => setData(d)).catch(() => {});
-    getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
+    getAnalytics().then(d => setData(d)).catch(e => console.error("getAnalytics error:", e));
+    getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(e => console.error("getUsers error:", e));
     Promise.all([
       getAnnouncements(),
       getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
@@ -37,7 +37,7 @@ export default function AdminOverview() {
         return tb - ta;
       });
       setNotifs(merged);
-    }).catch(() => {});
+    }).catch(e => console.error("getAnnouncements/notifications error:", e));
     getSubmissions({}).then(subs => {
       const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
       const counts = [0,0,0,0,0,0,0];
@@ -49,13 +49,13 @@ export default function AdminOverview() {
       });
       const max = Math.max(...counts, 1);
       setWeekData(days.map((d, i) => ({ day: d, val: Math.round((counts[i]/max)*100) })));
-    }).catch(() => {});
+    }).catch(e => console.error("getSubmissions/weekData error:", e));
     getUsers().then(allUsers => {
       const cities = {};
       allUsers.forEach(u => { const c = u.city || "Unknown"; cities[c] = (cities[c]||0)+1; });
       const total = allUsers.length || 1;
       setSourceData(Object.entries(cities).map(([l, v]) => ({ l, v: Math.round((v/total)*100), c: "#b50064" })));
-    }).catch(() => {});
+    }).catch(e => console.error("getUsers/sourceData error:", e));
   }, []);
   const filteredUsers = roleFilter === "all" ? users : users.filter(u => u.role === roleFilter);
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Good morning"; if (h < 18) return "Good afternoon"; return "Good evening"; })();

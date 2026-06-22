@@ -9,7 +9,7 @@ export default function AdminCourses() {
   const [expandedCourse, setExpandedCourse] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
+    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
   }, []);
   return (
     <>

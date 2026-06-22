@@ -344,7 +344,7 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
     <Bar>
       <SearchWrapper>
         <span>🔍</span>
-        <input placeholder={searchPlaceholder} />
+        <input id="topbar-search" name="search" placeholder={searchPlaceholder} />
       </SearchWrapper>
       <HeaderActions ref={ref}>
         <RelativeWrap>

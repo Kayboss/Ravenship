@@ -111,11 +111,13 @@ const Textarea = styled.textarea`
 
 const FieldRow = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 16px;
   margin-bottom: 16px;
   &:last-child { margin-bottom: 0; }
-  @media (max-width: 600px) { grid-template-columns: 1fr; }
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const FieldGroup = styled.div`
@@ -138,6 +140,11 @@ const PhotoWrap = styled.div`
   display: flex;
   align-items: center;
   gap: 20px;
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
 `;
 
 const PhotoPreview = styled.div`
@@ -158,6 +165,9 @@ const PhotoPreview = styled.div`
 `;
 
 const PhotoBtn = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 20px;
   border-radius: 12px;
   background: ${(props) => props.theme.colors.primary};
@@ -168,6 +178,7 @@ const PhotoBtn = styled.label`
   border: none;
   font-family: inherit;
   transition: opacity 0.2s;
+  min-height: 40px;
   &:hover { opacity: 0.9; }
 `;
 
@@ -175,6 +186,42 @@ const PhotoHint = styled.p`
   font-size: 0.75rem;
   color: ${(props) => props.theme.colors.textSecondary};
   margin-top: 6px;
+`;
+
+const ProgressWrap = styled.div`
+  margin-top: 12px;
+  width: 100%;
+`;
+
+const ProgressBar = styled.div`
+  height: 8px;
+  border-radius: 4px;
+  background: ${(props) => props.theme.colors.outline};
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  border-radius: 4px;
+  background: ${(props) => props.theme.colors.primary};
+  width: ${(props) => props.$pct}%;
+  transition: width 0.3s ease;
+`;
+
+const ProgressLabel = styled.div`
+  font-size: 0.75rem;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-top: 4px;
+`;
+
+const FileName = styled.div`
+  font-size: 0.8rem;
+  color: ${(props) => props.theme.colors.textSecondary};
+  margin-top: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
 `;
 
 const TagGrid = styled.div`
@@ -188,6 +235,11 @@ const AddRow = styled.div`
   gap: 8px;
   margin-bottom: 16px;
   input { flex: 1; }
+  @media (max-width: 480px) {
+    flex-direction: column;
+    input { width: 100%; }
+    button { width: 100%; min-height: 40px; }
+  }
 `;
 
 const AddBtn = styled.button`
@@ -454,16 +506,17 @@ export const Settings = () => {
                 <PhotoPreview>
                   {photo ? <img src={photo} alt="Preview" /> : user.name?.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "U"}
                 </PhotoPreview>
-                <div>
-                  <PhotoBtn htmlFor="photo-input">Upload Photo</PhotoBtn>
+                <div style={{flex:1,minWidth:0}}>
+                  <PhotoBtn htmlFor="photo-input">📷 Choose Photo</PhotoBtn>
                   <input ref={fileRef} id="photo-input" type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhoto} />
+                  {photoFile && !saving && <FileName>{photoFile.name}</FileName>}
                   {(uploadProgress > 0 || saving) && (
-                    <div style={{marginTop:12,width:"100%"}}>
-                      <div style={{height:6,borderRadius:3,background:"#e0e0e0",overflow:"hidden"}}>
-                        <div style={{height:"100%",borderRadius:3,background:"#b50064",width:`${uploadProgress}%`,transition:"width 0.3s ease"}} />
-                      </div>
-                      {uploadStage && <div style={{fontSize:"0.75rem",color:"#594048",marginTop:4}}>{uploadStage}</div>}
-                    </div>
+                    <ProgressWrap>
+                      <ProgressBar>
+                        <ProgressFill $pct={uploadProgress} />
+                      </ProgressBar>
+                      {uploadStage && <ProgressLabel>{uploadStage} {uploadProgress}%</ProgressLabel>}
+                    </ProgressWrap>
                   )}
                   <PhotoHint>JPG, PNG or GIF. Max 5MB.</PhotoHint>
                 </div>
@@ -598,7 +651,7 @@ export const Settings = () => {
                   { key: "dailyReminder", label: "Daily learning reminder", desc: "Daily reminder to stay on track" },
                 ]).map(n => (
                   <label key={n.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", cursor: "pointer", borderBottom: "1px solid #e0e0e020" }}>
-                    <input type="checkbox" checked={notifPrefs[n.key]} onChange={() => toggleNotif(n.key)}
+                    <input type="checkbox" id={`notif-${n.key}`} checked={notifPrefs[n.key]} onChange={() => toggleNotif(n.key)}
                       style={{ width: 18, height: 18, accentColor: "#b50064", cursor: "pointer" }} />
                     <div>
                       <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#2c3e50" }}>{n.label}</div>
@@ -626,7 +679,12 @@ const FieldRow2 = styled.div`
   gap: 16px;
   align-items: center;
   margin-bottom: 16px;
+  flex-wrap: wrap;
   &:last-child { margin-bottom: 0; }
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 const SaveSmallBtn = styled.button`
@@ -651,12 +709,12 @@ function CommunitySettingsCard() {
     if (!authReady) return;
     getDoc(doc(db, "communitySettings", "main"))
       .then((snap) => { if (snap.exists()) setSettings(snap.data()); })
-      .catch(() => {});
+      .catch(e => console.error("getCommunitySettings error:", e));
   }, []);
   const save = () => {
     setDoc(doc(db, "communitySettings", "main"), settings, { merge: true })
       .then(() => { setSaved(true); setTimeout(() => setSaved(false), 2000); })
-      .catch(() => {});
+      .catch(e => console.error("saveCommunitySettings error:", e));
   };
   return (
     <Card $span2 data-aos="fade-up">

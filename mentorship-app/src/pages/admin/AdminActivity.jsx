@@ -8,7 +8,7 @@ export default function AdminActivity() {
   const [activities, setActivities] = useState([]);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getActivities(50).then(setActivities).catch(() => {});
+    getActivities(50).then(setActivities).catch(e => console.error("getActivities error:", e));
   }, []);
   return (
     <Card data-aos="fade-up">

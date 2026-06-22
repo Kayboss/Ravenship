@@ -15,8 +15,8 @@ export default function AdminMentors() {
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor") : [])).catch(() => {});
-    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
+    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor") : [])).catch(e => console.error("getUsers error:", e));
+    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
   }, []);
   const doVerify = (id, v) => {
     setVerifying(id);

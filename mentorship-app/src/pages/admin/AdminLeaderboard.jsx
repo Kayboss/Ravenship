@@ -9,8 +9,8 @@ export default function AdminLeaderboard() {
   const [courses, setCourses] = useState([]);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
-    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(() => {});
+    getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(e => console.error("getUsers error:", e));
+    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
   }, []);
   const mentors = users.filter(u => u.role === "mentor");
   const mentees = users.filter(u => u.role === "mentee");

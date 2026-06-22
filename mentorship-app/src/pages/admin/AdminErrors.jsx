@@ -8,11 +8,11 @@ export default function AdminErrors() {
   const [errors, setErrors] = useState([]);
   const [resolving, setResolving] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
-  const load = () => getErrors(50).then(setErrors).catch(() => {});
+  const load = () => getErrors(50).then(setErrors).catch(e => console.error("getErrors error:", e));
   useEffect(() => { load(); }, []);
   const doResolve = (id) => {
     setResolving(id);
-    markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? {...e, resolved: true} : e)); }).catch(() => {}).finally(() => setResolving(null));
+    markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? {...e, resolved: true} : e)); }).catch(e => console.error("markErrorResolved error:", e)).finally(() => setResolving(null));
   };
   return (
     <Card data-aos="fade-up">

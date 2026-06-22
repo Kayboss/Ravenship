@@ -5,7 +5,7 @@ import "aos/dist/aos.css";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getPosts, addPost, updatePost, deletePost, togglePostLike, getEvents, getUsers, getOrCreateConversation, sendMessage, subscribeMessages, subscribeConversations, markMessagesRead, subscribeConversation, setTyping } from "../firebase/db";
+import { getPosts, addPost, updatePost, deletePost, togglePostLike, addComment as fbAddComment, getEvents, getUsers, getOrCreateConversation, sendMessage, subscribeMessages, subscribeConversations, markMessagesRead, subscribeConversation, setTyping } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -649,9 +649,9 @@ export const Community = () => {
   useEffect(() => {
     if (!authReady) return;
     AOS.init({ duration: 800, once: true });
-    getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(() => {});
-    getUsers().then(d => setMemberList(Array.isArray(d) ? d : [])).catch(() => {});
-    getEvents().then(d => setEventList(Array.isArray(d) ? d : [])).catch(() => {});
+    getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(e => console.error("getPosts error:", e));
+    getUsers().then(d => setMemberList(Array.isArray(d) ? d : [])).catch(e => console.error("getUsers error:", e));
+    getEvents().then(d => setEventList(Array.isArray(d) ? d : [])).catch(e => console.error("getEvents error:", e));
     const pending = localStorage.getItem("pending_chat_target");
     if (pending) {
       try {
@@ -660,7 +660,7 @@ export const Community = () => {
         if (target?.id && target?.name) openChat(target).then(() => setChatPopupOpen(true));
       } catch { localStorage.removeItem("pending_chat_target"); }
     }
-  }, []);
+  }, [authReady]);
 
   useEffect(() => {
     if (!authReady || !user?.id) return;
@@ -674,7 +674,7 @@ export const Community = () => {
       localStorage.setItem("topbar_messages", JSON.stringify(msgs));
     });
     return () => unsub();
-  }, [user?.id]);
+  }, [authReady, user?.id]);
 
   useEffect(() => {
     if (!chatConvId || !user?.id) return;
@@ -737,7 +737,7 @@ export const Community = () => {
         setPostList(prev => prev.map((p, i) => i === index ? { ...p, text: editingPostText } : p));
         cancelEdit();
       })
-      .catch(() => {});
+      .catch(e => console.error("saveEdit error:", e));
   };
 
   const handleDelete = (index) => {
@@ -746,20 +746,26 @@ export const Community = () => {
     if (!window.confirm("Delete this post?")) return;
     deletePost(post.id)
       .then(() => setPostList(prev => prev.filter((_, i) => i !== index)))
-      .catch(() => {});
+      .catch(e => console.error("handleDelete error:", e));
   };
 
   const toggleComments = (index) => {
     setCommentsOpen(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const addComment = (index) => {
+  const addComment = async (index) => {
     const text = commentInputs[index]?.trim();
     if (!text) return;
+    const post = postList[index];
+    if (!post?.id) return;
+    const comment = { text, author: user.name, authorId: user.id };
     setPostList(prev => prev.map((p, i) =>
-      i === index ? { ...p, comments: [...p.comments, { text, author: user.name }] } : p
+      i === index ? { ...p, comments: [...(p.comments || []), comment] } : p
     ));
     setCommentInputs(prev => ({ ...prev, [index]: "" }));
+    try {
+      await fbAddComment(post.id, text);
+    } catch (e) { console.error("Failed to save comment:", e); }
   };
 
   const handleNewPostImage = (e) => {
@@ -790,7 +796,7 @@ export const Community = () => {
         setNewPostText("");
         setNewPostImage(null);
       })
-      .catch(() => {});
+      .catch(e => console.error("submitPost error:", e));
   };
 
   const filteredMembers = memberFilter === "online" ? memberList.filter(m => m.online) : memberList;
@@ -897,8 +903,8 @@ export const Community = () => {
                 )}
                 {p.image && <PostImagePreview>{typeof p.image === "string" && p.image.startsWith("data:") ? <img src={p.image} alt="Post" /> : <span>📊 Chart Preview</span>}</PostImagePreview>}
                 <PostActions>
-                  <ActionBtn $active={p.liked ?? (user?.id && p.likes?.includes(user.id))} onClick={() => toggleLike(i)}>{(p.liked ?? (user?.id && p.likes?.includes(user.id))) ? "❤️" : "🤍"} {p.likes?.length ?? 0}</ActionBtn>
-                  <ActionBtn $active={commentsOpen[i]} onClick={() => toggleComments(i)}>💬 {p.comments.length}</ActionBtn>
+                  <ActionBtn $active={p.liked ?? (user?.id && (p.likes || []).includes(user.id))} onClick={() => toggleLike(i)}>{(p.liked ?? (user?.id && (p.likes || []).includes(user.id))) ? "❤️" : "🤍"} {p.likes?.length ?? 0}</ActionBtn>
+                  <ActionBtn $active={commentsOpen[i]} onClick={() => toggleComments(i)}>💬 {p.comments?.length ?? 0}</ActionBtn>
                   {isPostAuthor(p) && (
                     <>
                       <ActionBtn onClick={() => startEdit(p)}>✏️</ActionBtn>
@@ -908,8 +914,8 @@ export const Community = () => {
                 </PostActions>
                 {commentsOpen[i] && (
                   <CommentSection>
-                    {p.comments.length === 0 && <CommentItem style={{ color: "var(--color-text-secondary, #594048)" }}>No comments yet.</CommentItem>}
-                    {p.comments.map((c, j) => (
+                    {(!p.comments || p.comments.length === 0) && <CommentItem style={{ color: "var(--color-text-secondary, #594048)" }}>No comments yet.</CommentItem>}
+                    {(p.comments || []).map((c, j) => (
                       <CommentItem key={j}><CommentAuthor>{c.authorName || c.author || "Anonymous"}</CommentAuthor>{c.text || c}</CommentItem>
                     ))}
                     <CommentInputRow>

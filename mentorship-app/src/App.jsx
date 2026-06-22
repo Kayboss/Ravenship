@@ -28,6 +28,7 @@ import { HelpCenter } from "./pages/HelpCenter.jsx";
 import { CounsellingRequest } from "./pages/CounsellingRequest.jsx";
 import { SponsorshipRequest } from "./pages/SponsorshipRequest.jsx";
 import { logError } from "./firebase/db";
+import { watchPresence } from "./firebase/auth";
 
 const AppLayout = ({ children }) => {
   return <>{children}</>;
@@ -59,6 +60,7 @@ class ErrorBoundary extends React.Component {
 }
 
 const GlobalErrorLogger = () => {
+  useEffect(() => { watchPresence(); }, []);
   useEffect(() => {
     const onError = (event) => {
       logError(event.error || event.message, { type: "window.onerror" });

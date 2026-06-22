@@ -1018,17 +1018,17 @@ export const MyCourses = () => {
 
               <FormGroup>
                 <FormLabel>Program Title</FormLabel>
-                <FormInput placeholder="e.g. Advanced UI/UX Systems" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+                <FormInput id="course-title-create" name="title" placeholder="e.g. Advanced UI/UX Systems" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
               </FormGroup>
 
               <FormGroup>
                 <FormLabel>Description</FormLabel>
-                <FormTextarea placeholder="Describe the program..." value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} />
+                <FormTextarea id="course-desc-create" name="description" placeholder="Describe the program..." value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} />
               </FormGroup>
 
               <FormGroup>
                 <FormLabel>Category</FormLabel>
-                <FormSelect value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })}>
+                <FormSelect id="course-category-create" name="category" value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })}>
                   <option>Design</option>
                   <option>Engineering</option>
                   <option>Business</option>
@@ -1053,18 +1053,18 @@ export const MyCourses = () => {
                       style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"none", background:"rgba(0,0,0,0.5)", color:"#fff", cursor:"pointer", fontSize:"0.8rem" }}>✕</button>
                   </div>
                 )}
-                <input type="file" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; const r=new FileReader(); r.onload=(ev) => setForm({ ...form, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
+                <input type="file" id="featured-image-create" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; const r=new FileReader(); r.onload=(ev) => setForm({ ...form, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
                   style={{ fontSize:"0.85rem", fontFamily:"inherit" }} />
               </FormGroup>
 
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
                 <FormGroup style={{ flex: 1 }}>
                   <FormLabel>Duration (weeks)</FormLabel>
-                  <FormInput type="number" placeholder="e.g. 8" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} />
+                  <FormInput id="course-duration-create" name="duration" type="number" placeholder="e.g. 8" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} />
                 </FormGroup>
                 <FormGroup style={{ flex: 1 }}>
                   <FormLabel>Level</FormLabel>
-                  <FormSelect value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })}>
+                  <FormSelect id="course-level-create" name="level" value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })}>
                     <option>Beginner</option>
                     <option>Intermediate</option>
                     <option>Advanced</option>
@@ -1091,15 +1091,15 @@ export const MyCourses = () => {
               <ModalTitle>Edit Program</ModalTitle>
               <FormGroup>
                 <FormLabel>Program Title</FormLabel>
-                <FormInput value={editTarget.title} onChange={(e) => setEditTarget({ ...editTarget, title: e.target.value })} />
+                <FormInput id="course-title-edit" name="title" value={editTarget.title} onChange={(e) => setEditTarget({ ...editTarget, title: e.target.value })} />
               </FormGroup>
               <FormGroup>
                 <FormLabel>Description</FormLabel>
-                <FormTextarea value={editTarget.desc} onChange={(e) => setEditTarget({ ...editTarget, desc: e.target.value })} />
+                <FormTextarea id="course-desc-edit" name="description" value={editTarget.desc} onChange={(e) => setEditTarget({ ...editTarget, desc: e.target.value })} />
               </FormGroup>
               <FormGroup>
                 <FormLabel>Category</FormLabel>
-                <FormSelect value={editTarget.badge} onChange={(e) => setEditTarget({ ...editTarget, badge: e.target.value })}>
+                <FormSelect id="course-category-edit" name="category" value={editTarget.badge} onChange={(e) => setEditTarget({ ...editTarget, badge: e.target.value })}>
                   <option>Design</option>
                   <option>Engineering</option>
                   <option>Business</option>
@@ -1122,13 +1122,13 @@ export const MyCourses = () => {
                       style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"none", background:"rgba(0,0,0,0.5)", color:"#fff", cursor:"pointer", fontSize:"0.8rem" }}>✕</button>
                   </div>
                 )}
-                <input type="file" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; const r=new FileReader(); r.onload=(ev) => setEditTarget({ ...editTarget, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
+                <input type="file" id="featured-image-edit" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; const r=new FileReader(); r.onload=(ev) => setEditTarget({ ...editTarget, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
                   style={{ fontSize:"0.85rem", fontFamily:"inherit" }} />
               </FormGroup>
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
                 <FormGroup style={{ flex: 1 }}>
                   <FormLabel>Level</FormLabel>
-                  <FormSelect value={editTarget.level} onChange={(e) => setEditTarget({ ...editTarget, level: e.target.value })}>
+                  <FormSelect id="course-level-edit" name="level" value={editTarget.level} onChange={(e) => setEditTarget({ ...editTarget, level: e.target.value })}>
                     <option>Beginner</option>
                     <option>Intermediate</option>
                     <option>Advanced</option>

@@ -408,7 +408,7 @@ export const Assignments = () => {
     if (isMentee && currentUser?.id) {
       getUser(currentUser.id).then(u => {
         if (u?.mentorId) setMenteeMentorId(u.mentorId);
-      }).catch(() => {});
+      }).catch(e => console.error("getUser/mentorId error:", e));
     }
   }, [authReady]);
 

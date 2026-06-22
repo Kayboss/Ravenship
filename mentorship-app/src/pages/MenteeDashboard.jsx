@@ -568,7 +568,7 @@ export const MenteeDashboard = () => {
         const u = await getUser(menteeId);
         if (u?.mentorId) {
           mentorFilter = u.mentorId;
-          getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(() => {});
+          getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(e => console.error("getUser/groupName error:", e));
         }
       }
       Promise.all([
@@ -596,7 +596,7 @@ export const MenteeDashboard = () => {
         const hours = submissions ? Math.round(submissions.length * 1.5 * 10) / 10 : 0;
         setMenteeStats({ hours: `${hours}h`, skills: `${graded.length || allScores.length}`, submissionsCount: submissions?.length || 0, weekData: [0,0,0,0,0,0,0] });
       })
-      .catch(() => {});
+      .catch(e => console.error("MenteeDashboard load error:", e));
     })();
   }, []);
 
