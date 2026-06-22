@@ -13,13 +13,13 @@ export default function AdminActivity() {
   return (
     <Card data-aos="fade-up">
       <style>{`
-        .act-row{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;border-radius:10;font-size:0.85rem;overflow:hidden}
-        .act-content{flex:1;min-width:0}
-        .act-time{font-size:0.68rem;color:#999;white-space:nowrap;flex-shrink:0}
-        @media(max-width:480px){
-          .act-row{flex-wrap:wrap;gap:6px;padding:10px 10px}
-          .act-content{width:calc(100% - 44px)}
-          .act-time{width:100%;margin-top:4px;padding-left:44px;white-space:normal;word-break:break-all}
+        .act-row{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:10;font-size:0.85rem}
+        .act-avatar{width:32px;height:32px;border-radius:50%;background:#b50064;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;flex-shrink:0}
+        .act-body{flex:1;min-width:0}
+        .act-time{font-size:0.68rem;color:#999;flex-shrink:0;white-space:nowrap}
+        @media(max-width:640px){
+          .act-row{flex-wrap:wrap;gap:4px 10px;padding:10px 10px}
+          .act-time{width:100%;white-space:normal;word-break:break-all;margin-left:42px}
         }
       `}</style>
       <CardTitle>📊 Recent Activity Log</CardTitle>
@@ -30,8 +30,8 @@ export default function AdminActivity() {
             const time = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
             return (
               <div key={a.id || i} className="act-row" style={{background:i%2===0?"#fafafa":"#fff"}}>
-                <div style={{width:32,height:32,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>{a.userName?.split(" ").map(w=>w[0]).join("").slice(0,2)}</div>
-                <div className="act-content">
+                <div className="act-avatar">{a.userName?.split(" ").map(w=>w[0]).join("").slice(0,2)}</div>
+                <div className="act-body">
                   <strong style={{color:"#2c3e50"}}>{a.action}</strong>
                   <span style={{color:"#594048",marginLeft:6,fontSize:"0.78rem"}}>{a.detail || ""}</span>
                   <div style={{fontSize:"0.72rem",color:"#999",marginTop:2}}>{a.userName} · {a.userRole}</div>
