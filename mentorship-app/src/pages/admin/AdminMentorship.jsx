@@ -75,7 +75,11 @@ export default function AdminMentorship() {
         .ms-panels{display:grid;grid-template-columns:1fr 1fr;gap:24px}
         .ms-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f9f9f9;border-radius:10}
         .ms-row-name{flex:1;min-width:0;font-weight:600;font-size:0.85rem;color:#2c3e50;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .ms-group-row{display:flex;align-items:center;gap:12px;flexWrap:wrap}
+        .ms-group-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+        .ms-select-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+        .ms-select-row select{flex:1 1 250px;min-width:0}
+        .ms-select-row button{flex-shrink:0}
+        .ms-list{display:flex;flex-direction:column;gap:8px}
         @media(max-width:600px){
           .ms-panels{grid-template-columns:1fr !important}
           .ms-row{flex-wrap:wrap;gap:8px}
@@ -83,17 +87,20 @@ export default function AdminMentorship() {
           .ms-group-row > label{text-align:left}
           .ms-group-row > input{width:100% !important;max-width:100% !important}
           .ms-group-row > button{width:100%;min-height:40px}
+          .ms-select-row{flex-direction:column}
+          .ms-select-row select{width:100%;flex:1 1 auto}
+          .ms-select-row button{width:100%;min-height:40px}
         }
       `}</style>
       <CardTitle>🔗 Mentor–Mentee Assignments</CardTitle>
       <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Select a mentor to manage their group and assigned mentees.</p>
       {msg && <p style={{fontSize:"0.85rem",color:msg.includes("rror")||msg.includes("first")?"#e53935":"#2e7d32",fontWeight:600,marginBottom:12}}>{msg}</p>}
 
-      <div style={{display:"flex",gap:12,marginBottom:20,flexWrap:"wrap"}}>
+      <div className="ms-select-row">
         <Select value={selectedMentor?.id || ""} onChange={e => {
           const m = mentors.find(mm => mm.id === e.target.value);
           setSelectedMentor(m || null);
-        }} style={{flex:"1 1 250px",minWidth:0}}>
+        }}>
           <option value="">— Select a mentor —</option>
           {mentors.map(m => <option key={m.id} value={m.id}>{m.name}{m.groupName ? ` (${m.groupName})` : ""} ({m.email})</option>)}
         </Select>
@@ -113,7 +120,7 @@ export default function AdminMentorship() {
               {assignedMentees.length === 0 ? (
                 <p style={{fontSize:"0.85rem",color:"#999"}}>No mentees assigned yet.</p>
               ) : (
-                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <div className="ms-list">
                   {assignedMentees.map(m => (
                     <div key={m.id} className="ms-row">
                       <div style={{width:32,height:32,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>
@@ -131,7 +138,7 @@ export default function AdminMentorship() {
               {unassigned.length === 0 ? (
                 <p style={{fontSize:"0.85rem",color:"#999"}}>All mentees are assigned.</p>
               ) : (
-                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <div className="ms-list">
                   {unassigned.map(m => (
                     <div key={m.id} className="ms-row">
                       <div style={{width:32,height:32,borderRadius:"50%",background:"#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>

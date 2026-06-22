@@ -23,7 +23,8 @@ export default function AdminErrors() {
         .err-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
         @media(max-width:480px){
           .err-top{flex-direction:column;gap:8px}
-          .err-meta{flex-direction:row;align-items:center;align-self:flex-start}
+          .err-meta{flex-direction:row;flex-wrap:wrap;align-items:center;align-self:flex-start;gap:4px}
+          .err-meta span{white-space:normal}
         }
       `}</style>
       <CardTitle>⚠️ Error Log</CardTitle>
