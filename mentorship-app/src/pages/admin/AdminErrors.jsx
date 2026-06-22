@@ -38,7 +38,7 @@ export default function AdminErrors() {
                 <div className="err-top">
                   <div className="err-info">
                     <div style={{fontWeight:700,fontSize:"0.85rem",color:"#2c3e50",marginBottom:4}}>{e.message || "Unknown error"}</div>
-                    {e.url && <div style={{fontSize:"0.72rem",color:"#594048",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>URL: {e.url}</div>}
+                    {e.url && <div style={{fontSize:"0.72rem",color:"#594048",marginBottom:2,wordBreak:"break-all",overflow:"hidden"}}>URL: {e.url}</div>}
                     {e.userName && <div style={{fontSize:"0.72rem",color:"#594048",marginBottom:2}}>User: {e.userName} ({e.userRole})</div>}
                     {e.stack && (
                       <details style={{marginTop:4}}>
