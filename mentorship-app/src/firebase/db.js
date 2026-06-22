@@ -1,7 +1,7 @@
 import { db } from "./config";
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, limit, serverTimestamp, arrayUnion, arrayRemove, Timestamp, onSnapshot
+  query, where, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove, Timestamp, onSnapshot
 } from "firebase/firestore";
 import { getStoredUser } from "./auth";
 
@@ -489,6 +489,16 @@ export const getActivities = async (limitCount = 100) => {
   const q = query(collection(db, "activity"), orderBy("timestamp", "desc"), limit(limitCount));
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const getActivitiesPaginated = async (pageSize = 50, lastDoc = null) => {
+  let q = query(collection(db, "activity"), orderBy("timestamp", "desc"), limit(pageSize));
+  if (lastDoc) q = query(q, startAfter(lastDoc));
+  const snap = await getDocs(q);
+  const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const newLastDoc = snap.docs[snap.docs.length - 1] || null;
+  const hasMore = snap.docs.length === pageSize;
+  return { items, lastDoc: newLastDoc, hasMore };
 };
 
 // ── Error Tracking ──

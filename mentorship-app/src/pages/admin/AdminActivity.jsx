@@ -1,15 +1,34 @@
 import React, { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { getActivities } from "../../firebase/db";
+import { getActivitiesPaginated } from "../../firebase/db";
 import { Card, CardTitle } from "./adminStyles";
 
 export default function AdminActivity() {
   const [activities, setActivities] = useState([]);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getActivities(50).then(setActivities).catch(e => console.error("getActivities error:", e));
+    setLoading(true);
+    getActivitiesPaginated(50, null).then(({ items, lastDoc: ld, hasMore: hm }) => {
+      setActivities(items);
+      setLastDoc(ld);
+      setHasMore(hm);
+      setLoading(false);
+    }).catch(e => { console.error("getActivities error:", e); setLoading(false); });
   }, []);
+  const loadMore = () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    getActivitiesPaginated(50, lastDoc).then(({ items, lastDoc: ld, hasMore: hm }) => {
+      setActivities(prev => [...prev, ...items]);
+      setLastDoc(ld);
+      setHasMore(hm);
+      setLoading(false);
+    }).catch(e => { console.error("loadMore error:", e); setLoading(false); });
+  };
   return (
     <Card data-aos="fade-up">
       <style>{`
@@ -24,23 +43,30 @@ export default function AdminActivity() {
       `}</style>
       <CardTitle>📊 Recent Activity Log</CardTitle>
       <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Track all user actions across the platform.</p>
-      {activities.length === 0 ? <p style={{color:"#594048"}}>No activity recorded yet.</p> : (
-        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:600,overflowY:"auto"}}>
-          {activities.map((a, i) => {
-            const time = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
-            return (
-              <div key={a.id || i} className="act-row" style={{background:i%2===0?"#fafafa":"#fff"}}>
-                <div className="act-avatar">{a.userName?.split(" ").map(w=>w[0]).join("").slice(0,2)}</div>
-                <div className="act-body">
-                  <strong style={{color:"#2c3e50"}}>{a.action}</strong>
-                  <span style={{color:"#594048",marginLeft:6,fontSize:"0.78rem"}}>{a.detail || ""}</span>
-                  <div style={{fontSize:"0.72rem",color:"#999",marginTop:2}}>{a.userName} · {a.userRole}</div>
+      {activities.length === 0 && !loading ? <p style={{color:"#594048"}}>No activity recorded yet.</p> : (
+        <>
+          <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:600,overflowY:"auto"}}>
+            {activities.map((a, i) => {
+              const time = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+              return (
+                <div key={a.id || i} className="act-row" style={{background:i%2===0?"#fafafa":"#fff"}}>
+                  <div className="act-avatar">{a.userName?.split(" ").map(w=>w[0]).join("").slice(0,2)}</div>
+                  <div className="act-body">
+                    <strong style={{color:"#2c3e50"}}>{a.action}</strong>
+                    <span style={{color:"#594048",marginLeft:6,fontSize:"0.78rem"}}>{a.detail || ""}</span>
+                    <div style={{fontSize:"0.72rem",color:"#999",marginTop:2}}>{a.userName} · {a.userRole}</div>
+                  </div>
+                  <span className="act-time">{time.toLocaleDateString()} {time.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
                 </div>
-                <span className="act-time">{time.toLocaleDateString()} {time.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+          {hasMore && (
+            <button onClick={loadMore} disabled={loading} style={{marginTop:16,padding:"10px 20px",borderRadius:8,border:"1px solid #b50064",background:"transparent",color:"#b50064",fontSize:"0.85rem",fontWeight:600,cursor:"pointer",fontFamily:"inherit",width:"100%",minHeight:40}}>
+              {loading ? "Loading..." : `Load More (${activities.length}+)`}
+            </button>
+          )}
+        </>
       )}
     </Card>
   );
