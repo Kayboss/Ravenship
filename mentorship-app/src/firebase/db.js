@@ -21,6 +21,10 @@ export const updateUser = async (uid, data) => {
   await updateDoc(doc(db, "users", uid), data);
 };
 
+export const deleteUser = async (uid) => {
+  await deleteDoc(doc(db, "users", uid));
+};
+
 export const verifyUser = async (uid) => {
   await updateDoc(doc(db, "users", uid), { verified: true });
 };

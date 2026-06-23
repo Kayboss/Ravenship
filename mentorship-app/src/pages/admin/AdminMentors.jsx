@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser } from "../../firebase/db";
+import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, Btn, Table, Th, Td, BioModal } from "./adminStyles";
 
@@ -40,6 +40,17 @@ export default function AdminMentors() {
       .then(() => {
         setUsers(prev => prev.filter(u => u.id !== id));
         logActivity("Role changed", { detail: `${target.name} changed from ${target.role} to ${newRole}` });
+      })
+      .catch(e => setVerifyMsg(e.message));
+  };
+  const doDelete = (id) => {
+    const target = users.find(u => u.id === id);
+    if (!target || !window.confirm(`⚠️ Permanently delete ${target.name}? This cannot be undone.`)) return;
+    setVerifyMsg(null);
+    deleteUser(id)
+      .then(() => {
+        setUsers(prev => prev.filter(u => u.id !== id));
+        logActivity("User deleted", { detail: `${target.name} (${target.role}) was deleted` });
       })
       .catch(e => setVerifyMsg(e.message));
   };
@@ -88,6 +99,7 @@ export default function AdminMentors() {
                   <Btn $outline onClick={() => setBioUser(u)}>View Bio</Btn>
                   {u.verified ? <Btn $outline disabled={verifying === u.id} onClick={() => doVerify(u.id, false)}>{verifying === u.id ? "Revoking..." : "Revoke"}</Btn> : <Btn disabled={verifying === u.id} onClick={() => doVerify(u.id, true)}>{verifying === u.id ? "Verifying..." : "✓ Verify"}</Btn>}
                   <Btn $outline style={{color:"#e53935",borderColor:"#e53935"}} onClick={() => doChangeRole(u.id, "mentee")}>Make Mentee</Btn>
+                  <Btn $red disabled={verifying === u.id} onClick={() => doDelete(u.id)}>Delete</Btn>
                 </div>
 
                 <p style={{fontSize:"0.9rem",fontWeight:600,color:"#2c3e50",marginBottom:12}}>📚 Courses ({mentorCourses.length})</p>
