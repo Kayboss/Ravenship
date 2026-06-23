@@ -46,10 +46,15 @@ export default function AdminMentees() {
   return (
     <>
     <style>{`
+      .mentee-grid{max-width:100%;overflow:hidden}
       @media(max-width:560px){.mentee-grid{grid-template-columns:1fr !important}}
-      .mentee-header{display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer}
-      .mentee-info{display:flex;gap:16px;align-items:center;flex:1;min-width:0}
+      .mentee-header{display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;overflow:hidden}
+      .mentee-info{display:flex;gap:16px;align-items:center;flex:1;min-width:0;overflow:hidden}
       .mentee-meta{display:flex;gap:8px;align-items:center;flex-shrink:0}
+      .mentee-card{overflow:hidden;max-width:100%}
+      .mentee-card h4,.mentee-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+      .course-detail{overflow:hidden;max-width:100%}
+      .course-detail span{white-space:normal;word-break:break-word}
       @media(max-width:480px){
         .mentee-header{flex-direction:column;gap:10px}
         .mentee-meta{align-self:flex-start}
@@ -60,7 +65,7 @@ export default function AdminMentees() {
       {users.length === 0 ? <p style={{ gridColumn:"1/-1",color: "#594048", fontSize: "0.9rem" }}>No mentees registered.</p> : users.map((u) => {
         const menteeCourses = courses.filter(c => (c.enrolledMentees || c.enrolled || []).some(e => e.userId === u.id || e.email === u.email));
         return (
-          <Card key={u.id} data-aos="fade-up" style={{marginBottom:0}}>
+          <Card key={u.id} className="mentee-card" data-aos="fade-up" style={{marginBottom:0}}>
             <div className="mentee-header" onClick={() => setExpandedMentee(expandedMentee === u.id ? null : u.id)}>
               <div className="mentee-info">
                 <div style={{width:52,height:52,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",fontWeight:700,color:"#fff",flexShrink:0}}>
@@ -92,11 +97,11 @@ export default function AdminMentees() {
                   <div style={{display:"flex",flexDirection:"column",gap:10}}>
                     {menteeCourses.map(c => (
                       <div key={c.id} style={{border:"1px solid #e0e0e0",borderRadius:12,overflow:"hidden"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#f9f9f9",cursor:"pointer"}}
+                        <div className="course-detail" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#f9f9f9",cursor:"pointer"}}
                           onClick={() => setExpandedCourse(expandedCourse === c.id ? null : c.id)}>
-                          <div>
-                            <strong style={{fontSize:"0.9rem",color:"#2c3e50"}}>{c.title}</strong>
-                            <span style={{fontSize:"0.78rem",color:"#594048",marginLeft:8}}>{c.badge} · {c.level} · {c.duration} · {c.instructor}</span>
+                          <div style={{overflow:"hidden"}}>
+                            <strong style={{fontSize:"0.9rem",color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",display:"block"}}>{c.title}</strong>
+                            <span style={{fontSize:"0.78rem",color:"#594048"}}>{c.badge} · {c.level} · {c.duration} · {c.instructor}</span>
                           </div>
                         </div>
                         {expandedCourse === c.id && (

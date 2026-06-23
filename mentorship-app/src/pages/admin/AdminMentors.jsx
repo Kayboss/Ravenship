@@ -46,10 +46,15 @@ export default function AdminMentors() {
   return (
     <>
     <style>{`
+      .mentor-grid{max-width:100%;overflow:hidden}
       @media(max-width:560px){.mentor-grid{grid-template-columns:1fr !important}}
-      .mentor-header{display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer}
-      .mentor-info{display:flex;gap:16px;align-items:center;flex:1;min-width:0}
+      .mentor-header{display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;overflow:hidden}
+      .mentor-info{display:flex;gap:16px;align-items:center;flex:1;min-width:0;overflow:hidden}
       .mentor-meta{display:flex;gap:8px;align-items:center;flex-shrink:0}
+      .mentor-card{overflow:hidden;max-width:100%}
+      .mentor-card h4,.mentor-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+      .course-detail{overflow:hidden;max-width:100%}
+      .course-detail span{white-space:normal;word-break:break-word}
       @media(max-width:480px){
         .mentor-header{flex-direction:column;gap:10px}
         .mentor-meta{align-self:flex-start}
@@ -60,7 +65,7 @@ export default function AdminMentors() {
       {users.length === 0 ? <p style={{ color: "#594048", fontSize: "0.9rem", gridColumn:"1/-1" }}>No mentors registered.</p> : users.map((u, idx) => {
         const mentorCourses = courses.filter(c => c.instructor?.toLowerCase() === u.name?.toLowerCase());
         return (
-          <Card key={u.id} data-aos="fade-up" style={{marginBottom:0}}>
+          <Card key={u.id} className="mentor-card" data-aos="fade-up" style={{marginBottom:0}}>
             <div className="mentor-header" onClick={() => setExpandedMentor(expandedMentor === u.id ? null : u.id)}>
               <div className="mentor-info">
                 <div style={{width:52,height:52,borderRadius:"50%",background:"#006590",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",fontWeight:700,color:"#fff",flexShrink:0}}>
@@ -92,11 +97,11 @@ export default function AdminMentors() {
                   <div style={{display:"flex",flexDirection:"column",gap:10}}>
                     {mentorCourses.map(c => (
                       <div key={c.id} style={{border:"1px solid #e0e0e0",borderRadius:12,overflow:"hidden"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#f9f9f9",cursor:"pointer"}}
+                        <div className="course-detail" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#f9f9f9",cursor:"pointer"}}
                           onClick={() => setExpandedCourse(expandedCourse === c.id ? null : c.id)}>
-                          <div>
-                            <strong style={{fontSize:"0.9rem",color:"#2c3e50"}}>{c.title}</strong>
-                            <span style={{fontSize:"0.78rem",color:"#594048",marginLeft:8}}>{c.badge} · {c.level} · {c.duration}</span>
+                          <div style={{overflow:"hidden"}}>
+                            <strong style={{fontSize:"0.9rem",color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",display:"block"}}>{c.title}</strong>
+                            <span style={{fontSize:"0.78rem",color:"#594048"}}>{c.badge} · {c.level} · {c.duration}</span>
                           </div>
                           <div style={{textAlign:"right"}}>
                             <span style={{fontWeight:700,fontSize:"1rem",color:"#b50064"}}>{(c.enrolledMentees || c.enrolled || []).length}</span>
@@ -106,13 +111,13 @@ export default function AdminMentors() {
                         {expandedCourse === c.id && (
                           <div style={{padding:"12px 16px",borderTop:"1px solid #e0e0e0"}}>
                             <p style={{fontSize:"0.8rem",fontWeight:600,color:"#2c3e50",marginBottom:6}}>Enrolled Mentees:</p>
-                            {(!c.enrolledMentees || c.enrolledMentees.length === 0) ? (
+                              {(!c.enrolledMentees || c.enrolledMentees.length === 0) ? (
                               <p style={{fontSize:"0.78rem",color:"#999"}}>No mentees enrolled yet.</p>
                             ) : (
-                              <Table><thead><tr><Th>Name</Th><Th>Email</Th></tr></thead>
+                              <div style={{overflowX:"auto",maxWidth:"100%"}}><Table><thead><tr><Th>Name</Th><Th>Email</Th></tr></thead>
                               <tbody>{c.enrolledMentees.map((m, i) => (
                                 <tr key={i}><Td>{m.name}</Td><Td>{m.email}</Td></tr>
-                              ))}</tbody></Table>
+                              ))}</tbody></Table></div>
                             )}
                           </div>
                         )}
