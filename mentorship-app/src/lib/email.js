@@ -118,7 +118,7 @@ export async function sendWelcomeEmail({ name, email, role }) {
       user_name: name,
       user_role: role,
     });
-  } catch {} // silent
+  } catch (e) { console.error("sendWelcomeEmail error:", e); }
 }
 
 export async function sendAdminNotifyEmail({ name, email, role }) {
@@ -132,7 +132,7 @@ export async function sendAdminNotifyEmail({ name, email, role }) {
       user_email: email,
       user_role: role,
     });
-  } catch {} // silent
+  } catch (e) { console.error("sendAdminNotifyEmail error:", e); }
 }
 
 export async function sendApprovedEmail({ name, email, role }) {
@@ -145,5 +145,5 @@ export async function sendApprovedEmail({ name, email, role }) {
       user_name: name,
       user_role: role,
     });
-  } catch {} // silent
+  } catch (e) { console.error("sendApprovedEmail error:", e); }
 }
