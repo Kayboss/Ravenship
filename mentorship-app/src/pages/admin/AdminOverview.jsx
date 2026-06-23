@@ -24,7 +24,7 @@ export default function AdminOverview() {
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
     getAnalytics().then(d => setData(d)).catch(e => console.error("getAnalytics error:", e));
-    getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(e => console.error("getUsers error:", e));
+    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => !u.deleted) : [])).catch(e => console.error("getUsers error:", e));
     Promise.all([
       getAnnouncements(),
       getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))

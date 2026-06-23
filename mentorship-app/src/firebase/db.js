@@ -9,7 +9,7 @@ import { getStoredUser } from "./auth";
 
 export const getUsers = async () => {
   const snap = await getDocs(collection(db, "users"));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => !u.deleted);
 };
 
 export const getUser = async (uid) => {

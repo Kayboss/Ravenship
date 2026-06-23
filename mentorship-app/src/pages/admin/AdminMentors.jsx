@@ -15,7 +15,7 @@ export default function AdminMentors() {
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor") : [])).catch(e => console.error("getUsers error:", e));
+    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor" && !u.deleted) : [])).catch(e => console.error("getUsers error:", e));
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
   }, []);
   const doVerify = (id, v) => {
@@ -45,12 +45,12 @@ export default function AdminMentors() {
   };
   const doDelete = (id) => {
     const target = users.find(u => u.id === id);
-    if (!target || !window.confirm(`⚠️ Permanently delete ${target.name}? This cannot be undone.`)) return;
+    if (!target || !window.confirm(`⚠️ Remove ${target.name} from the platform? They will be marked as deleted and won't be able to log in.`)) return;
     setVerifyMsg(null);
-    deleteUser(id)
+    updateUser(id, { deleted: true, name: "Deleted User", email: "", phone: "", city: "", bio: "", photoURL: "", verified: false })
       .then(() => {
         setUsers(prev => prev.filter(u => u.id !== id));
-        logActivity("User deleted", { detail: `${target.name} (${target.role}) was deleted` });
+        logActivity("User deleted (soft)", { detail: `${target.name} (${target.role}) was removed from the platform` });
       })
       .catch(e => setVerifyMsg(e.message));
   };

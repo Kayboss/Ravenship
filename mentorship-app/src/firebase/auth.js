@@ -10,6 +10,9 @@ export const loginWithEmail = async (email, password) => {
     throw new Error("Account not set up. Contact your administrator.");
   }
   const userData = userDoc.data();
+  if (userData.deleted) {
+    throw new Error("This account has been removed. Contact your administrator.");
+  }
   const stored = {
     id: user.uid,
     name: userData.name,
