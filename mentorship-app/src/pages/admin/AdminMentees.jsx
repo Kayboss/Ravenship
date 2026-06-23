@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { getUsers, verifyUser, unverifyUser, getCourses, logActivity } from "../../firebase/db";
+import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, Btn, BioModal } from "./adminStyles";
 
@@ -31,6 +31,17 @@ export default function AdminMentees() {
       })
       .catch(e => setVerifyMsg(e.message))
       .finally(() => setVerifying(null));
+  };
+  const doChangeRole = (id, newRole) => {
+    const target = users.find(u => u.id === id);
+    if (!target || !window.confirm(`Change ${target.name}'s role from "${target.role}" to "${newRole}"?`)) return;
+    setVerifyMsg(null);
+    updateUser(id, { role: newRole })
+      .then(() => {
+        setUsers(prev => prev.filter(u => u.id !== id));
+        logActivity("Role changed", { detail: `${target.name} changed from ${target.role} to ${newRole}` });
+      })
+      .catch(e => setVerifyMsg(e.message));
   };
   return (
     <>
@@ -71,6 +82,7 @@ export default function AdminMentees() {
                 <div style={{display:"flex",gap:8,marginBottom:16}}>
                   <Btn $outline onClick={() => setBioUser(u)}>View Bio</Btn>
                   {u.verified ? <Btn $outline disabled={verifying === u.id} onClick={() => doVerify(u.id, false)}>{verifying === u.id ? "Revoking..." : "Revoke"}</Btn> : <Btn disabled={verifying === u.id} onClick={() => doVerify(u.id, true)}>{verifying === u.id ? "Verifying..." : "✓ Verify"}</Btn>}
+                  <Btn $outline style={{color:"#006590",borderColor:"#006590"}} onClick={() => doChangeRole(u.id, "mentor")}>Make Mentor</Btn>
                 </div>
 
                 <p style={{fontSize:"0.9rem",fontWeight:600,color:"#2c3e50",marginBottom:12}}>📚 Enrolled Courses ({menteeCourses.length})</p>
