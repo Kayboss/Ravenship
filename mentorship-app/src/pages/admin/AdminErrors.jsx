@@ -17,13 +17,13 @@ export default function AdminErrors() {
   return (
     <Card data-aos="fade-up">
       <style>{`
-        .err-row{padding:12px 16px;border-radius:12;border-left:4px solid;overflow:hidden}
+        .err-row{padding:12px 16px;border-radius:12;border-left:4px solid;overflow:hidden;max-width:100%}
         .err-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-        .err-info{flex:1;min-width:0}
+        .err-info{flex:1;min-width:0;overflow:hidden}
         .err-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
-        @media(max-width:480px){
+        @media(max-width:640px){
           .err-top{flex-direction:column;gap:8px}
-          .err-meta{flex-direction:row;flex-wrap:wrap;align-items:center;align-self:flex-start;gap:4px}
+          .err-meta{flex-direction:row;flex-wrap:wrap;align-items:center;align-self:flex-start;gap:6px}
           .err-meta span{white-space:normal}
         }
       `}</style>
