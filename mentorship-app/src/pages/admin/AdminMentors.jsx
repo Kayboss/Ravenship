@@ -127,11 +127,11 @@ export default function AdminMentors() {
                 )}
               </div>
             )}
-            <BioModal user={bioUser} onClose={() => setBioUser(null)} />
           </Card>
         );
       })}
     </div>
+    <BioModal user={bioUser} onClose={() => setBioUser(null)} />
     </>
   );
 }

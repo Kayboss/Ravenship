@@ -116,11 +116,11 @@ export default function AdminMentees() {
                 )}
               </div>
             )}
-            <BioModal user={bioUser} onClose={() => setBioUser(null)} />
           </Card>
         );
       })}
     </div>
+    <BioModal user={bioUser} onClose={() => setBioUser(null)} />
     </>
   );
 }
