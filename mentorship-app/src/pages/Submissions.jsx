@@ -6,7 +6,8 @@ import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { updateSubmission } from "../firebase/db";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
+import { getSubmissions, addSubmission, updateSubmission, getAssignments } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -248,8 +249,10 @@ const PreviewClose = styled.button`
 export const Submissions = () => {
   const { role } = useParams();
   const isMentor = role === "mentor";
+  const isMentee = role === "mentee";
   const { enrolledCourses } = useCourses();
   const [submissions, setSubmissions] = useState([]);
+  const [acceptedAssignments, setAcceptedAssignments] = useState([]);
   const [drag, setDrag] = useState(false);
   const [form, setForm] = useState({ title: "", course: "" });
   const [fileName, setFileName] = useState("");
@@ -257,6 +260,9 @@ export const Submissions = () => {
   const [gradeTarget, setGradeTarget] = useState(null);
   const [gradeScore, setGradeScore] = useState("");
   const [gradeFeedback, setGradeFeedback] = useState("");
+  const [authReady, setAuthReady] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [grading, setGrading] = useState(false);
 
   const handleGrade = (sub) => {
     setGradeTarget(sub);
@@ -264,18 +270,22 @@ export const Submissions = () => {
     setGradeFeedback("");
   };
 
-  const submitGrade = () => {
+  const submitGrade = async () => {
     const score = parseInt(gradeScore);
     if (isNaN(score) || score < 0 || score > 100) return alert("Enter a grade between 0 and 100");
-    const subId = gradeTarget.id;
+    setGrading(true);
+    const subId = gradeTarget.id || gradeTarget.firestoreId;
     const orig = gradeTarget;
+    try {
+      if (orig.firestoreId || orig.id) {
+        await updateSubmission(orig.firestoreId || orig.id, { status: "reviewed", grade: score, feedback: gradeFeedback });
+      }
+    } catch (e) { console.error("updateSubmission error:", e); }
     setSubmissions(prev => prev.map(s =>
-      s.id === subId ? { ...s, status: "reviewed", grade: score, feedback: gradeFeedback } : s
+      (s.id === subId || s.firestoreId === subId) ? { ...s, status: "reviewed", grade: score, feedback: gradeFeedback } : s
     ));
     setGradeTarget(null);
-    if (orig.firestoreId) {
-      updateSubmission(orig.firestoreId, { status: "reviewed", grade: score, feedback: gradeFeedback }).catch(e => console.error("updateSubmission error:", e));
-    }
+    setGrading(false);
   };
 
   const activeCourses = useMemo(() =>
@@ -283,12 +293,22 @@ export const Submissions = () => {
     [enrolledCourses]
   );
 
-  const acceptedAssignments = useMemo(() =>
-    JSON.parse(localStorage.getItem("acceptedAssignments") || "[]"),
-    []
-  );
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
-  useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
+  useEffect(() => {
+    if (!authReady) return;
+    AOS.init({ duration: 800, once: true });
+    const currentUser = getStoredUser();
+    if (!currentUser?.id) return;
+
+    getAssignments().then(d => {
+      const acc = (Array.isArray(d) ? d : []).filter(a => a.status === "accepted" || a.status === "submitted");
+      setAcceptedAssignments(acc.length > 0 ? acc : JSON.parse(localStorage.getItem("acceptedAssignments") || "[]"));
+    }).catch(() => setAcceptedAssignments(JSON.parse(localStorage.getItem("acceptedAssignments") || "[]")));
+
+    const filter = isMentee ? { menteeId: currentUser.id } : {};
+    getSubmissions(filter).then(d => { if (Array.isArray(d)) setSubmissions(d); }).catch(e => console.error("getSubmissions error:", e));
+  }, [authReady]);
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -300,23 +320,31 @@ export const Submissions = () => {
     setForm({ title: value, course: found?.course || "" });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !fileName) return;
+    setSubmitting(true);
+    const currentUser = getStoredUser();
     const newSub = {
-      id: Date.now(),
       title: form.title,
       course: form.course || "General",
       file: fileName,
       size: "~1.2 MB",
       date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      status: "pending",
       color: "#b50064",
       icon: "📄",
+      menteeId: currentUser?.id || null,
+      menteeName: currentUser?.name || "Unknown",
     };
+    try {
+      const firestoreId = await addSubmission(newSub);
+      newSub.id = firestoreId;
+      newSub.firestoreId = firestoreId;
+    } catch (e) { console.error("addSubmission error:", e); newSub.id = Date.now(); }
     setSubmissions([newSub, ...submissions]);
     setForm({ title: "", course: "" });
     setFileName("");
+    setSubmitting(false);
   };
 
   const handlePreview = (sub) => setPreview(sub);
@@ -345,7 +373,7 @@ export const Submissions = () => {
               <FormGrid>
                 <div>
                   <Label>Assignment Title</Label>
-                  <Select value={form.title} onChange={(e) => handleAssignmentSelect(e.target.value)}>
+                  <Select id="submissions-assignment" name="assignment" value={form.title} onChange={(e) => handleAssignmentSelect(e.target.value)}>
                     <option value="">Select an assignment...</option>
                     {acceptedAssignments.map(a => (
                       <option key={a.id} value={a.title}>{a.title}</option>
@@ -354,7 +382,7 @@ export const Submissions = () => {
                 </div>
                 <div>
                   <Label>Course</Label>
-                  <Select value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })}>
+                  <Select id="submissions-course" name="course" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })}>
                     <option value="">Select course...</option>
                     {activeCourses.map(c => (
                       <option key={c} value={c}>{c}</option>
@@ -374,7 +402,7 @@ export const Submissions = () => {
                 <FileText>{fileName || "Drag & drop your file here"}</FileText>
                 <FileSubtext>{fileName ? "Click to change file" : "or click to browse (PDF, DOCX, ZIP up to 10MB)"}</FileSubtext>
               </FileZone>
-              <SubmitBtn type="submit" disabled={!form.title || !fileName}>Upload Submission</SubmitBtn>
+              <SubmitBtn type="submit" disabled={!form.title || !fileName || submitting}>{submitting ? "⏳ Uploading..." : "Upload Submission"}</SubmitBtn>
             </form>
           </UploadCard>
         )}
@@ -398,6 +426,7 @@ export const Submissions = () => {
               <SubInfo>
                 <SubTitle>{s.title}</SubTitle>
                 <SubMeta>
+                  {isMentor && s.menteeName && <span>👤 {s.menteeName}</span>}
                   <span>📚 {s.course}</span>
                   <span>📎 {s.file} ({s.size})</span>
                   <span>📅 {s.date}</span>
@@ -431,14 +460,14 @@ export const Submissions = () => {
             <PreviewDetail><span>Submitted:</span> {gradeTarget.date}</PreviewDetail>
             <div style={{ marginTop: 20 }}>
               <Label>Grade (0–100)</Label>
-              <Input type="number" min="0" max="100" value={gradeScore} onChange={(e) => setGradeScore(e.target.value)} placeholder="Enter score..." />
+              <Input id="submissions-grade" name="grade" type="number" min="0" max="100" value={gradeScore} onChange={(e) => setGradeScore(e.target.value)} placeholder="Enter score..." />
             </div>
             <div style={{ marginTop: 12 }}>
               <Label>Feedback</Label>
-              <Input as="textarea" rows="3" value={gradeFeedback} onChange={(e) => setGradeFeedback(e.target.value)} placeholder="Write feedback for the mentee..." style={{ resize: "vertical" }} />
+              <Input id="submissions-feedback" name="feedback" as="textarea" rows="3" value={gradeFeedback} onChange={(e) => setGradeFeedback(e.target.value)} placeholder="Write feedback for the mentee..." style={{ resize: "vertical" }} />
             </div>
             <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
-              <SubmitBtn type="button" onClick={submitGrade} style={{ flex: 1 }}>Submit Grade</SubmitBtn>
+              <SubmitBtn type="button" onClick={submitGrade} disabled={grading} style={{ flex: 1 }}>{grading ? "⏳ Saving..." : "Submit Grade"}</SubmitBtn>
               <ActionBtn onClick={() => setGradeTarget(null)} style={{ flex: 1, textAlign: "center" }}>Cancel</ActionBtn>
             </div>
           </PreviewCard>

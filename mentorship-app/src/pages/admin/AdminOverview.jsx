@@ -122,7 +122,7 @@ export default function AdminOverview() {
             <div className="um-header">
               <CardTitle style={{margin:0,fontSize:"clamp(0.9rem, 3vw, 1.05rem)"}}>User Management</CardTitle>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{padding:"8px 10px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",cursor:"pointer",fontSize:"0.78rem",fontFamily:"inherit",minHeight:36}}>
+                <select id="overview-roleFilter" name="roleFilter" value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{padding:"8px 10px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",cursor:"pointer",fontSize:"0.78rem",fontFamily:"inherit",minHeight:36}}>
                   <option value="all">All Roles</option>
                   <option value="admin">Admins</option>
                   <option value="mentor">Mentors</option>

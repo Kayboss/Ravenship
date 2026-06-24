@@ -285,7 +285,7 @@ export const Gradebook = () => {
         setMentees(result);
       })
       .catch(e => console.error("getGradebook error:", e));
-  }, []);
+  }, [authReady]);
 
   const allAssignments = mentees.length > 0
     ? [...new Set(mentees.flatMap(m => Object.keys(m.scores)))]

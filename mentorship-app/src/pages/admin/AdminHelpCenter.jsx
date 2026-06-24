@@ -78,9 +78,9 @@ export default function AdminHelpCenter() {
         .hc-msg-header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
         .hc-msg-footer{display:flex;justify-content:space-between;align-items:center;gap:8px}
         .hc-msg-type{font-weight:700;font-size:0.85rem;color:#2c3e50;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
-        .hc-guide-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#f9f9f9;border-radius:12;gap:12px}
+        .hc-guide-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#f9f9f9;border-radius:12px;gap:12px}
         .hc-guide-info{flex:1;min-width:0}
-        .hc-req-row{padding:14px 16px;background:#f9f9f9;border-radius:12;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+        .hc-req-row{padding:14px 16px;background:#f9f9f9;border-radius:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
         .hc-req-info{flex:1;min-width:0}
         .hc-req-info p{margin:2px 0;font-size:0.85rem;color:#594048;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .hc-req-info p:first-child{margin-top:0}
@@ -129,10 +129,10 @@ export default function AdminHelpCenter() {
         <div>
           <p style={{ fontSize: "0.85rem", color: "#594048", marginBottom: 12 }}>Create startup guides for mentors and mentees.</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24, background: "#f9f9f9", padding: 16, borderRadius: 12 }}>
-            <Input placeholder="Guide title..." value={title} onChange={e => setTitle(e.target.value)} />
-            <Textarea placeholder="Guide content (markdown or plain text)..." value={content} onChange={e => setContent(e.target.value)} />
+            <Input id="helpCenter-guideTitle" name="guideTitle" placeholder="Guide title..." value={title} onChange={e => setTitle(e.target.value)} />
+            <Textarea id="helpCenter-guideContent" name="guideContent" placeholder="Guide content (markdown or plain text)..." value={content} onChange={e => setContent(e.target.value)} />
             <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <Select value={targetRole} onChange={e => setTargetRole(e.target.value)} style={{flex:"1 1 120px"}}>
+              <Select id="helpCenter-targetRole" name="targetRole" value={targetRole} onChange={e => setTargetRole(e.target.value)} style={{flex:"1 1 120px"}}>
                 <option value="all">All Users</option><option value="mentor">Mentors</option><option value="mentee">Mentees</option>
               </Select>
               <Btn disabled={addingGuide} onClick={addGuide} style={{minHeight:38}}>{addingGuide ? "Saving..." : "Add Guide"}</Btn>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { getActivitiesPaginated } from "../../firebase/db";
+import { getActivitiesPaginated, pruneOldActivity } from "../../firebase/db";
 import { Card, CardTitle } from "./adminStyles";
 
 export default function AdminActivity() {
@@ -11,6 +11,7 @@ export default function AdminActivity() {
   const [loading, setLoading] = useState(false);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
+    pruneOldActivity(3);
     setLoading(true);
     getActivitiesPaginated(50, null).then(({ items, lastDoc: ld, hasMore: hm }) => {
       setActivities(items);
@@ -32,13 +33,16 @@ export default function AdminActivity() {
   return (
     <Card data-aos="fade-up">
       <style>{`
-        .act-row{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:10;font-size:0.85rem}
-        .act-avatar{width:32px;height:32px;border-radius:50%;background:#b50064;display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;color:#fff;flex-shrink:0}
+        .act-row{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;border-radius:10px;font-size:0.85rem;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+        .act-avatar{width:36px;height:36px;border-radius:50%;background:#b50064;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#fff;flex-shrink:0}
         .act-body{flex:1;min-width:0}
-        .act-time{font-size:0.68rem;color:#999;flex-shrink:0;white-space:nowrap}
+        .act-action{color:#2c3e50;font-weight:600}
+        .act-detail{color:#594048;margin-left:6px;font-size:0.8rem}
+        .act-user{font-size:0.73rem;color:#999;margin-top:3px}
+        .act-time{font-size:0.7rem;color:#999;flex-shrink:0;white-space:nowrap}
         @media(max-width:640px){
-          .act-row{flex-wrap:wrap;gap:4px 10px;padding:10px 10px}
-          .act-time{width:100%;white-space:normal;word-break:break-all;margin-left:42px}
+          .act-row{gap:4px 10px;padding:10px 10px}
+          .act-time{width:100%;white-space:normal;word-break:break-all;margin-left:48px}
         }
       `}</style>
       <CardTitle>📊 Recent Activity Log</CardTitle>
@@ -50,14 +54,14 @@ export default function AdminActivity() {
               const time = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
               return (
                 <div key={a.id || i} className="act-row" style={{background:i%2===0?"#fafafa":"#fff"}}>
-                  <div className="act-avatar">{a.userName?.split(" ").map(w=>w[0]).join("").slice(0,2)}</div>
-                  <div className="act-body">
-                    <strong style={{color:"#2c3e50"}}>{a.action}</strong>
-                    <span style={{color:"#594048",marginLeft:6,fontSize:"0.78rem"}}>{a.detail || ""}</span>
-                    <div style={{fontSize:"0.72rem",color:"#999",marginTop:2}}>{a.userName} · {a.userRole}</div>
+                    <div className="act-avatar">{a.userName?.split(" ").map(w=>w[0]).join("").slice(0,2)}</div>
+                    <div className="act-body">
+                      <span className="act-action">{a.action}</span>
+                      <span className="act-detail">{a.detail || ""}</span>
+                      <div className="act-user">{a.userName} · {a.userRole}</div>
+                    </div>
+                    <span className="act-time">{time.toLocaleDateString()} {time.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
                   </div>
-                  <span className="act-time">{time.toLocaleDateString()} {time.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}</span>
-                </div>
               );
             })}
           </div>

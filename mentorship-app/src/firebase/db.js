@@ -1,7 +1,7 @@
 import { db } from "./config";
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, where, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove, Timestamp, onSnapshot
+  query, where, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove, Timestamp, onSnapshot, writeBatch
 } from "firebase/firestore";
 import { getStoredUser } from "./auth";
 
@@ -108,21 +108,29 @@ export const enrollMentee = async (courseId, menteeId) => {
   });
 };
 
-// ── Assignments (subcollection under courses) ──
+// ── Assignments (top-level collection) ──
 
-export const addAssignment = async (courseId, data) => {
-  const ref = await addDoc(collection(db, "courses", courseId, "assignments"), {
-    ...data, createdAt: serverTimestamp()
-  });
+export const getAssignments = async (mentorId) => {
+  if (mentorId) {
+    const q = query(collection(db, "assignments"), where("mentorId", "==", mentorId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, firestoreId: d.id, ...d.data() }));
+  }
+  const snap = await getDocs(collection(db, "assignments"));
+  return snap.docs.map(d => ({ id: d.id, firestoreId: d.id, ...d.data() }));
+};
+
+export const addAssignment = async (data) => {
+  const ref = await addDoc(collection(db, "assignments"), { ...data, createdAt: serverTimestamp() });
   return ref.id;
 };
 
-export const updateAssignment = async (courseId, assignmentId, data) => {
-  await updateDoc(doc(db, "courses", courseId, "assignments", assignmentId), data);
+export const updateAssignment = async (id, data) => {
+  await updateDoc(doc(db, "assignments", id), data);
 };
 
-export const deleteAssignment = async (courseId, assignmentId) => {
-  await deleteDoc(doc(db, "courses", courseId, "assignments", assignmentId));
+export const deleteAssignment = async (id) => {
+  await deleteDoc(doc(db, "assignments", id));
 };
 
 // ── Submissions ──
@@ -489,6 +497,23 @@ export const logActivity = async (action, details = {}) => {
   } catch {} // silent — never break UX for logging
 };
 
+export const pruneOldActivity = async (months = 3) => {
+  try {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+    const q = query(collection(db, "activity"), where("timestamp", "<", Timestamp.fromDate(cutoff)));
+    const snap = await getDocs(q);
+    if (snap.empty) return 0;
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(doc(db, "activity", d.id)));
+    await batch.commit();
+    return snap.docs.length;
+  } catch (e) {
+    console.error("pruneOldActivity error:", e);
+    return 0;
+  }
+};
+
 export const getActivities = async (limitCount = 100) => {
   const q = query(collection(db, "activity"), orderBy("timestamp", "desc"), limit(limitCount));
   const snap = await getDocs(q);
@@ -530,8 +555,35 @@ export const getErrors = async (limitCount = 100) => {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 };
 
+export const getErrorsPaginated = async (pageSize = 50, lastDoc = null) => {
+  let q = query(collection(db, "errors"), orderBy("timestamp", "desc"), limit(pageSize));
+  if (lastDoc) q = query(q, startAfter(lastDoc));
+  const snap = await getDocs(q);
+  const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const newLastDoc = snap.docs[snap.docs.length - 1] || null;
+  const hasMore = snap.docs.length === pageSize;
+  return { items, lastDoc: newLastDoc, hasMore };
+};
+
 export const markErrorResolved = async (errorId) => {
   await updateDoc(doc(db, "errors", errorId), { resolved: true });
+};
+
+export const pruneOldErrors = async (months = 3) => {
+  try {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+    const q = query(collection(db, "errors"), where("timestamp", "<", Timestamp.fromDate(cutoff)));
+    const snap = await getDocs(q);
+    if (snap.empty) return 0;
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(doc(db, "errors", d.id)));
+    await batch.commit();
+    return snap.docs.length;
+  } catch (e) {
+    console.error("pruneOldErrors error:", e);
+    return 0;
+  }
 };
 
 // ── Counselling Requests ──

@@ -7,7 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { fileToBase64 } from "../lib/upload";
-import { getUser } from "../firebase/db";
+import { getUser, getCourses, getAssignments, addAssignment, updateAssignment, deleteAssignment } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -307,6 +307,64 @@ const FormTextarea = styled.textarea`
   &:focus { outline: none; border-color: ${(props) => props.theme.colors.primary}; }
 `;
 
+const EditorContainer = styled.div`
+  border: 1px solid ${(props) => props.theme.colors.outline};
+  border-radius: 10px;
+  overflow: hidden;
+  background: ${(props) => props.theme.colors.background};
+`;
+
+const EditorToolbar = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid ${(props) => props.theme.colors.outline};
+  background: ${(props) => props.theme.colors.surface};
+`;
+
+const ToolbarBtn = styled.button`
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: ${(props) => props.$active ? props.theme.colors.primary + "20" : "transparent"};
+  color: ${(props) => props.$active ? props.theme.colors.primary : props.theme.colors.textPrimary};
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: ${(props) => props.$bold ? 700 : 400};
+  font-style: ${(props) => props.$italic ? "italic" : "normal"};
+  text-decoration: ${(props) => props.$underline ? "underline" : "none"};
+  cursor: pointer;
+  transition: all 0.15s;
+  &:hover { background: ${(props) => props.theme.colors.primary}15; }
+`;
+
+const EditorArea = styled.div`
+  min-height: 180px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: ${(props) => props.theme.colors.textPrimary};
+  &:focus { outline: none; }
+  &:empty:before {
+    content: attr(data-placeholder);
+    color: ${(props) => props.theme.colors.textSecondary};
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  h3 { font-size: 1.15rem; margin: 12px 0 6px; }
+  h4 { font-size: 1rem; margin: 10px 0 4px; }
+  ul, ol { padding-left: 24px; margin: 6px 0; }
+  li { margin: 2px 0; }
+  p { margin: 4px 0; }
+  strong { font-weight: 700; }
+  em { font-style: italic; }
+  u { text-decoration: underline; }
+`;
+
 const MobileFilter = styled.select`
   display: none;
   width: 100%;
@@ -335,6 +393,7 @@ const SubmitBtn = styled.button`
   cursor: pointer;
   transition: all 0.2s;
   &:hover { opacity: 0.9; transform: translateY(-1px); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
 `;
 
 const ViewSubmissionsBtn = styled.button`
@@ -349,6 +408,7 @@ const ViewSubmissionsBtn = styled.button`
   cursor: pointer;
   transition: all 0.2s;
   &:hover { background: ${(props) => props.theme.colors.primary}; color: white; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; &:hover { background: transparent; color: ${(props) => props.theme.colors.primary}; } }
 `;
 
 const AcceptBtn = styled.button`
@@ -384,6 +444,73 @@ const GradeLabel = styled.p`
   color: ${(props) => props.theme.colors.textSecondary};
 `;
 
+const RichEditor = ({ value, onChange, placeholder }) => {
+  const editorRef = React.useRef(null);
+
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
+      editorRef.current.innerHTML = value || "";
+    }
+  }, [value]);
+
+  const exec = (cmd, val = null) => {
+    document.execCommand(cmd, false, val);
+    if (editorRef.current) {
+      onChange(editorRef.current.innerHTML);
+    }
+    editorRef.current?.focus();
+  };
+
+  const handleInput = () => {
+    if (editorRef.current) onChange(editorRef.current.innerHTML);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      document.execCommand("insertHTML", false, "&emsp;&emsp;");
+    }
+  };
+
+  const insertHeading = (tag) => {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+    const range = selection.getRangeAt(0);
+    const parent = range.commonAncestorContainer.parentElement;
+    if (parent?.tagName?.toLowerCase() === tag) {
+      document.execCommand("formatBlock", false, "p");
+    } else {
+      document.execCommand("formatBlock", false, `<${tag}>`);
+    }
+    if (editorRef.current) onChange(editorRef.current.innerHTML);
+    editorRef.current?.focus();
+  };
+
+  return (
+    <EditorContainer>
+      <EditorToolbar>
+        <ToolbarBtn $bold onClick={() => exec("bold")} title="Bold"><strong>B</strong></ToolbarBtn>
+        <ToolbarBtn $italic onClick={() => exec("italic")} title="Italic"><em>I</em></ToolbarBtn>
+        <ToolbarBtn $underline onClick={() => exec("underline")} title="Underline"><u>U</u></ToolbarBtn>
+        <span style={{ width: 1, height: 20, background: "#ccc", margin: "0 4px" }} />
+        <ToolbarBtn onClick={() => insertHeading("h3")} title="Heading 3">H3</ToolbarBtn>
+        <ToolbarBtn onClick={() => insertHeading("h4")} title="Heading 4">H4</ToolbarBtn>
+        <span style={{ width: 1, height: 20, background: "#ccc", margin: "0 4px" }} />
+        <ToolbarBtn onClick={() => exec("insertUnorderedList")} title="Bullet List">• List</ToolbarBtn>
+        <ToolbarBtn onClick={() => exec("insertOrderedList")} title="Number List">1. List</ToolbarBtn>
+      </EditorToolbar>
+      <EditorArea
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        data-placeholder={placeholder || "Write your assignment content here..."}
+        onInput={handleInput}
+        onKeyDown={handleKeyDown}
+      />
+    </EditorContainer>
+  );
+};
+
 export const Assignments = () => {
   const { role } = useParams();
   const isMentor = role === "mentor";
@@ -395,8 +522,12 @@ export const Assignments = () => {
   const [menteeMentorId, setMenteeMentorId] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingAssignment, setEditingAssignment] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [newAssignment, setNewAssignment] = useState({
-    title: "", course: "Advanced UI/UX Systems", desc: "", marks: "", due: "",
+    title: "", course: "", desc: "", content: "", marks: "", due: "",
   });
   const [authReady, setAuthReady] = useState(false);
 
@@ -410,13 +541,25 @@ export const Assignments = () => {
         if (u?.mentorId) setMenteeMentorId(u.mentorId);
       }).catch(e => console.error("getUser/mentorId error:", e));
     }
+    if (isMentor && currentUser?.id) {
+      getCourses(currentUser.id).then(d => { if (Array.isArray(d)) setCourses(d); }).catch(e => console.error("getCourses error:", e));
+    }
   }, [authReady]);
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
-    const stored = localStorage.getItem("assignments");
-    if (stored) setAssignments(JSON.parse(stored));
   }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
+    const currentUser = getStoredUser();
+    const filter = isMentor ? currentUser?.id : (isMentee ? menteeMentorId : null);
+    if (filter) {
+      getAssignments(filter).then(d => { if (Array.isArray(d)) setAssignments(d); }).catch(e => console.error("getAssignments error:", e));
+    } else if (!isMentor && !isMentee) {
+      getAssignments().then(d => { if (Array.isArray(d)) setAssignments(d); }).catch(e => console.error("getAssignments error:", e));
+    }
+  }, [authReady, menteeMentorId]);
 
   const currentUser = getStoredUser();
   const mentorFiltered = (() => {
@@ -425,18 +568,43 @@ export const Assignments = () => {
     return assignments;
   })();
 
-  useEffect(() => {
-    localStorage.setItem("assignments", JSON.stringify(assignments));
-  }, [assignments]);
+  const handleEditAssignment = async () => {
+    if (!editingAssignment) return;
+    setSaving(true);
+    try {
+      if (editingAssignment.firestoreId) await updateAssignment(editingAssignment.firestoreId, { title: editingAssignment.title, course: editingAssignment.course, desc: editingAssignment.desc, content: editingAssignment.content || "", marks: editingAssignment.marks, due: editingAssignment.due });
+    } catch (e) { console.error("updateAssignment error:", e); }
+    setAssignments(prev => prev.map(a => a.id === editingAssignment.id ? { ...editingAssignment } : a));
+    setEditingAssignment(null);
+    setSaving(false);
+    alert("Assignment updated!");
+  };
 
-  const handleCreateAssignment = () => {
+  const handleDeleteAssignment = async (id) => {
+    const target = assignments.find(a => a.id === id);
+    if (!target || !window.confirm(`Delete "${target.title}"? This cannot be undone.`)) return;
+    setDeletingId(id);
+    try {
+      if (target.firestoreId) await deleteAssignment(target.firestoreId);
+      setAssignments(prev => prev.filter(a => a.id !== id));
+    } catch (e) { console.error("deleteAssignment error:", e); alert("Failed to delete assignment."); }
+    setDeletingId(null);
+  };
+
+  const handleCreateAssignment = async () => {
+    if (!newAssignment.title.trim() || !newAssignment.course || !newAssignment.desc.trim()) {
+      alert("Please fill in all fields (title, course, description)");
+      return;
+    }
+    setSaving(true);
     const user = getStoredUser();
-    const newId = Math.max(...assignments.map(a => a.id), 0) + 1;
+    const tempId = Date.now();
     const assignment = {
-      id: newId,
+      id: tempId,
       title: newAssignment.title,
       course: newAssignment.course,
       desc: newAssignment.desc,
+      content: newAssignment.content || "",
       marks: Number(newAssignment.marks),
       due: newAssignment.due,
       posted: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
@@ -449,24 +617,24 @@ export const Assignments = () => {
       submissions: 0,
       spots: 15,
     };
+    try {
+      const firestoreId = await addAssignment(assignment);
+      assignment.firestoreId = firestoreId;
+    } catch (e) { console.error("addAssignment error:", e); }
     setAssignments([assignment, ...assignments]);
-    setNewAssignment({ title: "", course: "Advanced UI/UX Systems", desc: "", marks: "", due: "" });
+    setNewAssignment({ title: "", course: "", desc: "", content: "", marks: "", due: "" });
     setShowCreateForm(false);
+    setSaving(false);
     alert("Assignment posted!");
   };
 
-  const handleAccept = (id) => {
-    const updated = assignments.map(a => {
-      if (a.id === id) {
-        localStorage.setItem("acceptedAssignments", JSON.stringify([
-          ...JSON.parse(localStorage.getItem("acceptedAssignments") || "[]").filter(x => x.id !== id),
-          { id: a.id, title: a.title, course: a.course },
-        ]));
-        return { ...a, status: "accepted" };
-      }
-      return a;
-    });
-    setAssignments(updated);
+  const handleAccept = async (id) => {
+    const a = assignments.find(x => x.id === id);
+    if (!a) return;
+    if (a.firestoreId) {
+      try { await updateAssignment(a.firestoreId, { status: "accepted" }); } catch (e) { console.error("updateAssignment error:", e); }
+    }
+    setAssignments(prev => prev.map(x => x.id === id ? { ...x, status: "accepted" } : x));
   };
 
   const courseFiltered = courseFilter
@@ -504,17 +672,21 @@ export const Assignments = () => {
                 <FormGroup>
                   <FormLabel>Course</FormLabel>
                   <FormSelect value={newAssignment.course} onChange={(e) => setNewAssignment({...newAssignment, course: e.target.value})}>
-                    <option>Advanced UI/UX Systems</option>
-                    <option>Strategic Data Insights</option>
-                    <option>Design Thinking Fundamentals</option>
-                    <option>Full-Stack Web Development</option>
-                    <option>Product Management 101</option>
-                    <option>Creative Brand Strategy</option>
+                    <option value="">-- Select a course --</option>
+                    {courses.map(c => <option key={c.id} value={c.title}>{c.title}</option>)}
                   </FormSelect>
                 </FormGroup>
                 <FormGroup>
-                  <FormLabel>Description</FormLabel>
-                  <FormTextarea value={newAssignment.desc} onChange={(e) => setNewAssignment({...newAssignment, desc: e.target.value})} placeholder="Enter assignment description" />
+                  <FormLabel>Description (plain text preview)</FormLabel>
+                  <FormTextarea value={newAssignment.desc} onChange={(e) => setNewAssignment({...newAssignment, desc: e.target.value})} placeholder="Brief plain-text description" />
+                </FormGroup>
+                <FormGroup>
+                  <FormLabel>Assignment Content</FormLabel>
+                  <RichEditor
+                    value={newAssignment.content}
+                    onChange={(html) => setNewAssignment({...newAssignment, content: html})}
+                    placeholder="Write the full assignment with formatting here..."
+                  />
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>Marks</FormLabel>
@@ -524,10 +696,51 @@ export const Assignments = () => {
                   <FormLabel>Due Date</FormLabel>
                   <FormInput type="date" value={newAssignment.due} onChange={(e) => setNewAssignment({...newAssignment, due: e.target.value})} />
                 </FormGroup>
-                <SubmitBtn onClick={handleCreateAssignment}>Post Assignment</SubmitBtn>
+                <SubmitBtn onClick={handleCreateAssignment} disabled={saving}>{saving ? "⏳ Posting..." : "Post Assignment"}</SubmitBtn>
               </CreateFormCard>
             )}
           </div>
+        )}
+
+        {isMentor && editingAssignment && (
+          <CreateFormCard style={{ border: "2px solid #e67e22" }}>
+            <h4 style={{ margin: "0 0 16px", color: "#e67e22" }}>✏️ Edit Assignment</h4>
+            <FormGroup>
+              <FormLabel>Assignment Title</FormLabel>
+              <FormInput type="text" value={editingAssignment.title} onChange={(e) => setEditingAssignment({...editingAssignment, title: e.target.value})} placeholder="Enter assignment title" />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Course</FormLabel>
+              <FormSelect value={editingAssignment.course} onChange={(e) => setEditingAssignment({...editingAssignment, course: e.target.value})}>
+                <option value="">-- Select a course --</option>
+                {courses.map(c => <option key={c.id} value={c.title}>{c.title}</option>)}
+              </FormSelect>
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Description (plain text preview)</FormLabel>
+              <FormTextarea value={editingAssignment.desc} onChange={(e) => setEditingAssignment({...editingAssignment, desc: e.target.value})} placeholder="Brief plain-text description" />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Assignment Content</FormLabel>
+              <RichEditor
+                value={editingAssignment.content || ""}
+                onChange={(html) => setEditingAssignment({...editingAssignment, content: html})}
+                placeholder="Write the full assignment with formatting here..."
+              />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Marks</FormLabel>
+              <FormInput type="number" value={editingAssignment.marks ?? ""} onChange={(e) => setEditingAssignment({...editingAssignment, marks: e.target.value})} placeholder="Enter maximum marks" />
+            </FormGroup>
+            <FormGroup>
+              <FormLabel>Due Date</FormLabel>
+              <FormInput type="date" value={editingAssignment.due} onChange={(e) => setEditingAssignment({...editingAssignment, due: e.target.value})} />
+            </FormGroup>
+            <div style={{ display: "flex", gap: 12 }}>
+              <SubmitBtn onClick={handleEditAssignment} disabled={saving}>{saving ? "⏳ Saving..." : "💾 Save Changes"}</SubmitBtn>
+              <SubmitBtn onClick={() => setEditingAssignment(null)} style={{ background: "#e0e0e0", color: "#333" }}>Cancel</SubmitBtn>
+            </div>
+          </CreateFormCard>
         )}
 
         {courseFilter && (
@@ -576,7 +789,11 @@ export const Assignments = () => {
                   </div>
                   {!isMentor && <StatusBadge $status={a.status}>{a.status}</StatusBadge>}
                 </div>
-                <Description>{a.desc}</Description>
+                {isMentor && <Description>{a.desc}</Description>}
+                {!isMentor && a.content && (
+                  <div style={{ fontSize: "0.9rem", lineHeight: "1.7", marginBottom: 16, color: "inherit" }} dangerouslySetInnerHTML={{ __html: a.content }} />
+                )}
+                {!isMentor && !a.content && <Description>{a.desc}</Description>}
                 <MetaRow>
                   <MetaItem>📅 Due <MetaValue>{a.due}</MetaValue></MetaItem>
                   <MetaItem>🏆 Marks <MetaValue $highlight $large>{a.marks}</MetaValue></MetaItem>
@@ -600,6 +817,12 @@ export const Assignments = () => {
                   <MetaItem>👥 {a.submissions} submission{a.submissions !== 1 ? "s" : ""}</MetaItem>
                   <ViewSubmissionsBtn onClick={() => navigate(`/dashboard/${role}/submissions?course=${encodeURIComponent(a.course)}`)}>
                     View Submissions
+                  </ViewSubmissionsBtn>
+                  <ViewSubmissionsBtn style={{ borderColor: "#e67e22", color: "#e67e22" }} onClick={() => setEditingAssignment({ ...a })}>
+                    ✏️ Edit
+                  </ViewSubmissionsBtn>
+                  <ViewSubmissionsBtn style={{ borderColor: "#e53935", color: "#e53935", opacity: deletingId === a.id ? 0.6 : 1 }} onClick={() => handleDeleteAssignment(a.id)} disabled={deletingId === a.id}>
+                    {deletingId === a.id ? "⏳ Deleting..." : "🗑 Delete"}
                   </ViewSubmissionsBtn>
                 </div>
               ) : (() => {

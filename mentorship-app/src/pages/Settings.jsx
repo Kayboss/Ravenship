@@ -536,35 +536,35 @@ export const Settings = () => {
               <FieldRow>
                 <FieldGroup>
                   <FieldLabel>Full Name</FieldLabel>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input id="settings-fullName" name="fullName" value={name} onChange={(e) => setName(e.target.value)} />
                 </FieldGroup>
                 <FieldGroup>
                   <FieldLabel>Email</FieldLabel>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input id="settings-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </FieldGroup>
               </FieldRow>
               <FieldRow>
                 <FieldGroup>
                   <FieldLabel>Phone</FieldLabel>
-                  <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  <Input id="settings-phone" name="tel" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
                 </FieldGroup>
                 <FieldGroup>
                   <FieldLabel>City</FieldLabel>
-                  <Input value={city} onChange={(e) => setCity(e.target.value)} />
+                  <Input id="settings-city" name="city" value={city} onChange={(e) => setCity(e.target.value)} />
                 </FieldGroup>
               </FieldRow>
               <FieldGroup>
                 <FieldLabel>Date of Birth</FieldLabel>
                 <FieldRow>
-                  <Select value={dobMonth} onChange={(e) => setDobMonth(e.target.value)}>
+                  <Select id="settings-dobMonth" name="dobMonth" value={dobMonth} onChange={(e) => setDobMonth(e.target.value)}>
                     <option value="">Month</option>
                     {MONTHS.map((m, i) => <option key={i} value={m}>{m}</option>)}
                   </Select>
-                  <Select value={dobDay} onChange={(e) => setDobDay(e.target.value)}>
+                  <Select id="settings-dobDay" name="dobDay" value={dobDay} onChange={(e) => setDobDay(e.target.value)}>
                     <option value="">Day</option>
                     {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
                   </Select>
-                  <Select value={dobYear} onChange={(e) => setDobYear(e.target.value)}>
+                  <Select id="settings-dobYear" name="dobYear" value={dobYear} onChange={(e) => setDobYear(e.target.value)}>
                     <option value="">Year</option>
                     {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                   </Select>
@@ -572,7 +572,7 @@ export const Settings = () => {
               </FieldGroup>
               <FieldGroup>
                 <FieldLabel>Brief Description</FieldLabel>
-                <Textarea placeholder="Tell us a bit about yourself..." value={bio} onChange={(e) => setBio(e.target.value)} />
+                <Textarea id="settings-bio" name="bio" placeholder="Tell us a bit about yourself..." value={bio} onChange={(e) => setBio(e.target.value)} />
               </FieldGroup>
             </Card>
 
@@ -581,15 +581,15 @@ export const Settings = () => {
               <FieldRow>
                 <FieldGroup>
                   <FieldLabel>Current Password</FieldLabel>
-                  <Input type="password" placeholder="Enter current password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
+                  <Input id="settings-currentPassword" name="currentPassword" type="password" placeholder="Enter current password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
                 </FieldGroup>
                 <FieldGroup>
                   <FieldLabel>New Password</FieldLabel>
-                  <Input type="password" placeholder="Min 8 characters" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+                  <Input id="settings-newPassword" name="newPassword" type="password" placeholder="Min 8 characters" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
                 </FieldGroup>
                 <FieldGroup>
                   <FieldLabel>Confirm New Password</FieldLabel>
-                  <Input type="password" placeholder="Re-enter new password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
+                  <Input id="settings-confirmPassword" name="confirmPassword" type="password" placeholder="Re-enter new password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
                 </FieldGroup>
               </FieldRow>
             </Card>
@@ -597,7 +597,7 @@ export const Settings = () => {
             <Card $span2 data-aos="fade-up">
               <CardTitle>🎯 Interests</CardTitle>
               <AddRow>
-                <Input placeholder="Type a custom interest..." value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomInterest())} />
+                <Input id="settings-customInterest" name="customInterest" placeholder="Type a custom interest..." value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomInterest())} />
                 <AddBtn type="button" onClick={addCustomInterest}>Add</AddBtn>
               </AddRow>
               <TagGrid>
@@ -617,7 +617,7 @@ export const Settings = () => {
             <Card $span2 data-aos="fade-up">
               <CardTitle>🛠️ Skills</CardTitle>
               <AddRow>
-                <Input placeholder="Type a custom skill..." value={customSkill} onChange={(e) => setCustomSkill(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())} />
+                <Input id="settings-customSkill" name="customSkill" placeholder="Type a custom skill..." value={customSkill} onChange={(e) => setCustomSkill(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())} />
                 <AddBtn type="button" onClick={addCustomSkill}>Add</AddBtn>
               </AddRow>
               <TagGrid>
@@ -710,7 +710,7 @@ function CommunitySettingsCard() {
     getDoc(doc(db, "communitySettings", "main"))
       .then((snap) => { if (snap.exists()) setSettings(snap.data()); })
       .catch(e => console.error("getCommunitySettings error:", e));
-  }, []);
+  }, [authReady]);
   const save = () => {
     setDoc(doc(db, "communitySettings", "main"), settings, { merge: true })
       .then(() => { setSaved(true); setTimeout(() => setSaved(false), 2000); })
@@ -721,15 +721,15 @@ function CommunitySettingsCard() {
       <CardTitle>💬 Community Settings</CardTitle>
       <FieldRow2>
         <div style={{ flex: 1 }}><FieldLabel>Posts enabled</FieldLabel>
-          <Select value={settings.postsEnabled} onChange={e => setSettings({ ...settings, postsEnabled: e.target.value === "true" })}>
+          <Select id="settings-postsEnabled" name="postsEnabled" value={settings.postsEnabled} onChange={e => setSettings({ ...settings, postsEnabled: e.target.value === "true" })}>
             <option value="true">Enabled</option><option value="false">Disabled</option>
           </Select></div>
         <div style={{ flex: 1 }}><FieldLabel>Comments enabled</FieldLabel>
-          <Select value={settings.commentsEnabled} onChange={e => setSettings({ ...settings, commentsEnabled: e.target.value === "true" })}>
+          <Select id="settings-commentsEnabled" name="commentsEnabled" value={settings.commentsEnabled} onChange={e => setSettings({ ...settings, commentsEnabled: e.target.value === "true" })}>
             <option value="true">Enabled</option><option value="false">Disabled</option>
           </Select></div>
         <div style={{ flex: 1 }}><FieldLabel>Member limit</FieldLabel>
-          <Input type="number" value={settings.memberLimit} onChange={e => setSettings({ ...settings, memberLimit: parseInt(e.target.value) || 100 })} /></div>
+          <Input id="settings-memberLimit" name="memberLimit" type="number" value={settings.memberLimit} onChange={e => setSettings({ ...settings, memberLimit: parseInt(e.target.value) || 100 })} /></div>
       </FieldRow2>
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
         <SaveSmallBtn onClick={save}>{saved ? "✅ Saved" : "Save Settings"}</SaveSmallBtn>

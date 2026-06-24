@@ -273,6 +273,8 @@ export const AuthPage = () => {
                       <InputGroup>
                         <label>Email Address</label>
                         <input
+                          id="auth-reset-email"
+                          name="auth-reset-email"
                           type="email"
                           placeholder="you@example.com"
                           value={resetEmail}

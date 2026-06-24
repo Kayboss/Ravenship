@@ -7,6 +7,7 @@ import { Card, Badge, Btn, Table, Th, Td, BioModal } from "./adminStyles";
 
 export default function AdminMentors() {
   const [users, setUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   const [bioUser, setBioUser] = useState(null);
   const [expandedMentor, setExpandedMentor] = useState(null);
@@ -15,9 +16,10 @@ export default function AdminMentors() {
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentor" && !u.deleted) : [])).catch(e => console.error("getUsers error:", e));
+    getUsers().then(d => { const arr = Array.isArray(d) ? d : []; setAllUsers(arr); setUsers(arr.filter(u => u.role === "mentor" && !u.deleted)); }).catch(e => console.error("getUsers error:", e));
     getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
   }, []);
+  const resolveMentees = (ids) => ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
@@ -127,7 +129,7 @@ export default function AdminMentors() {
                               <p style={{fontSize:"0.78rem",color:"#999"}}>No mentees enrolled yet.</p>
                             ) : (
                               <div style={{overflowX:"auto",maxWidth:"100%"}}><Table><thead><tr><Th>Name</Th><Th>Email</Th></tr></thead>
-                              <tbody>{c.enrolledMentees.map((m, i) => (
+                              <tbody>{resolveMentees(c.enrolledMentees || []).map((m, i) => (
                                 <tr key={i}><Td>{m.name}</Td><Td>{m.email}</Td></tr>
                               ))}</tbody></Table></div>
                             )}

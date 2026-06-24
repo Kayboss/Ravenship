@@ -9,6 +9,8 @@ import { useCourses } from "../context/CourseContext.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getCourses, getSubmissions, updateSubmission, getAllGradebook, getUser } from "../firebase/db";
 
+const truncateWords = (text, max = 25) => text?.split(" ").slice(0, max).join(" ") + (text?.split(" ").length > max ? "..." : "");
+
 const DashboardContainer = styled.div`
   display: flex;
   min-height: 100vh;
@@ -598,7 +600,7 @@ export const MenteeDashboard = () => {
       })
       .catch(e => console.error("MenteeDashboard load error:", e));
     })();
-  }, []);
+  }, [authReady]);
 
   const enrolledList = Object.entries(enrolledCourses).map(([title, data]) => {
     const course = coursesList.find(c => c.title === title);
@@ -652,7 +654,7 @@ export const MenteeDashboard = () => {
               <CourseImage>{course.emoji}</CourseImage>
               <CourseBadge>{course.badge}</CourseBadge>
               <CourseTitle>{course.title}</CourseTitle>
-              <CourseDesc>{course.desc}</CourseDesc>
+              <CourseDesc>{truncateWords(course.desc)}</CourseDesc>
               <ProgressRow>
                 <ProgressPercent>{course.progress}% Complete</ProgressPercent>
                 <ProgressNext>Next: {course.next}</ProgressNext>

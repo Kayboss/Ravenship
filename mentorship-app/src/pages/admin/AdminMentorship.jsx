@@ -73,7 +73,7 @@ export default function AdminMentorship() {
     <Card data-aos="fade-up">
       <style>{`
         .ms-panels{display:grid;grid-template-columns:1fr 1fr;gap:24px}
-        .ms-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f9f9f9;border-radius:10}
+        .ms-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f9f9f9;border-radius:10px}
         .ms-row-name{flex:1;min-width:0;font-weight:600;font-size:0.85rem;color:#2c3e50;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .ms-group-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
         .ms-select-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
@@ -97,7 +97,7 @@ export default function AdminMentorship() {
       {msg && <p style={{fontSize:"0.85rem",color:msg.includes("rror")||msg.includes("first")?"#e53935":"#2e7d32",fontWeight:600,marginBottom:12}}>{msg}</p>}
 
       <div className="ms-select-row">
-        <Select value={selectedMentor?.id || ""} onChange={e => {
+        <Select id="mentorship-mentor" name="mentor" value={selectedMentor?.id || ""} onChange={e => {
           const m = mentors.find(mm => mm.id === e.target.value);
           setSelectedMentor(m || null);
         }}>
@@ -111,7 +111,7 @@ export default function AdminMentorship() {
         <div style={{display:"flex",flexDirection:"column",gap:20}}>
           <div className="ms-group-row">
             <label style={{fontWeight:600,fontSize:"0.85rem",color:"#2c3e50"}}>Group Name:</label>
-            <Input value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Cohort Alpha, Group A..." style={{flex:"1 1 200px",maxWidth:300,minWidth:0}} />
+            <Input id="mentorship-groupName" name="groupName" value={groupName} onChange={e => setGroupName(e.target.value)} placeholder="e.g. Cohort Alpha, Group A..." style={{flex:"1 1 200px",maxWidth:300,minWidth:0}} />
             <Btn disabled={loading} onClick={saveGroupName}>{loading ? "Saving..." : "Save"}</Btn>
           </div>
           <div className="ms-panels">

@@ -332,7 +332,7 @@ export const MyMentees = () => {
         })));
       }
     }).catch(e => console.error("getMentees error:", e));
-  }, []);
+  }, [authReady]);
 
   return (
     <Page>

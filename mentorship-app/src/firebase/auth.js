@@ -78,7 +78,11 @@ export const getStoredUser = () => {
 
 let _authReady = false;
 const _authReadyCallbacks = [];
-onAuthStateChanged(auth, (user) => { if (user) { _authReady = true; _authReadyCallbacks.forEach(cb => cb()); _authReadyCallbacks.length = 0; } });
+const fireReadyCallbacks = () => { _authReadyCallbacks.forEach(cb => cb()); _authReadyCallbacks.length = 0; };
+onAuthStateChanged(auth, (user) => {
+  _authReady = true;
+  fireReadyCallbacks();
+});
 export const onAuthReady = (cb) => {
   if (_authReady) { cb(); return; }
   if (auth.currentUser) { _authReady = true; cb(); return; }
@@ -88,10 +92,15 @@ export const onAuthReady = (cb) => {
     const retry = setInterval(() => {
       if (_authReady || auth.currentUser) {
         clearInterval(retry);
+        clearTimeout(fallback);
         if (!handled) { handled = true; _authReady = true; cb(); }
       }
     }, 300);
-    _authReadyCallbacks.push(() => { clearInterval(retry); if (!handled) { handled = true; cb(); } });
+    const fallback = setTimeout(() => {
+      clearInterval(retry);
+      if (!handled) { handled = true; _authReady = true; cb(); }
+    }, 10000);
+    _authReadyCallbacks.push(() => { clearInterval(retry); clearTimeout(fallback); if (!handled) { handled = true; cb(); } });
   } else {
     _authReadyCallbacks.push(cb);
   }

@@ -709,7 +709,7 @@ export const MentorDashboard = () => {
         setLoading(false);
       })
       .catch(() => { setLoading(false); })
-  }, []);
+  }, [authReady]);
   const { gradingQueue = [], mentees = [], activeCourses = [] } = dashboardData || {};
 
   if (loading) {

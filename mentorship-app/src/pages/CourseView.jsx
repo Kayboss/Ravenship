@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
@@ -296,18 +296,19 @@ export const CourseView = () => {
     const lsId = localStorage.getItem("fs_courseId_" + courseName);
     if (lsId) {
       setFirestoreCourseId(lsId);
-      getCourse(lsId).then(fs => { if (fs?.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: fs.featuredImage })); }).catch(e => console.error("getCourse error:", e));
+      getCourse(lsId).then(fs => { if (fs) setCourseData(prev => ({ ...prev, ...(fs.lessonContent ? { lessons: fs.lessonContent } : {}), featuredImage: fs.featuredImage || prev.featuredImage })); }).catch(e => console.error("getCourse error:", e));
       return;
     }
     getCourses().then(courses => {
       const match = courses.find(c => c.title === courseName || c.title === courseTitle);
-      if (match) {
-        setFirestoreCourseId(match.id);
-        localStorage.setItem("fs_courseId_" + courseName, match.id);
-        if (match.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: match.featuredImage }));
-      }
+        if (match) {
+          setFirestoreCourseId(match.id);
+          localStorage.setItem("fs_courseId_" + courseName, match.id);
+          if (match.lessonContent) setCourseData(prev => ({ ...prev, lessons: match.lessonContent }));
+          if (match.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: match.featuredImage }));
+        }
     }).catch(e => console.error("getCourses/match error:", e));
-  }, [courseName, courseTitle]);
+  }, [authReady, courseName, courseTitle]);
 
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify({ ...courseData, _title: courseTitle }));
@@ -315,7 +316,7 @@ export const CourseView = () => {
 
   useEffect(() => {
     if (!editMode && firestoreCourseId && savedOnceRef.current) {
-      updateCourse(firestoreCourseId, { _title: courseTitle, lessons: courseData.lessons, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color, featuredImage: courseData.featuredImage }).catch(e => console.error("updateCourse error:", e));
+      updateCourse(firestoreCourseId, { _title: courseTitle, lessons: topicKeys.length, lessonContent: courseData.lessons, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color, featuredImage: courseData.featuredImage }).catch(e => console.error("updateCourse error:", e));
     }
     if (!editMode) savedOnceRef.current = true;
   }, [editMode, firestoreCourseId]);

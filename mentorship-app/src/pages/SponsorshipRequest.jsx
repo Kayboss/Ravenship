@@ -242,7 +242,7 @@ export const SponsorshipRequest = () => {
         }
       }).catch(e => console.error("getUser/mentee error:", e));
     }
-  }, [user?.id, role]);
+  }, [authReady, user?.id, role]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -285,7 +285,7 @@ export const SponsorshipRequest = () => {
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
                 <Label>Type of Sponsorship *</Label>
-                <Select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
+                <Select id="sponsorship-type" name="type" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
                   <option value="">Select type...</option>
                   <option value="Education">Education</option>
                   <option value="Healthcare">Healthcare</option>
@@ -298,31 +298,31 @@ export const SponsorshipRequest = () => {
               </div>
               <div>
                 <Label>What is the purpose of Sponsorship? *</Label>
-                <Input type="text" placeholder="Briefly state the purpose" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} />
+                <Input id="sponsorship-purpose" name="purpose" type="text" placeholder="Briefly state the purpose" value={form.purpose} onChange={e => setForm({ ...form, purpose: e.target.value })} />
               </div>
               <div>
                 <Label>Describe value resulting from the application as related to your well-being and growth if granted. *</Label>
-                <TextArea placeholder="Explain how this sponsorship will impact your well-being and personal growth..." value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
+                <TextArea id="sponsorship-value" name="value" placeholder="Explain how this sponsorship will impact your well-being and personal growth..." value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
               </div>
               <div>
                 <Label>Amount Requesting *</Label>
-                <Input type="text" placeholder="e.g. GHS 500" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+                <Input id="sponsorship-amount" name="amount" type="text" placeholder="e.g. GHS 500" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
               </div>
               <div>
                 <Label>What type of skills does this training cover?</Label>
-                <Input type="text" placeholder="e.g. Leadership, Digital Marketing, etc." value={form.skills} onChange={e => setForm({ ...form, skills: e.target.value })} />
+                <Input id="sponsorship-skills" name="skills" type="text" placeholder="e.g. Leadership, Digital Marketing, etc." value={form.skills} onChange={e => setForm({ ...form, skills: e.target.value })} />
               </div>
               <div>
                 <Label>Expected Sponsorship Pay Date *</Label>
-                <Input type="date" value={form.payDate} onChange={e => setForm({ ...form, payDate: e.target.value })} />
+                <Input id="sponsorship-payDate" name="payDate" type="date" value={form.payDate} onChange={e => setForm({ ...form, payDate: e.target.value })} />
               </div>
               <div>
                 <Label>Write your Application Letter</Label>
-                <TextArea placeholder="Write your application letter explaining why you are applying for this sponsorship..." value={form.applicationLetter} onChange={e => setForm({ ...form, applicationLetter: e.target.value })} />
+                <TextArea id="sponsorship-applicationLetter" name="applicationLetter" placeholder="Write your application letter explaining why you are applying for this sponsorship..." value={form.applicationLetter} onChange={e => setForm({ ...form, applicationLetter: e.target.value })} />
               </div>
               <div>
                 <Label>Expected Outcomes when granted this Application</Label>
-                <TextArea placeholder="Describe what outcomes you expect when this sponsorship is granted..." value={form.expectedOutcomes} onChange={e => setForm({ ...form, expectedOutcomes: e.target.value })} />
+                <TextArea id="sponsorship-expectedOutcomes" name="expectedOutcomes" placeholder="Describe what outcomes you expect when this sponsorship is granted..." value={form.expectedOutcomes} onChange={e => setForm({ ...form, expectedOutcomes: e.target.value })} />
               </div>
               {formMsg && <p style={{ fontSize: "0.85rem", color: formMsg.includes("submitted") ? "#2e7d32" : "#e53935", fontWeight: 600 }}>{formMsg}</p>}
               <SubmitBtn type="submit" disabled={sending}>{sending ? "Submitting..." : "Submit Application"}</SubmitBtn>

@@ -165,15 +165,15 @@ export const CounsellingRequest = () => {
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
                 <Label>Your Name</Label>
-                <Input type="text" value={form.name} disabled style={{ opacity: 0.7, cursor: "not-allowed" }} />
+                <Input id="counselling-name" name="name" type="text" value={form.name} disabled style={{ opacity: 0.7, cursor: "not-allowed" }} />
               </div>
               <div>
                 <Label>Email</Label>
-                <Input type="email" value={form.email} disabled style={{ opacity: 0.7, cursor: "not-allowed" }} />
+                <Input id="counselling-email" name="email" type="email" value={form.email} disabled style={{ opacity: 0.7, cursor: "not-allowed" }} />
               </div>
               <div>
                 <Label>Type of Counselling Requesting *</Label>
-                <Select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
+                <Select id="counselling-type" name="type" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
                   <option value="">Select type...</option>
                   <option value="Academic">Academic</option>
                   <option value="Career">Career</option>
@@ -184,11 +184,11 @@ export const CounsellingRequest = () => {
               </div>
               <div>
                 <Label>Reasons for Counselling *</Label>
-                <TextArea placeholder="Briefly describe what you'd like to discuss or get help with..." value={form.reasons} onChange={e => setForm({ ...form, reasons: e.target.value })} />
+                <TextArea id="counselling-reasons" name="reasons" placeholder="Briefly describe what you'd like to discuss or get help with..." value={form.reasons} onChange={e => setForm({ ...form, reasons: e.target.value })} />
               </div>
               <div>
                 <Label>Date / Time You Want to Meet the Counsellor *</Label>
-                <Input type="date" value={form.dateTime} onChange={e => setForm({ ...form, dateTime: e.target.value })} />
+                <Input id="counselling-dateTime" name="dateTime" type="date" value={form.dateTime} onChange={e => setForm({ ...form, dateTime: e.target.value })} />
               </div>
               {formMsg && <p style={{ fontSize: "0.85rem", color: formMsg.includes("submitted") ? "#2e7d32" : "#e53935", fontWeight: 600 }}>{formMsg}</p>}
               <SubmitBtn type="submit" disabled={sending}>{sending ? "Submitting..." : "Submit Request"}</SubmitBtn>

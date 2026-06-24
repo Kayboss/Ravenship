@@ -7,7 +7,9 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getCourses, addCourse, updateCourse, deleteCourse, getUser } from "../firebase/db";
+import { getCourses, addCourse, updateCourse, deleteCourse, getUser, getUsers, enrollMentee, getAssignments } from "../firebase/db";
+
+const truncateWords = (text, max = 25) => text?.split(" ").slice(0, max).join(" ") + (text?.split(" ").length > max ? "..." : "");
 
 const Page = styled.div`
   display: flex;
@@ -120,7 +122,8 @@ const CardActions = styled.div`
 `;
 
 const AssignBtn = styled.button`
-  flex: 1;
+  width: 100%;
+  margin-top: 12px;
   padding: 10px;
   border-radius: 12px;
   border: 1px solid ${(props) => props.theme.colors.outline};
@@ -508,6 +511,21 @@ const MenteeInitial = styled.div`
   color: ${(props) => props.theme.colors.primary};
 `;
 
+const EditBtn = styled.button`
+  flex: 1;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid ${(props) => props.theme.colors.primary};
+  background: transparent;
+  color: ${(props) => props.theme.colors.primary};
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover { background: ${(props) => props.theme.colors.primary}; color: #fff; }
+`;
+
 const ManageBtn = styled.button`
   flex: 1;
   padding: 10px;
@@ -672,6 +690,7 @@ const CreateProgramBtn = styled.button`
   cursor: pointer;
   transition: all 0.2s;
   &:hover { opacity: 0.9; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
 `;
 
 export const MyCourses = () => {
@@ -692,12 +711,28 @@ export const MyCourses = () => {
     try { const d = localStorage.getItem(mentorKey); if (d) return JSON.parse(d); } catch {}
     return null;
   };
+  const syncLocalCourses = (list) => {
+    const slim = list.map(({ featuredImage, ...rest }) => rest);
+    try {
+      localStorage.setItem(mentorKey, JSON.stringify(slim));
+    } catch (e) {
+      if (e.name === "QuotaExceededError" || e.code === 22) {
+        try {
+          localStorage.removeItem(mentorKey);
+          localStorage.setItem(mentorKey, JSON.stringify(slim));
+        } catch {}
+      }
+    }
+  };
 
   const [coursesList, setCoursesList] = useState([]);
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [authReady, setAuthReady] = useState(false);
+  const [assignmentCounts, setAssignmentCounts] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -712,17 +747,28 @@ export const MyCourses = () => {
           const u = await getUser(currentUser.id);
           if (u?.mentorId) mentorFilter = u.mentorId;
         }
+        const allUsers = await getUsers();
+        const userMap = Object.fromEntries(allUsers.map(u => [u.id, u]));
         const firestoreCourses = await getCourses(mentorFilter);
+        const enrich = (courses) => courses.map(c => ({
+          ...c,
+          enrolledMentees: c.enrolledMentees || [],
+          menteeInitials: (c.enrolledMentees || []).map(id => {
+            const u = userMap[id];
+            return u?.name ? u.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) : null;
+          }).filter(Boolean)
+        }));
         const localCourses = loadLocalCourses();
         if (localCourses) {
           const existingTitles = new Set(firestoreCourses.map(c => c.title));
           const newLocals = localCourses.filter(c => !existingTitles.has(c.title));
-          const merged = [...newLocals, ...firestoreCourses];
+          const merged = enrich([...newLocals, ...firestoreCourses]);
           setCoursesList(merged);
-          localStorage.setItem(mentorKey, JSON.stringify(merged));
+          syncLocalCourses(merged);
         } else {
-          setCoursesList(firestoreCourses);
-          localStorage.setItem(mentorKey, JSON.stringify(firestoreCourses));
+          const enriched = enrich(firestoreCourses);
+          setCoursesList(enriched);
+          syncLocalCourses(enriched);
         }
       } catch {
         const fallback = loadLocalCourses() || [];
@@ -730,17 +776,30 @@ export const MyCourses = () => {
       }
     };
     load();
-  }, []);
+  }, [authReady]);
 
   useEffect(() => {
-    localStorage.setItem(mentorKey, JSON.stringify(coursesList));
+    syncLocalCourses(coursesList);
   }, [coursesList, mentorKey]);
+
+  useEffect(() => {
+    getAssignments().then(d => {
+      if (Array.isArray(d)) {
+        const counts = {};
+        for (const a of d) {
+          if (a.course) counts[a.course] = (counts[a.course] || 0) + 1;
+        }
+        setAssignmentCounts(counts);
+      }
+    }).catch(e => console.error("getAssignments error:", e));
+  }, []);
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.desc.trim() || !form.duration.trim()) {
       alert("Please fill in all fields");
       return;
     }
+    setSaving(true);
     const newCourse = {
       title: form.title,
       desc: form.desc,
@@ -758,6 +817,7 @@ export const MyCourses = () => {
       syllabus: [],
       progress: 0,
       enrolled: 0,
+      enrolledMentees: [],
     };
     try {
       const id = await addCourse(newCourse);
@@ -768,6 +828,7 @@ export const MyCourses = () => {
     }
     setShowCreate(false);
     setForm({ title: "", desc: "", badge: "Design", emoji: "🎨", duration: "", level: "Beginner", featuredImage: "" });
+    setSaving(false);
     alert("Program created!");
   };
 
@@ -777,14 +838,16 @@ export const MyCourses = () => {
 
   const saveEdit = async () => {
     if (!editTarget.title.trim()) return alert("Title is required");
+    setSaving(true);
     const updated = { ...editTarget };
     delete updated._origTitle;
     delete updated.id;
     if (editTarget.id) {
-      try { await updateCourse(editTarget.id, updated); } catch { alert("Failed to save changes to server."); return; }
+      try { await updateCourse(editTarget.id, updated); } catch { alert("Failed to save changes to server."); setSaving(false); return; }
     }
     setCoursesList(prev => prev.map(c => (c.id && c.id === editTarget.id) || (!c.id && c.title === editTarget._origTitle) ? { ...editTarget } : c));
     setEditTarget(null);
+    setSaving(false);
     alert("Program updated!");
   };
 
@@ -797,16 +860,19 @@ export const MyCourses = () => {
   };
 
   const doDelete = async () => {
+    setDeletingId(deleteTarget?.id || "local");
     if (deleteTarget.id) {
-      try { await deleteCourse(deleteTarget.id); } catch { alert("Failed to delete program from server."); return; }
+      try { await deleteCourse(deleteTarget.id); } catch { alert("Failed to delete program from server."); setDeletingId(null); return; }
     }
     setCoursesList(prev => prev.filter(c => (c.id && c.id !== deleteTarget.id) || (!c.id && c.title !== deleteTarget.title)));
     setDeleteTarget(null);
+    setDeletingId(null);
     alert("Program deleted!");
   };
 
   const doBulkDelete = async () => {
     if (!confirm(`Delete ${selectedIds.length} selected program(s)? This cannot be undone.`)) return;
+    setSaving(true);
     const toDelete = coursesList.filter(c => selectedIds.includes(c.id || c.title));
     const firestoreIds = toDelete.filter(c => c.id).map(c => c.id);
     for (const id of firestoreIds) {
@@ -814,6 +880,7 @@ export const MyCourses = () => {
     }
     setCoursesList(prev => prev.filter(c => !selectedIds.includes(c.id || c.title)));
     setSelectedIds([]);
+    setSaving(false);
     alert("Selected programs deleted!");
   };
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
@@ -827,7 +894,7 @@ export const MyCourses = () => {
         {isMentor && coursesList.length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, color: "#594048" }}>
-              <input type="checkbox" checked={selectedIds.length === coursesList.length && coursesList.length > 0} onChange={(e) => {
+              <input id="myCourses-selectAll" name="selectAll" type="checkbox" checked={selectedIds.length === coursesList.length && coursesList.length > 0} onChange={(e) => {
                 if (e.target.checked) {
                   setSelectedIds(coursesList.map(c => c.id || c.title));
                 } else {
@@ -837,8 +904,8 @@ export const MyCourses = () => {
               Select All ({coursesList.length})
             </label>
             {selectedIds.length > 0 && (
-              <button onClick={doBulkDelete} style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "#e53935", color: "white", fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", fontFamily: "inherit" }}>
-                🗑 Delete Selected ({selectedIds.length})
+              <button onClick={doBulkDelete} disabled={saving} style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "#e53935", color: "white", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1, fontSize: "0.85rem", fontFamily: "inherit" }}>
+                {saving ? "⏳ Deleting..." : `🗑 Delete Selected (${selectedIds.length})`}
               </button>
             )}
           </div>
@@ -847,7 +914,7 @@ export const MyCourses = () => {
           {coursesList.map((c, i) => isMentor ? (
             <Card key={i} data-aos="fade-up" data-aos-delay={i * 50} style={{ position: "relative", outline: selectedIds.includes(c.id || c.title) ? "2px solid #b50064" : "none" }}>
               <label style={{ position: "absolute", top: 12, left: 12, zIndex: 2, cursor: "pointer" }} onClick={(e) => e.stopPropagation()}>
-                <input type="checkbox" checked={selectedIds.includes(c.id || c.title)} onChange={(e) => {
+                <input id={`myCourses-checkbox-${c.id || c.title}`} name={`course-${c.id || c.title}`} type="checkbox" checked={selectedIds.includes(c.id || c.title)} onChange={(e) => {
                   if (e.target.checked) {
                     setSelectedIds(prev => [...prev, c.id || c.title]);
                   } else {
@@ -858,31 +925,35 @@ export const MyCourses = () => {
               <CardImage>{c.featuredImage ? <img src={c.featuredImage} alt="" style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:16,position:"absolute",inset:0}} /> : c.emoji}</CardImage>
               <Badge>{c.badge}</Badge>
               <CardTitle>{c.title}</CardTitle>
-              <CardDesc>{c.desc}</CardDesc>
+              <CardDesc>{truncateWords(c.desc)}</CardDesc>
               <MentorStats>
                 <StatBox>
-                  <p>{c.enrolled}</p>
+                  <p>{c.enrolledMentees?.length || 0}</p>
                   <p>enrolled</p>
                 </StatBox>
                 <StatBox>
-                  <p>{c.assignments}</p>
+                  <p>{assignmentCounts[c.title] || 0}</p>
                   <p>assignments</p>
                 </StatBox>
               </MentorStats>
               <MenteesSection>
                 <MenteeLabel>Mentees</MenteeLabel>
                 <MenteeList>
-                  {["AR","JC","SK","DP","ML"].map((init, idx) => (
+                  {(c.menteeInitials || []).slice(0, 5).map((init, idx) => (
                     <MenteeInitial key={idx}>{init}</MenteeInitial>
                   ))}
+                  {(c.enrolledMentees?.length || 0) > 5 && (
+                    <MenteeInitial style={{background:"#594048"}}>+{c.enrolledMentees.length - 5}</MenteeInitial>
+                  )}
                 </MenteeList>
               </MenteesSection>
               <CardActions>
+                <EditBtn onClick={() => handleEdit(c)}>✏️ Edit</EditBtn>
                 <ManageBtn onClick={() => navigate(`/dashboard/${role}/course/${encodeURIComponent(c.title)}`)}>⚙️ Manage</ManageBtn>
-                <AssignBtn onClick={() => navigate(`/dashboard/${role}/assignments?course=${encodeURIComponent(c.title)}`)}>
-                  📝 Assignments
-                </AssignBtn>
               </CardActions>
+              <AssignBtn onClick={() => navigate(`/dashboard/${role}/assignments?course=${encodeURIComponent(c.title)}`)}>
+                📝 Assignments
+              </AssignBtn>
             </Card>
           ) : (
             <Card key={i} data-aos="fade-up" data-aos-delay={i * 50}>
@@ -892,12 +963,12 @@ export const MyCourses = () => {
               </CardImage>
               <Badge>{c.badge}</Badge>
               <CardTitle>{c.title}</CardTitle>
-              <CardDesc>{c.desc}</CardDesc>
+              <CardDesc>{truncateWords(c.desc)}</CardDesc>
               {enrolledCourses[c.title] && (
                 <>
                   <ProgressRow>
                     <span style={{ color: "#006590", fontWeight: 600 }}>{enrolledCourses[c.title].progress}% Complete</span>
-                    <AssignmentCount>{c.assignments} assignment{c.assignments > 1 ? "s" : ""}</AssignmentCount>
+                    <AssignmentCount>{(assignmentCounts[c.title] || 0)} assignment{(assignmentCounts[c.title] || 0) > 1 ? "s" : ""}</AssignmentCount>
                   </ProgressRow>
                   <ProgressBar>
                     <ProgressFill $w={enrolledCourses[c.title].progress} />
@@ -949,12 +1020,12 @@ export const MyCourses = () => {
                 </MetaBox>
                 <MetaBox>
                   <p>📖</p>
-                  <p>{selected.lessons} lessons</p>
+                  <p>{typeof selected.lessons === 'object' && selected.lessons !== null ? Object.keys(selected.lessons).length : (selected.lessons ?? 0)} lessons</p>
                   <p>Course content</p>
                 </MetaBox>
                 <MetaBox>
                   <p>📝</p>
-                  <p>{selected.assignments}</p>
+                  <p>{assignmentCounts[selected.title] || 0}</p>
                   <p>Assignments</p>
                 </MetaBox>
               </MetaGrid>
@@ -979,7 +1050,7 @@ export const MyCourses = () => {
                   ▶ Continue — {selected.syllabus[enrolledCourses[selected.title].lastTopic || 0]}
                 </ContinueBtn>
               ) : (
-                <StartBtn onClick={() => { enrollCourse(selected.title); setSelected(null); navigate(`/dashboard/${role}/course/${encodeURIComponent(selected.title)}`); }}>
+                <StartBtn onClick={async () => { enrollCourse(selected.title); if (selected.id && currentUser?.id) { try { await enrollMentee(selected.id, currentUser.id); } catch (e) { console.error("Enrollment failed", e); } } setSelected(null); navigate(`/dashboard/${role}/course/${encodeURIComponent(selected.title)}`); }}>
                   🚀 Start Course — {selected.syllabus[0]}
                 </StartBtn>
               )}
@@ -1028,11 +1099,7 @@ export const MyCourses = () => {
 
               <FormGroup>
                 <FormLabel>Category</FormLabel>
-                <FormSelect id="course-category-create" name="category" value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })}>
-                  <option>Design</option>
-                  <option>Engineering</option>
-                  <option>Business</option>
-                </FormSelect>
+                <FormInput id="course-category-create" name="category" placeholder="e.g. Design, Engineering, Business" value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })} />
               </FormGroup>
 
               <FormGroup>
@@ -1053,7 +1120,7 @@ export const MyCourses = () => {
                       style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"none", background:"rgba(0,0,0,0.5)", color:"#fff", cursor:"pointer", fontSize:"0.8rem" }}>✕</button>
                   </div>
                 )}
-                <input type="file" id="featured-image-create" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; const r=new FileReader(); r.onload=(ev) => setForm({ ...form, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
+                <input type="file" id="featured-image-create" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500 * 1024) { alert("Image too large. Please choose an image under 500KB."); return; } const r=new FileReader(); r.onload=(ev) => setForm({ ...form, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
                   style={{ fontSize:"0.85rem", fontFamily:"inherit" }} />
               </FormGroup>
 
@@ -1072,8 +1139,8 @@ export const MyCourses = () => {
                 </FormGroup>
               </div>
 
-              <CreateProgramBtn onClick={handleCreate}>
-                ✨ Create Program
+              <CreateProgramBtn onClick={handleCreate} disabled={saving}>
+                {saving ? "⏳ Creating..." : "✨ Create Program"}
               </CreateProgramBtn>
             </ModalBody>
           </Modal>
@@ -1099,11 +1166,7 @@ export const MyCourses = () => {
               </FormGroup>
               <FormGroup>
                 <FormLabel>Category</FormLabel>
-                <FormSelect id="course-category-edit" name="category" value={editTarget.badge} onChange={(e) => setEditTarget({ ...editTarget, badge: e.target.value })}>
-                  <option>Design</option>
-                  <option>Engineering</option>
-                  <option>Business</option>
-                </FormSelect>
+                <FormInput id="course-category-edit" name="category" placeholder="e.g. Design, Engineering, Business" value={editTarget.badge} onChange={(e) => setEditTarget({ ...editTarget, badge: e.target.value })} />
               </FormGroup>
               <FormGroup>
                 <FormLabel>Emoji</FormLabel>
@@ -1122,7 +1185,7 @@ export const MyCourses = () => {
                       style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"none", background:"rgba(0,0,0,0.5)", color:"#fff", cursor:"pointer", fontSize:"0.8rem" }}>✕</button>
                   </div>
                 )}
-                <input type="file" id="featured-image-edit" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; const r=new FileReader(); r.onload=(ev) => setEditTarget({ ...editTarget, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
+                <input type="file" id="featured-image-edit" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500 * 1024) { alert("Image too large. Please choose an image under 500KB."); return; } const r=new FileReader(); r.onload=(ev) => setEditTarget({ ...editTarget, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
                   style={{ fontSize:"0.85rem", fontFamily:"inherit" }} />
               </FormGroup>
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
@@ -1136,7 +1199,7 @@ export const MyCourses = () => {
                 </FormGroup>
               </div>
               <div style={{ display: "flex", gap: 12 }}>
-                <CreateProgramBtn onClick={saveEdit} style={{ flex: 1 }}>💾 Save Changes</CreateProgramBtn>
+                <CreateProgramBtn onClick={saveEdit} disabled={saving} style={{ flex: 1 }}>{saving ? "⏳ Saving..." : "💾 Save Changes"}</CreateProgramBtn>
                 <CreateProgramBtn onClick={() => setEditTarget(null)} style={{ flex: 1, background: "#e0e0e0", color: "#333" }}>Cancel</CreateProgramBtn>
               </div>
             </ModalBody>
@@ -1152,7 +1215,7 @@ export const MyCourses = () => {
               <ModalTitle>Delete Program?</ModalTitle>
               <p style={{ color: "#594048", marginBottom: 24 }}>Are you sure you want to delete "{deleteTarget.title}"? This action cannot be undone.</p>
               <div style={{ display: "flex", gap: 12 }}>
-                <CreateProgramBtn onClick={doDelete} style={{ flex: 1, background: "#e53935" }}>Yes, Delete</CreateProgramBtn>
+                <CreateProgramBtn onClick={doDelete} disabled={!!deletingId} style={{ flex: 1, background: "#e53935" }}>{deletingId ? "⏳ Deleting..." : "Yes, Delete"}</CreateProgramBtn>
                 <CreateProgramBtn onClick={() => setDeleteTarget(null)} style={{ flex: 1, background: "#e0e0e0", color: "#333" }}>Cancel</CreateProgramBtn>
               </div>
             </ModalBody>
