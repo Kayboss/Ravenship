@@ -511,6 +511,13 @@ const RichEditor = ({ value, onChange, placeholder }) => {
   );
 };
 
+const truncateHtml = (html, wordLimit) => {
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const words = text.split(" ");
+  if (words.length <= wordLimit) return null;
+  return words.slice(0, wordLimit).join(" ") + "…";
+};
+
 export const Assignments = () => {
   const { role } = useParams();
   const isMentor = role === "mentor";
@@ -530,6 +537,7 @@ export const Assignments = () => {
     title: "", course: "", desc: "", content: "", marks: "", due: "",
   });
   const [authReady, setAuthReady] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -592,8 +600,8 @@ export const Assignments = () => {
   };
 
   const handleCreateAssignment = async () => {
-    if (!newAssignment.title.trim() || !newAssignment.course || !newAssignment.desc.trim()) {
-      alert("Please fill in all fields (title, course, description)");
+    if (!newAssignment.title.trim() || !newAssignment.course) {
+      alert("Please fill in all required fields (title, course)");
       return;
     }
     setSaving(true);
@@ -789,9 +797,25 @@ export const Assignments = () => {
                   </div>
                   {!isMentor && <StatusBadge $status={a.status}>{a.status}</StatusBadge>}
                 </div>
-                {isMentor && <Description>{a.desc}</Description>}
+                {isMentor && <Description>{a.desc || a.content ? truncateHtml(a.content, 100) || a.desc : ""}</Description>}
                 {!isMentor && a.content && (
-                  <div style={{ fontSize: "0.9rem", lineHeight: "1.7", marginBottom: 16, color: "inherit" }} dangerouslySetInnerHTML={{ __html: a.content }} />
+                  <div style={{ fontSize: "0.9rem", lineHeight: "1.7", marginBottom: 8, color: "inherit" }}>
+                    {expandedId === a.id ? (
+                      <>
+                        <div dangerouslySetInnerHTML={{ __html: a.content }} />
+                        <span onClick={() => setExpandedId(null)} style={{ color: "#b50064", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "inline-block", marginTop: 8 }}>▲ Show less</span>
+                      </>
+                    ) : (() => {
+                      const preview = truncateHtml(a.content, 100);
+                      if (!preview) return <div dangerouslySetInnerHTML={{ __html: a.content }} />;
+                      return (
+                        <>
+                          <div>{preview}</div>
+                          <span onClick={() => setExpandedId(a.id)} style={{ color: "#b50064", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "inline-block", marginTop: 8 }}>Read more ▼</span>
+                        </>
+                      );
+                    })()}
+                  </div>
                 )}
                 {!isMentor && !a.content && <Description>{a.desc}</Description>}
                 <MetaRow>
