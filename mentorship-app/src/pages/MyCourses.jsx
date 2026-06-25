@@ -750,14 +750,20 @@ export const MyCourses = () => {
         const allUsers = await getUsers();
         const userMap = Object.fromEntries(allUsers.map(u => [u.id, u]));
         const firestoreCourses = await getCourses(mentorFilter);
-        const enrich = (courses) => courses.map(c => ({
-          ...c,
-          enrolledMentees: c.enrolledMentees || [],
-          menteeInitials: (c.enrolledMentees || []).map(id => {
-            const u = userMap[id];
-            return u?.name ? u.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) : null;
-          }).filter(Boolean)
-        }));
+        const enrich = (courses) => courses.map(c => {
+          const lessonTopics = typeof c.lessonContent === 'object' && c.lessonContent !== null
+            ? Object.keys(c.lessonContent)
+            : (Array.isArray(c.syllabus) ? c.syllabus : []);
+          return {
+            ...c,
+            syllabus: lessonTopics,
+            enrolledMentees: c.enrolledMentees || [],
+            menteeInitials: (c.enrolledMentees || []).map(id => {
+              const u = userMap[id];
+              return u?.name ? u.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) : null;
+            }).filter(Boolean)
+          };
+        });
         const localCourses = loadLocalCourses();
         if (localCourses) {
           const existingTitles = new Set(firestoreCourses.map(c => c.title));
@@ -1020,7 +1026,7 @@ export const MyCourses = () => {
                 </MetaBox>
                 <MetaBox>
                   <p>📖</p>
-                  <p>{typeof selected.lessons === 'object' && selected.lessons !== null ? Object.keys(selected.lessons).length : (selected.lessons ?? 0)} lessons</p>
+                  <p>{typeof selected.lessons === 'object' && selected.lessons !== null ? Object.keys(selected.lessons).length : (typeof selected.lessons === 'number' ? selected.lessons : (Array.isArray(selected.syllabus) ? selected.syllabus.length : 0))} lessons</p>
                   <p>Course content</p>
                 </MetaBox>
                 <MetaBox>
@@ -1032,10 +1038,10 @@ export const MyCourses = () => {
 
               <SyllabusSection>
                 <SyllabusTitle>Course Syllabus</SyllabusTitle>
-                {selected.syllabus.map((topic, i) => (
+                {Array.isArray(selected.syllabus) && selected.syllabus.map((topic, i) => (
                   <SyllabusItem key={i}>
                     <span>{String(i + 1).padStart(2, "0")}</span>
-                    <p>{topic}</p>
+                    <p>{typeof topic === 'string' ? topic : String(topic ?? "")}</p>
                   </SyllabusItem>
                 ))}
               </SyllabusSection>
@@ -1047,11 +1053,11 @@ export const MyCourses = () => {
               )}
               {enrolledCourses[selected.title] ? (
                 <ContinueBtn onClick={() => { setSelected(null); navigate(`/dashboard/${role}/course/${encodeURIComponent(selected.title)}`); }}>
-                  ▶ Continue — {selected.syllabus[enrolledCourses[selected.title].lastTopic || 0]}
+                  ▶ Continue — {Array.isArray(selected.syllabus) ? (selected.syllabus[enrolledCourses[selected.title].lastTopic ?? 0] ?? "Course") : "Course"}
                 </ContinueBtn>
               ) : (
                 <StartBtn onClick={async () => { enrollCourse(selected.title); if (selected.id && currentUser?.id) { try { await enrollMentee(selected.id, currentUser.id); } catch (e) { console.error("Enrollment failed", e); } } setSelected(null); navigate(`/dashboard/${role}/course/${encodeURIComponent(selected.title)}`); }}>
-                  🚀 Start Course — {selected.syllabus[0]}
+                  🚀 Start Course — {Array.isArray(selected.syllabus) && selected.syllabus.length > 0 ? selected.syllabus[0] : "Begin"}
                 </StartBtn>
               )}
               {enrolledCourses[selected.title] && !isMentor && (
