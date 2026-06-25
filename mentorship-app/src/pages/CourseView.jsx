@@ -137,20 +137,6 @@ const TopicDesc = styled.p`
   color: ${(props) => props.theme.colors.textSecondary};
 `;
 
-const VideoPlaceholder = styled.div`
-  width: 100%;
-  height: 340px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, ${(props) => props.theme.colors.primary}10, ${(props) => props.theme.colors.secondary}10);
-  margin: 24px 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
-  color: ${(props) => props.theme.colors.textSecondary}40;
-  border: 1px solid ${(props) => props.theme.colors.outline};
-`;
-
 const LessonContent = styled.div`
   h4 {
     font-weight: 700;
@@ -459,7 +445,7 @@ export const CourseView = () => {
                 <TopicTitle>{activeTopic}</TopicTitle>
                 <TopicDesc>{lesson.desc}</TopicDesc>
               </TopicHeader>
-              {(() => { const embed = getVideoEmbedUrl(lesson.videoUrl); return embed ? <iframe src={embed} title="Lesson Video" style={{ width: "100%", height: 340, borderRadius: 16, margin: "24px 0", border: "none" }} allowFullScreen /> : <VideoPlaceholder>🎬 Lesson Video</VideoPlaceholder>; })()}
+              {(() => { const embed = getVideoEmbedUrl(lesson.videoUrl); return embed ? <iframe src={embed} title="Lesson Video" style={{ width: "100%", height: 340, borderRadius: 16, margin: "24px 0", border: "none" }} allowFullScreen /> : null; })()}
               <LessonContent>
                 {lesson.sections.map((s, i) =>
                   s.type === "text" ? <p key={i}>{s.content}</p> : <ul key={i}>{s.items.map((item, j) => <li key={j}>{item}</li>)}</ul>
@@ -686,7 +672,7 @@ export const CourseView = () => {
               </div>
             ) : (
               <>
-                {(() => { const embed = getVideoEmbedUrl(lesson.videoUrl); return embed ? <iframe src={embed} title="Lesson Video" style={{ width: "100%", height: 340, borderRadius: 16, margin: "24px 0", border: "none" }} allowFullScreen /> : <VideoPlaceholder>🎬 Lesson Video</VideoPlaceholder>; })()}
+                {(() => { const embed = getVideoEmbedUrl(lesson.videoUrl); return embed ? <iframe src={embed} title="Lesson Video" style={{ width: "100%", height: 340, borderRadius: 16, margin: "24px 0", border: "none" }} allowFullScreen /> : null; })()}
                 <LessonContent>
                   {lesson.sections.map((s, i) =>
                     s.type === "text" ? <p key={i}>{s.content}</p> : <ul key={i}>{s.items.map((item, j) => <li key={j}>{item}</li>)}</ul>
