@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
+import { useLocation, useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
@@ -617,6 +618,7 @@ const ChatPopupCard = styled.div`
 `;
 
 export const Community = () => {
+  const location = useLocation();
   const [chatOpen, setChatOpen] = useState(false);
   const [chatContact, setChatContact] = useState(null);
   const [chatMsgs, setChatMsgs] = useState([]);
@@ -652,26 +654,17 @@ export const Community = () => {
     getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(e => console.error("getPosts error:", e));
     getUsers().then(d => setMemberList(Array.isArray(d) ? d : [])).catch(e => console.error("getUsers error:", e));
     getEvents().then(d => setEventList(Array.isArray(d) ? d : [])).catch(e => console.error("getEvents error:", e));
-    const pending = localStorage.getItem("pending_chat_target");
-    if (pending) {
-      try {
-        const target = JSON.parse(pending);
-        localStorage.removeItem("pending_chat_target");
-        if (target?.id && target?.name) openChat(target).then(() => setChatPopupOpen(true));
-      } catch { localStorage.removeItem("pending_chat_target"); }
+    const stateTarget = location.state?.chatTarget;
+    if (stateTarget?.id && stateTarget?.name) {
+      openChat(stateTarget).then(() => setChatPopupOpen(true));
+      window.history.replaceState({}, "");
     }
-  }, [authReady]);
+  }, [authReady, location.state]);
 
   useEffect(() => {
     if (!authReady || !user?.id) return;
     const unsub = subscribeConversations(user.id, (data) => {
       setConversations(data);
-      const msgs = data.map(c => {
-        const otherId = c.participants?.find(id => id !== user.id);
-        const info = otherId ? c.participantInfo?.[otherId] : null;
-        return { icon: "👤", name: info?.name || "Unknown", text: c.lastMessage?.text || "", time: "", otherId, photoURL: info?.photoURL || "", replies: c.lastMessage ? [c.lastMessage.text] : [] };
-      });
-      localStorage.setItem("topbar_messages", JSON.stringify(msgs));
     });
     return () => unsub();
   }, [authReady, user?.id]);

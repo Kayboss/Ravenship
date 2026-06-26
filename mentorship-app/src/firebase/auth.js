@@ -34,8 +34,18 @@ export const logout = async () => {
     try { await updateDoc(doc(db, "users", user.id), { online: false }); } catch {}
   }
   await signOut(auth);
+  const uid = user?.id;
   localStorage.removeItem("user");
   localStorage.removeItem("token");
+  if (uid) {
+    localStorage.removeItem("settings_" + uid);
+  }
+  localStorage.removeItem("settings");
+  localStorage.removeItem("enrolledCourses");
+  localStorage.removeItem("topbar_messages");
+  localStorage.removeItem("topbar_notifications");
+  localStorage.removeItem("topbar_unread_messages");
+  localStorage.removeItem("topbar_unread_notifications");
 };
 
 let presenceUnsub = null;

@@ -6,8 +6,7 @@ import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { fileToBase64 } from "../lib/upload";
-import { getUser, getCourses, getAssignments, addAssignment, updateAssignment, deleteAssignment } from "../firebase/db";
+import { getUser, getCourses, getAssignments, addAssignment, updateAssignment, deleteAssignment, addSubmission } from "../firebase/db";
 import DOMPurify from "dompurify";
 
 const Page = styled.div`
@@ -543,32 +542,35 @@ export const Assignments = () => {
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
   useEffect(() => {
-    if (!authReady) return;
-    const currentUser = getStoredUser();
-    if (isMentee && currentUser?.id) {
-      getUser(currentUser.id).then(u => {
-        if (u?.mentorId) setMenteeMentorId(u.mentorId);
-      }).catch(e => console.error("getUser/mentorId error:", e));
-    }
-    if (isMentor && currentUser?.id) {
-      getCourses(currentUser.id).then(d => { if (Array.isArray(d)) setCourses(d); }).catch(e => console.error("getCourses error:", e));
-    }
-  }, [authReady]);
-
-  useEffect(() => {
     AOS.init({ duration: 800, once: true });
   }, []);
 
   useEffect(() => {
     if (!authReady) return;
     const currentUser = getStoredUser();
-    const filter = isMentor ? currentUser?.id : (isMentee ? menteeMentorId : null);
-    if (filter) {
-      getAssignments(filter).then(d => { if (Array.isArray(d)) setAssignments(d); }).catch(e => console.error("getAssignments error:", e));
-    } else if (!isMentor && !isMentee) {
-      getAssignments().then(d => { if (Array.isArray(d)) setAssignments(d); }).catch(e => console.error("getAssignments error:", e));
-    }
-  }, [authReady, menteeMentorId]);
+    const load = async () => {
+      try {
+        if (isMentor && currentUser?.id) {
+          const c = await getCourses(currentUser.id);
+          if (Array.isArray(c)) setCourses(c);
+          const d = await getAssignments(currentUser.id);
+          if (Array.isArray(d)) setAssignments(d);
+        } else if (isMentee && currentUser?.id) {
+          const u = await getUser(currentUser.id);
+          const mentorId = u?.mentorId;
+          if (mentorId) {
+            setMenteeMentorId(mentorId);
+            const d = await getAssignments(mentorId);
+            if (Array.isArray(d)) setAssignments(d);
+          }
+        } else {
+          const d = await getAssignments();
+          if (Array.isArray(d)) setAssignments(d);
+        }
+      } catch (e) { console.error("load assignments error:", e); }
+    };
+    load();
+  }, [authReady]);
 
   const currentUser = getStoredUser();
   const mentorFiltered = (() => {
@@ -665,6 +667,17 @@ export const Assignments = () => {
       <SidebarByRole />
       <Main>
         <TopBar searchPlaceholder="Search assignments..." />
+        <style>{`
+          .assignment-formatting h3 { font-size: 1.15rem; margin: 12px 0 6px; font-weight: 700; }
+          .assignment-formatting h4 { font-size: 1rem; margin: 10px 0 4px; font-weight: 700; }
+          .assignment-formatting ul, .assignment-formatting ol { padding-left: 24px; margin: 6px 0; }
+          .assignment-formatting li { margin: 2px 0; }
+          .assignment-formatting p { margin: 4px 0; }
+          .assignment-formatting strong { font-weight: 700; }
+          .assignment-formatting em { font-style: italic; }
+          .assignment-formatting u { text-decoration: underline; }
+          .assignment-clamped { max-height: 120px; overflow: hidden; }
+        `}</style>
         <PageTitle data-aos="fade-down">{isMentor ? "Manage Assignments" : "Task / Assignment"}</PageTitle>
 
         {isMentor && (
@@ -798,24 +811,36 @@ export const Assignments = () => {
                   </div>
                   {!isMentor && <StatusBadge $status={a.status}>{a.status}</StatusBadge>}
                 </div>
-                {isMentor && <Description>{a.desc || a.content ? truncateHtml(a.content, 100) || a.desc : ""}</Description>}
-                {!isMentor && a.content && (
+                {isMentor && (
                   <div style={{ fontSize: "0.9rem", lineHeight: "1.7", marginBottom: 8, color: "inherit" }}>
-                    {expandedId === a.id ? (
+                    {expandedId === a.id && a.content ? (
                       <>
                         <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(a.content) }} />
                         <span onClick={() => setExpandedId(null)} style={{ color: "#b50064", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "inline-block", marginTop: 8 }}>▲ Show less</span>
                       </>
-                    ) : (() => {
-                      const preview = truncateHtml(a.content, 100);
-                      if (!preview) return <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(a.content) }} />;
-                      return (
-                        <>
-                          <div>{preview}</div>
-                          <span onClick={() => setExpandedId(a.id)} style={{ color: "#b50064", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "inline-block", marginTop: 8 }}>Read more ▼</span>
-                        </>
-                      );
-                    })()}
+                    ) : (
+                      <>
+                        <Description>{a.desc || a.content ? truncateHtml(a.content, 100) || a.desc : ""}</Description>
+                        {a.content && truncateHtml(a.content, 100) && (
+                          <span onClick={() => setExpandedId(a.id)} style={{ color: "#b50064", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "inline-block", marginTop: 4 }}>Read more ▼</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+                {!isMentor && a.content && (
+                  <div style={{ fontSize: "0.9rem", lineHeight: "1.7", marginBottom: 8, color: "inherit" }}>
+                    {expandedId === a.id ? (
+                      <>
+                        <div className="assignment-formatting" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(a.content) }} />
+                        <span onClick={() => setExpandedId(null)} style={{ color: "#b50064", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "inline-block", marginTop: 8 }}>▲ Show less</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="assignment-formatting assignment-clamped" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(a.content) }} />
+                        <span onClick={() => setExpandedId(a.id)} style={{ color: "#b50064", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "inline-block", marginTop: 8 }}>Read more ▼</span>
+                      </>
+                    )}
                   </div>
                 )}
                 {!isMentor && !a.content && <Description>{a.desc}</Description>}
@@ -872,12 +897,16 @@ export const Assignments = () => {
                     const f = document.getElementById(`file-${a.id}`).files?.[0];
                     if (!f) return alert("Please select a file");
                     const u = getStoredUser();
-                    const subKey = `submissions_${u?.email || "default"}`;
-                    const existing = JSON.parse(localStorage.getItem(subKey) || "[]");
-                    let content = null;
-                    if (f.size < 500000) content = await fileToBase64(f);
-                    existing.push({ id: Date.now(), assignment: a.title, course: a.course, file: f.name, size: (f.size / 1024).toFixed(0) + " KB", date: new Date().toLocaleDateString(), status: "Pending", content });
-                    localStorage.setItem(subKey, JSON.stringify(existing));
+                    const subData = {
+                      assignmentId: a.id,
+                      assignmentTitle: a.title,
+                      course: a.course,
+                      fileName: f.name,
+                      fileSize: (f.size / 1024).toFixed(0) + " KB",
+                      menteeId: u?.id || null,
+                      menteeName: u?.name || "Unknown",
+                    };
+                    await addSubmission(subData).catch(e => console.error("addSubmission error:", e));
                     setAssignments(prev => prev.map(x => x.id === a.id ? { ...x, status: "submitted" } : x));
                     alert(`Submitted "${a.title}" successfully!`);
                   }}

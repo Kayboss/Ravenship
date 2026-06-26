@@ -9,7 +9,15 @@ export default function AdminCourses() {
   const [expandedCourse, setExpandedCourse] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
+    getCourses().then(d => {
+      const arr = Array.isArray(d) ? d : [];
+      setCourses(arr.map(c => {
+        const topics = typeof c.lessonContent === 'object' && c.lessonContent !== null
+          ? Object.keys(c.lessonContent)
+          : (Array.isArray(c.syllabus) ? c.syllabus : []);
+        return { ...c, syllabus: topics };
+      }));
+    }).catch(e => console.error("getCourses error:", e));
   }, []);
   return (
     <>

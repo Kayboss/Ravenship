@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
 import { logout, getStoredUser } from "../../firebase/auth";
-import { subscribeNotifications } from "../../firebase/db";
+import { subscribeNotifications, subscribeConversations } from "../../firebase/db";
 
 const Bar = styled.header`
   display: flex;
@@ -271,25 +271,9 @@ const RelativeWrap = styled.div`
 export const TopBar = ({ searchPlaceholder = "Search..." }) => {
   const [openDropdown, setOpenDropdown] = useState(null);
 
-  const loadMessages = () => {
-    try { const d = localStorage.getItem("topbar_messages"); if (d === null) return []; return JSON.parse(d); } catch { return []; }
-  };
-  const loadNotifications = () => {
-    try { const d = localStorage.getItem("topbar_notifications"); if (d === null) return []; return JSON.parse(d); } catch { return []; }
-  };
+  const [messageList, setMessageList] = useState([]);
+  const [notificationList, setNotificationList] = useState([]);
 
-  const [messageList, setMessageList] = useState(loadMessages);
-  const [notificationList, setNotificationList] = useState(loadNotifications);
-  const [refreshTick, setRefreshTick] = useState(0);
-
-  const refreshFromStorage = () => {
-    setMessageList(loadMessages());
-    setNotificationList(loadNotifications());
-    setRefreshTick(t => t + 1);
-  };
-
-  const unreadMsgs = (() => { try { const d = localStorage.getItem("topbar_unread_messages"); if (d === null) return messageList.length; return parseInt(d, 10); } catch { return messageList.length; } })();
-  const unreadNotifs = (() => { try { const d = localStorage.getItem("topbar_unread_notifications"); if (d === null) return notificationList.length; return parseInt(d, 10); } catch { return notificationList.length; } })();
   const navigate = useNavigate();
   const { role } = useParams();
   const ref = useRef(null);
@@ -302,34 +286,37 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  useEffect(() => {
-    if (openDropdown === "notifications") {
-      localStorage.setItem("topbar_unread_notifications", "0");
-    }
-    if (openDropdown === "messages") {
-      localStorage.setItem("topbar_unread_messages", "0");
-    }
-  }, [openDropdown]);
+  const user = getStoredUser() || { name: "User", email: "" };
 
   useEffect(() => {
-    const unsub = subscribeNotifications(user?.role, (data) => {
-      const filtered = data.filter(n => !n.targetRole || n.targetRole === "all" || n.targetRole === user?.role);
+    if (!user?.id) return;
+    const unsub = subscribeConversations(user.id, (data) => {
+      const msgs = data.map(c => {
+        const otherId = c.participants?.find(id => id !== user.id);
+        const info = otherId ? c.participantInfo?.[otherId] : null;
+        return { icon: "👤", name: info?.name || "Unknown", text: c.lastMessage?.text || "", time: "", otherId, photoURL: info?.photoURL || "", replies: c.lastMessage ? [c.lastMessage.text] : [] };
+      });
+      setMessageList(msgs);
+    });
+    return () => unsub();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.role) return;
+    const unsub = subscribeNotifications(user.role, (data) => {
+      const filtered = data.filter(n => !n.targetRole || n.targetRole === "all" || n.targetRole === user.role);
       const formatted = filtered.map(n => ({
         icon: "🔔",
         text: n.title ? `${n.title}: ${n.message}` : n.message,
         time: n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : ""
       }));
-      localStorage.setItem("topbar_notifications", JSON.stringify(formatted));
-      if (formatted.length > 0) {
-        const saved = localStorage.getItem("topbar_unread_notifications");
-        if (saved === null) localStorage.setItem("topbar_unread_notifications", String(formatted.length));
-      }
       setNotificationList(formatted);
     });
     return () => unsub();
-  }, []);
+  }, [user?.role]);
 
-  const user = getStoredUser() || { name: "User", email: "" };
+  const unreadMsgs = messageList.length;
+  const unreadNotifs = openDropdown === "notifications" ? 0 : notificationList.length;
 
   const initials = user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "U";
   const currentRole = role || user.role || "admin";
@@ -347,7 +334,7 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
       </SearchWrapper>
       <HeaderActions ref={ref}>
         <RelativeWrap>
-          <IconBtn $active={openDropdown === "notifications"} onClick={() => { refreshFromStorage(); setOpenDropdown(openDropdown === "notifications" ? null : "notifications"); }}>
+          <IconBtn $active={openDropdown === "notifications"} onClick={() => setOpenDropdown(openDropdown === "notifications" ? null : "notifications")}>
             🔔{unreadNotifs > 0 ? <Badge>{unreadNotifs}</Badge> : null}
           </IconBtn>
           {openDropdown === "notifications" && notificationList.length > 0 && (
@@ -365,7 +352,7 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
         </RelativeWrap>
 
         <RelativeWrap>
-          <IconBtn $active={openDropdown === "messages"} onClick={() => { refreshFromStorage(); setOpenDropdown(openDropdown === "messages" ? null : "messages"); }}>
+          <IconBtn $active={openDropdown === "messages"} onClick={() => setOpenDropdown(openDropdown === "messages" ? null : "messages")}>
             ✉️{unreadMsgs > 0 ? <Badge>{unreadMsgs}</Badge> : null}
           </IconBtn>
           {openDropdown === "messages" && messageList.length > 0 && (
@@ -374,8 +361,7 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
               {messageList.map((m, i) => (
                 <DropdownItem key={i} onClick={() => {
                   if (m.otherId) {
-                    localStorage.setItem("pending_chat_target", JSON.stringify({ id: m.otherId, name: m.name, photoURL: m.photoURL }));
-                    navigate(`/dashboard/${currentRole}/community`);
+                    navigate(`/dashboard/${currentRole}/community`, { state: { chatTarget: { id: m.otherId, name: m.name, photoURL: m.photoURL } } });
                   }
                   setOpenDropdown(null);
                 }}>

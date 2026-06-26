@@ -66,9 +66,13 @@ export const BioModal = ({ user, onClose }) => {
     <ModalOverlay onClick={onClose}>
       <ModalBox onClick={e => e.stopPropagation()}>
         <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20}}>
-          <div style={{width:56,height:56,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",fontWeight:700,color:"#fff"}}>
-            {user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
-          </div>
+          {user.photoURL ? (
+            <img src={user.photoURL} alt="" style={{width:56,height:56,borderRadius:"50%",objectFit:"cover"}} />
+          ) : (
+            <div style={{width:56,height:56,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",fontWeight:700,color:"#fff"}}>
+              {user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
+            </div>
+          )}
           <div><ModalTitle style={{margin:0}}>{user.name}</ModalTitle>
             <span style={{fontSize:"0.85rem",color:"#594048"}}>{user.email} · {user.role}</span></div>
         </div>

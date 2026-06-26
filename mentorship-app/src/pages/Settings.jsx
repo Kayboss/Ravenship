@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { updateUser, logActivity } from "../firebase/db";
+import { updateUser, logActivity, getUser } from "../firebase/db";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
@@ -336,46 +336,76 @@ export const Settings = () => {
   const [saved, setSaved] = useState(false);
   const fileRef = useRef(null);
 
-  const [user, setUser] = useState(() => {
-    try {
-      return getStoredUser() || {};
-    } catch { return {}; }
-  });
-
-  const settings = JSON.parse(localStorage.getItem("settings") || "{}");
-
-  const [name, setName] = useState(user.name || "");
-  const [email, setEmail] = useState(user.email || "");
-  const [phone, setPhone] = useState(user.phone || "");
-  const [city, setCity] = useState(user.city || "");
-  const [dobMonth, setDobMonth] = useState(settings.dobMonth || "");
-  const [dobDay, setDobDay] = useState(settings.dobDay || "");
-  const [dobYear, setDobYear] = useState(settings.dobYear || "");
-  const [interests, setInterests] = useState(settings.interests || []);
-  const [skills, setSkills] = useState(settings.skills || []);
-  const [photo, setPhoto] = useState(user.photoURL || settings.photo || "");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [dobMonth, setDobMonth] = useState("");
+  const [dobDay, setDobDay] = useState("");
+  const [dobYear, setDobYear] = useState("");
+  const [interests, setInterests] = useState([]);
+  const [skills, setSkills] = useState([]);
+  const [photo, setPhoto] = useState("");
+  const [bio, setBio] = useState("");
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
   const [customInterest, setCustomInterest] = useState("");
   const [customSkill, setCustomSkill] = useState("");
-  const [bio, setBio] = useState(settings.bio || "");
   const [saving, setSaving] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStage, setUploadStage] = useState("");
+  const [authReady, setAuthReady] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  let userEmail = "default";
-  try { const u = getStoredUser(); if (u?.email) userEmail = u.email; } catch {}
-  const notifKey = `notifPrefs_${userEmail}`;
-  const loadNotifs = () => {
-    try { const d = localStorage.getItem(notifKey); if (d) return JSON.parse(d); } catch {}
-    return role === "mentor"
-      ? { newSubmission: true, courseCompleted: true, assignmentGraded: true, menteeEnrolled: true, pendingReview: true }
-      : { assignmentGraded: true, courseCompleted: true, newMessage: true, submissionReviewed: true, dailyReminder: true };
-  };
-  const [notifPrefs, setNotifPrefs] = useState(loadNotifs);
+  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
+    const sUser = getStoredUser();
+    if (!sUser?.id) return;
+    getUser(sUser.id).then(data => {
+      if (data) {
+        setName(data.name || "");
+        setEmail(data.email || "");
+        setPhone(data.phone || "");
+        setCity(data.city || "");
+        setDobMonth(data.dobMonth || "");
+        setDobDay(data.dobDay || "");
+        setDobYear(data.dobYear || "");
+        setInterests(data.interests || []);
+        setSkills(data.skills || []);
+        setBio(data.bio || "");
+        setPhoto(data.photoURL || "");
+        setNotifPrefs(data.notifPrefs || (role === "mentor"
+          ? { newSubmission: true, courseCompleted: true, assignmentGraded: true, menteeEnrolled: true, pendingReview: true }
+          : { assignmentGraded: true, courseCompleted: true, newMessage: true, submissionReviewed: true, dailyReminder: true }));
+      }
+      setLoading(false);
+    }).catch(e => {
+      console.error("Settings load error:", e);
+      const cached = localStorage.getItem("settings_" + sUser.id);
+      if (cached) {
+        try {
+          const s = JSON.parse(cached);
+          setName(s.name || ""); setEmail(s.email || ""); setPhone(s.phone || "");
+          setCity(s.city || ""); setDobMonth(s.dobMonth || ""); setDobDay(s.dobDay || "");
+          setDobYear(s.dobYear || ""); setInterests(s.interests || []); setSkills(s.skills || []);
+          setBio(s.bio || ""); setPhoto(s.photo || "");
+        } catch {}
+      }
+      setLoading(false);
+    });
+  }, [authReady]);
+
+  const [notifPrefs, setNotifPrefs] = useState({});
   const toggleNotif = (key) => {
-    setNotifPrefs(prev => { const n = { ...prev, [key]: !prev[key] }; localStorage.setItem(notifKey, JSON.stringify(n)); return n; });
+    setNotifPrefs(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      const sUser = getStoredUser();
+      if (sUser?.id) updateUser(sUser.id, { notifPrefs: next }).catch(e => console.error("save notifPrefs error:", e));
+      return next;
+    });
   };
 
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
@@ -431,7 +461,7 @@ export const Settings = () => {
     }
 
     try {
-      const user = getStoredUser();
+      const sUser = getStoredUser();
       let photoURL = photo;
       if (photoFile) {
         setUploadStage("Reading file...");
@@ -441,15 +471,14 @@ export const Settings = () => {
         setUploadProgress(80);
         setPhotoFile(null);
       }
-      await updateUser(user.id, { name, phone, city, bio, photoURL: photoURL || "" });
+      await updateUser(sUser.id, { name, phone, city, bio, photoURL: photoURL || "", dobMonth, dobDay, dobYear, interests, skills });
       setUploadProgress(95);
-      const updated = { ...user, name, phone, city, bio, photoURL: photoURL || "" };
+      const updated = { ...sUser, name, phone, city, bio, photoURL: photoURL || "" };
       localStorage.setItem("user", JSON.stringify(updated));
-      localStorage.setItem("settings", JSON.stringify({
-        dobMonth, dobDay, dobYear, interests, skills, photo: photoURL, bio,
+      localStorage.setItem("settings_" + sUser.id, JSON.stringify({
+        name, email, phone, city, dobMonth, dobDay, dobYear, interests, skills, photo: photoURL, bio,
       }));
-      setUser(updated);
-      logActivity("Updated profile", { detail: `${user.name} updated their profile settings` });
+      logActivity("Updated profile", { detail: `${sUser.name} updated their profile settings` });
       setUploadProgress(100);
       setUploadStage("");
     } catch (err) {
@@ -485,7 +514,20 @@ export const Settings = () => {
     setTimeout(() => setSaved(false), 3000);
   };
 
-  const roleDisplay = role || user.role || "admin";
+  const roleDisplay = role || getStoredUser()?.role || "admin";
+
+  const initials = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "U";
+
+  // When not authReady or loading, skip render to avoid Flash of wrong data
+
+  if (loading) return (
+    <Page>
+      <SidebarByRole />
+      <Main style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: "#594048", fontSize: "0.95rem" }}>Loading settings...</p>
+      </Main>
+    </Page>
+  );
 
   return (
     <Page>
@@ -504,7 +546,7 @@ export const Settings = () => {
               <CardTitle>📸 Profile Photo</CardTitle>
               <PhotoWrap>
                 <PhotoPreview>
-                  {photo ? <img src={photo} alt="Preview" /> : user.name?.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "U"}
+                  {photo ? <img src={photo} alt="Preview" /> : (initials || "U")}
                 </PhotoPreview>
                 <div style={{flex:1,minWidth:0}}>
                   <PhotoBtn htmlFor="photo-input">📷 Choose Photo</PhotoBtn>

@@ -6,8 +6,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getCourse, getCourses, updateCourse, deleteCourse as deleteCourseFromDb } from "../firebase/db";
-import { onAuthReady } from "../firebase/auth";
+import { getCourses, updateCourse, deleteCourse as deleteCourseFromDb, getUser } from "../firebase/db";
+import { getStoredUser, onAuthReady } from "../firebase/auth";
 
 const Page = styled.div`
   display: flex;
@@ -214,17 +214,6 @@ const ProgressText = styled.span`
   white-space: nowrap;
 `;
 
-const courseContent = {};
-
-const fallbackLesson = {
-  desc: "Begin your learning journey with an introduction to the course.",
-  video: "🎬",
-  sections: [
-    { type: "text", content: "Welcome to the course! This is the first lesson where you will get an overview of what to expect." },
-    { type: "list", items: ["Course overview and structure", "Setting up your learning environment", "Resources and references"] },
-  ],
-};
-
 const getVideoEmbedUrl = (url) => {
   if (!url) return null;
   const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
@@ -244,23 +233,13 @@ const sanitizeUrl = (url) => {
 export const CourseView = () => {
   const { role, title } = useParams();
   const navigate = useNavigate();
-  const { enrolledCourses, updateProgress } = useCourses();
+  const { enrolledCourses, updateProgress, saveProgress } = useCourses();
   const courseName = decodeURIComponent(title);
   const isMentor = role === "mentor";
-  const storageKey = `courseData_${courseName}`;
 
-  const loadSavedCourseData = () => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    const base = courseContent[courseName] || { emoji: "📚", color: "#006590", resources: [], lessons: { "Introduction": { desc: "Begin your learning journey.", video: "🎬", videoUrl: "", sections: [{ type: "text", content: "Welcome to the course!" }, { type: "list", items: ["Overview", "Setup"] }] } } };
-    return { ...base, featuredImage: base.featuredImage || "", resources: base.resources || [], lessons: Object.fromEntries(Object.entries(base.lessons).map(([k, v]) => [k, { ...v, videoUrl: v.videoUrl || "" }])) };
-  };
-
-  const [courseData, setCourseData] = useState(loadSavedCourseData);
-  const [courseTitle, setCourseTitle] = useState(() => { const s = loadSavedCourseData(); return s._title || courseName; });
-  const [editCourse, setEditCourse] = useState({ title: courseName, desc: "", badge: "Design", level: "Intermediate", emoji: courseData.emoji });
+  const [courseData, setCourseData] = useState({ emoji: "📚", color: "#006590", resources: [], lessons: { "Introduction": { desc: "Begin your learning journey.", video: "🎬", videoUrl: "", sections: [{ type: "text", content: "Welcome to the course!" }, { type: "list", items: ["Overview", "Setup"] }] } } });
+  const [courseTitle, setCourseTitle] = useState(courseName);
+  const [editCourse, setEditCourse] = useState({ title: courseName, desc: "", badge: "Design", level: "Intermediate", emoji: "📚" });
   const [firestoreCourseId, setFirestoreCourseId] = useState(null);
   const [newTopicName, setNewTopicName] = useState("");
   const [resTitle, setResTitle] = useState("");
@@ -269,70 +248,74 @@ export const CourseView = () => {
   const [editMode, setEditMode] = useState(false);
   const topicKeys = Object.keys(courseData.lessons);
   const savedOnceRef = useRef(false);
-
-  const getSavedTopic = () => {
-    try { const saved = localStorage.getItem(`lastTopic_${courseName}`); if (saved && topicKeys.includes(saved)) return saved; } catch {}
-    return topicKeys[0];
-  };
-  const [activeTopic, setActiveTopic] = useState(getSavedTopic);
-  const getCompleted = () => {
-    try { const c = localStorage.getItem(`completed_${courseName}`); return c ? JSON.parse(c) : []; } catch { return []; }
-  };
-  const [completedLessons, setCompletedLessons] = useState(getCompleted);
   const [authReady, setAuthReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const enrollment = enrolledCourses[courseName] || {};
+  const [activeTopic, setActiveTopic] = useState(topicKeys[0]);
+  const [completedLessons, setCompletedLessons] = useState(enrollment.completedLessons || []);
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
 
   useEffect(() => {
     if (!authReady) return;
-    const lsId = localStorage.getItem("fs_courseId_" + courseName);
-    if (lsId) {
-      setFirestoreCourseId(lsId);
-      getCourse(lsId).then(fs => { if (fs) setCourseData(prev => ({ ...prev, ...(fs.lessonContent ? { lessons: fs.lessonContent } : {}), featuredImage: fs.featuredImage || prev.featuredImage })); }).catch(e => console.error("getCourse error:", e));
-      return;
-    }
-    getCourses().then(courses => {
-      const match = courses.find(c => c.title === courseName || c.title === courseTitle);
-        if (match) {
-          setFirestoreCourseId(match.id);
-          localStorage.setItem("fs_courseId_" + courseName, match.id);
-          if (match.lessonContent) setCourseData(prev => ({ ...prev, lessons: match.lessonContent }));
-          if (match.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: match.featuredImage }));
+    (async () => {
+      let mentorId = null;
+      if (!isMentor) {
+        const stored = getStoredUser();
+        if (stored?.id) {
+          const u = await getUser(stored.id);
+          mentorId = u?.mentorId || null;
         }
-    }).catch(e => console.error("getCourses/match error:", e));
-  }, [authReady, courseName, courseTitle]);
-
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify({ ...courseData, _title: courseTitle }));
-  }, [courseData, courseTitle, storageKey]);
+      }
+      const courses = await getCourses(mentorId);
+      const match = courses.find(c => c.title === courseName || c.title === courseTitle);
+      if (match) {
+        setFirestoreCourseId(match.id);
+        if (match._title) setCourseTitle(match._title);
+        if (match.lessonContent) setCourseData(prev => ({ ...prev, lessons: match.lessonContent }));
+        if (match.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: match.featuredImage }));
+        if (match.emoji) setCourseData(prev => ({ ...prev, emoji: match.emoji }));
+        if (match.color) setCourseData(prev => ({ ...prev, color: match.color }));
+        if (match.resources) setCourseData(prev => ({ ...prev, resources: match.resources }));
+      }
+      setLoading(false);
+    })().catch(e => { console.error("CourseView load error:", e); setLoading(false); });
+  }, [authReady, courseName, courseTitle, isMentor]);
 
   useEffect(() => {
     if (!editMode && firestoreCourseId && savedOnceRef.current) {
-      updateCourse(firestoreCourseId, { _title: courseTitle, lessons: topicKeys.length, lessonContent: courseData.lessons, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color, featuredImage: courseData.featuredImage }).catch(e => console.error("updateCourse error:", e));
+      updateCourse(firestoreCourseId, { _title: courseTitle, lessons: topicKeys.length, lessonContent: courseData.lessons, syllabus: topicKeys, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color, featuredImage: courseData.featuredImage }).catch(e => console.error("updateCourse error:", e));
     }
     if (!editMode) savedOnceRef.current = true;
   }, [editMode, firestoreCourseId]);
 
+  // Sync active topic from enrollment data
   useEffect(() => {
-    if (!isMentor) localStorage.setItem(`lastTopic_${courseName}`, activeTopic);
-  }, [activeTopic, courseName, isMentor]);
+    if (enrollment.lastTopic !== undefined && enrollment.lastTopic !== null && topicKeys[enrollment.lastTopic]) {
+      setActiveTopic(topicKeys[enrollment.lastTopic]);
+    }
+  }, [enrollment.lastTopic, topicKeys.length]);
 
+  // Sync completed lessons from enrollment data
   useEffect(() => {
-    localStorage.setItem(`completed_${courseName}`, JSON.stringify(completedLessons));
-  }, [completedLessons, courseName]);
+    if (enrollment.completedLessons) {
+      setCompletedLessons(enrollment.completedLessons);
+    }
+  }, [enrollment.completedLessons]);
 
   const handleTopicChange = (topic) => {
     setActiveTopic(topic);
     if (!isMentor) {
       const idx = topicKeys.indexOf(topic);
-      updateProgress(courseName, idx, topicKeys.length);
+      updateProgress(courseName, idx);
     }
   };
 
   const lesson = courseData.lessons[activeTopic];
   const currentIdx = topicKeys.indexOf(activeTopic);
-  const progress = ((currentIdx + 1) / topicKeys.length) * 100;
+  const progress = enrollment.progress || 0;
 
   // --- Mentor editing functions ---
 
@@ -402,7 +385,6 @@ export const CourseView = () => {
 
   const deleteCourse = () => {
     if (confirm(`Are you sure you want to delete "${courseName}"? This cannot be undone.`)) {
-      localStorage.removeItem(storageKey);
       if (firestoreCourseId) {
         deleteCourseFromDb(firestoreCourseId).catch(e => console.error("deleteCourseFromDb error:", e));
       }
@@ -465,7 +447,9 @@ export const CourseView = () => {
                   </span>
                 ) : (
                   <button onClick={() => {
-                    setCompletedLessons(prev => [...prev, activeTopic]);
+                    const updated = [...completedLessons, activeTopic];
+                    setCompletedLessons(updated);
+                    saveProgress(courseName, currentIdx, updated, topicKeys.length);
                     if (currentIdx < topicKeys.length - 1) {
                       setTimeout(() => handleTopicChange(topicKeys[currentIdx + 1]), 400);
                     }

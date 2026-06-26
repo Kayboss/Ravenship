@@ -303,8 +303,8 @@ export const Submissions = () => {
 
     getAssignments().then(d => {
       const acc = (Array.isArray(d) ? d : []).filter(a => a.status === "accepted" || a.status === "submitted");
-      setAcceptedAssignments(acc.length > 0 ? acc : JSON.parse(localStorage.getItem("acceptedAssignments") || "[]"));
-    }).catch(() => setAcceptedAssignments(JSON.parse(localStorage.getItem("acceptedAssignments") || "[]")));
+      setAcceptedAssignments(acc);
+    }).catch(e => console.error("getAssignments error:", e));
 
     const filter = isMentee ? { menteeId: currentUser.id } : {};
     getSubmissions(filter).then(d => { if (Array.isArray(d)) setSubmissions(d); }).catch(e => console.error("getSubmissions error:", e));

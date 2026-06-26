@@ -696,7 +696,7 @@ const CreateProgramBtn = styled.button`
 export const MyCourses = () => {
   const { role } = useParams();
   const navigate = useNavigate();
-  const { enrolledCourses, enrollCourse } = useCourses();
+  const { enrolledCourses, enrollCourse, removeEnrollment } = useCourses();
   const [selected, setSelected] = useState(null);
   const [bioView, setBioView] = useState(null);
   const isMentor = role === "mentor";
@@ -706,24 +706,6 @@ export const MyCourses = () => {
 
   const currentUser = getStoredUser();
   const mentorName = currentUser?.name || "You";
-  const mentorKey = (() => { try { const u = getStoredUser(); return `myCourses_${u?.email || "default"}`; } catch { return "myCourses_default"; } })();
-  const loadLocalCourses = () => {
-    try { const d = localStorage.getItem(mentorKey); if (d) return JSON.parse(d); } catch {}
-    return null;
-  };
-  const syncLocalCourses = (list) => {
-    const slim = list.map(({ featuredImage, ...rest }) => rest);
-    try {
-      localStorage.setItem(mentorKey, JSON.stringify(slim));
-    } catch (e) {
-      if (e.name === "QuotaExceededError" || e.code === 22) {
-        try {
-          localStorage.removeItem(mentorKey);
-          localStorage.setItem(mentorKey, JSON.stringify(slim));
-        } catch {}
-      }
-    }
-  };
 
   const [coursesList, setCoursesList] = useState([]);
   const [editTarget, setEditTarget] = useState(null);
@@ -750,6 +732,12 @@ export const MyCourses = () => {
         const allUsers = await getUsers();
         const userMap = Object.fromEntries(allUsers.map(u => [u.id, u]));
         const firestoreCourses = await getCourses(mentorFilter);
+        const allAssignments = await getAssignments(mentorFilter);
+        const counts = {};
+        for (const a of allAssignments) {
+          if (a.course) counts[a.course] = (counts[a.course] || 0) + 1;
+        }
+        setAssignmentCounts(counts);
         const enrich = (courses) => courses.map(c => {
           const lessonTopics = typeof c.lessonContent === 'object' && c.lessonContent !== null
             ? Object.keys(c.lessonContent)
@@ -764,41 +752,14 @@ export const MyCourses = () => {
             }).filter(Boolean)
           };
         });
-        const localCourses = loadLocalCourses();
-        if (localCourses) {
-          const existingTitles = new Set(firestoreCourses.map(c => c.title));
-          const newLocals = localCourses.filter(c => !existingTitles.has(c.title));
-          const merged = enrich([...newLocals, ...firestoreCourses]);
-          setCoursesList(merged);
-          syncLocalCourses(merged);
-        } else {
-          const enriched = enrich(firestoreCourses);
-          setCoursesList(enriched);
-          syncLocalCourses(enriched);
-        }
+        const enriched = enrich(firestoreCourses);
+        setCoursesList(enriched);
       } catch {
-        const fallback = loadLocalCourses() || [];
-        setCoursesList(fallback);
+        setCoursesList([]);
       }
     };
     load();
   }, [authReady]);
-
-  useEffect(() => {
-    syncLocalCourses(coursesList);
-  }, [coursesList, mentorKey]);
-
-  useEffect(() => {
-    getAssignments().then(d => {
-      if (Array.isArray(d)) {
-        const counts = {};
-        for (const a of d) {
-          if (a.course) counts[a.course] = (counts[a.course] || 0) + 1;
-        }
-        setAssignmentCounts(counts);
-      }
-    }).catch(e => console.error("getAssignments error:", e));
-  }, []);
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.desc.trim() || !form.duration.trim()) {
@@ -1061,7 +1022,7 @@ export const MyCourses = () => {
                 </StartBtn>
               )}
               {enrolledCourses[selected.title] && !isMentor && (
-                <button onClick={() => { if (confirm(`Unenroll from "${selected.title}"?`)) { const e = { ...enrolledCourses }; delete e[selected.title]; localStorage.setItem("enrolledCourses", JSON.stringify(e)); setSelected(null); window.location.reload(); } }}
+                <button onClick={() => { if (confirm(`Unenroll from "${selected.title}"?`)) { removeEnrollment(selected.title); setSelected(null); window.location.reload(); } }}
                   style={{ marginTop: 8, width: "100%", padding: "10px", borderRadius: 12, border: "1px solid #e53935", background: "transparent", color: "#e53935", fontFamily: "inherit", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer" }}>
                   ✕ Unenroll from this course
                 </button>

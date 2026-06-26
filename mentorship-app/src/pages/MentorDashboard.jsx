@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getUsers, getCourses, getSubmissions, addCourse, getAllGradebook } from "../firebase/db";
+import { getUsers, getCourses, getSubmissions, addCourse, getGradebook } from "../firebase/db";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
@@ -671,44 +671,56 @@ export const MentorDashboard = () => {
     AOS.init({ duration: 800, once: true, offset: 50 });
     const mentor = getStoredUser();
     const mentorId = mentor?.id || mentor?.uid || "";
-    Promise.all([getUsers(), getCourses(mentorId), getSubmissions({}), getAllGradebook()])
-      .then(([users, courses, submissions, gradebook]) => {
-        const mentees = (users || []).filter(u => (u.assignedMentor === mentorId || u.mentorId === mentorId) && u.role !== "mentor" && u.role !== "admin");
-        const pending = (submissions || []).filter(s => s.status === "pending" || s.grade === undefined);
-        const graded = (submissions || []).filter(s => s.score != null);
-        const completion = submissions.length ? Math.round((graded.length / submissions.length) * 100) : 0;
-        const allScores = gradebook.flatMap(g => Object.values(g.scores || {}).filter(v => typeof v === 'number'));
-        const avg = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
-        const gradeLetter = avg >= 90 ? "A" : avg >= 80 ? "B" : avg >= 70 ? "C" : avg >= 60 ? "D" : "F";
-        const gradeDisplay = avg ? `${gradeLetter} (${avg}%)` : "—";
-        const days = [0,0,0,0,0,0,0];
-        const now = new Date();
-        const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay()); startOfWeek.setHours(0,0,0,0);
-        submissions.forEach(s => {
-          const ts = s.submittedAt?.toDate ? s.submittedAt.toDate() : new Date(s.submittedAt);
-          if (ts >= startOfWeek) days[ts.getDay()]++;
-        });
-        const max = Math.max(...days, 1);
-        setKpis({
-          totalMentees: mentees.length,
-          avgGrade: gradeDisplay,
-          completionRate: completion,
-          pendingTasks: pending.length,
-          trendValues: days.map(v => Math.round((v/max)*100))
-        });
-        setDashboardData({
-          mentees,
-          activeCourses: courses || [],
-          gradingQueue: pending.slice(0, 4).map(s => ({
-            initials: (s.studentName || "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
-            name: s.title || s.assignmentTitle || "Untitled",
-            by: s.studentName || "Unknown",
-            time: "new"
-          }))
-        });
-        setLoading(false);
-      })
-      .catch(() => { setLoading(false); })
+    const loadDashboard = async () => {
+      const [users, courses, submissions] = await Promise.all([
+        getUsers().catch(e => { console.error("getUsers error:", e); return []; }),
+        getCourses(mentorId).catch(e => { console.error("getCourses error:", e); return []; }),
+        getSubmissions({}).catch(e => { console.error("getSubmissions error:", e); return []; }),
+      ]);
+      const mentees = (users || []).filter(u => (u.mentorId === mentorId) && u.role !== "mentor" && u.role !== "admin");
+      const menteeIds = mentees.map(m => m.id);
+      let gradebook = [];
+      if (menteeIds.length > 0) {
+        const results = await Promise.all(menteeIds.map(id =>
+          getGradebook(id).catch(() => [])
+        ));
+        gradebook = results.flat();
+      }
+      const pending = (submissions || []).filter(s => s.status === "pending" || s.grade === undefined);
+      const graded = (submissions || []).filter(s => s.score != null);
+      const completion = submissions.length ? Math.round((graded.length / submissions.length) * 100) : 0;
+      const allScores = gradebook.flatMap(g => Object.values(g.scores || {}).filter(v => typeof v === 'number'));
+      const avg = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
+      const gradeLetter = avg >= 90 ? "A" : avg >= 80 ? "B" : avg >= 70 ? "C" : avg >= 60 ? "D" : "F";
+      const gradeDisplay = avg ? `${gradeLetter} (${avg}%)` : "—";
+      const days = [0,0,0,0,0,0,0];
+      const now = new Date();
+      const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay()); startOfWeek.setHours(0,0,0,0);
+      submissions.forEach(s => {
+        const ts = s.submittedAt?.toDate ? s.submittedAt.toDate() : new Date(s.submittedAt);
+        if (ts >= startOfWeek) days[ts.getDay()]++;
+      });
+      const max = Math.max(...days, 1);
+      setKpis({
+        totalMentees: mentees.length,
+        avgGrade: gradeDisplay,
+        completionRate: completion,
+        pendingTasks: pending.length,
+        trendValues: days.map(v => Math.round((v/max)*100))
+      });
+      setDashboardData({
+        mentees,
+        activeCourses: courses || [],
+        gradingQueue: pending.slice(0, 4).map(s => ({
+          initials: (s.studentName || "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
+          name: s.title || s.assignmentTitle || "Untitled",
+          by: s.studentName || "Unknown",
+          time: "new"
+        }))
+      });
+      setLoading(false);
+    };
+    loadDashboard().catch(() => { setLoading(false); })
   }, [authReady]);
   const { gradingQueue = [], mentees = [], activeCourses = [] } = dashboardData || {};
 
@@ -907,7 +919,7 @@ export const MentorDashboard = () => {
                 </CourseOverlay>
               </CourseCard>
             ))}
-            <AddCourseCard onClick={() => { setAddingProgram(true); setActionMsg(null); addCourse({ title: "New Program", instructor: mentorName }).then(() => { setAddingProgram(false); setActionMsg("Program created! Manage it in My Courses."); setTimeout(() => setActionMsg(null), 3000); }).catch(() => { setAddingProgram(false); setActionMsg("Failed to create program"); setTimeout(() => setActionMsg(null), 2000); }); }}>
+            <AddCourseCard onClick={() => { setAddingProgram(true); setActionMsg(null); addCourse({ title: "New Program", instructor: mentorName, createdBy: mentorId }).then(() => { setAddingProgram(false); setActionMsg("Program created! Manage it in My Courses."); setTimeout(() => setActionMsg(null), 3000); }).catch(() => { setAddingProgram(false); setActionMsg("Failed to create program"); setTimeout(() => setActionMsg(null), 2000); }); }}>
               <AddIcon>{addingProgram ? "..." : "+"}</AddIcon>
               <AddText>{addingProgram ? "Adding..." : "Add New Program"}</AddText>
               <AddSubtext>Design a new learning path</AddSubtext>

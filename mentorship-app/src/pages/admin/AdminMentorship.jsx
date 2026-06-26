@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { getMentors, getUnassignedMentees, getMenteesByMentor, assignMenteeToMentor, removeMenteeFromMentor } from "../../firebase/db";
+import { getMentors, getUnassignedMentees, getMenteesByMentor, assignMenteeToMentor, removeMenteeFromMentor, getUserByEmail, getAdmins, updateUser } from "../../firebase/db";
 import { db } from "../../firebase/config";
 import { doc, updateDoc } from "firebase/firestore";
 import { Card, CardTitle, Select, Input, Btn } from "./adminStyles";
@@ -14,12 +14,47 @@ export default function AdminMentorship() {
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminMsg, setAdminMsg] = useState("");
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [admins, setAdmins] = useState([]);
+  const [demotingId, setDemotingId] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   const load = () => {
     getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(e => console.error("getMentors error:", e));
     getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(e => console.error("getUnassignedMentees error:", e));
   };
-  useEffect(() => { load(); }, []);
+  const loadAdmins = () => {
+    getAdmins().then(d => setAdmins(Array.isArray(d) ? d : [])).catch(e => console.error("getAdmins error:", e));
+  };
+  useEffect(() => { load(); loadAdmins(); }, []);
+
+  const handleAddAdmin = async () => {
+    const email = adminEmail.trim().toLowerCase();
+    if (!email) { setAdminMsg("Enter an email address"); return; }
+    setAdminLoading(true);
+    setAdminMsg("");
+    try {
+      const user = await getUserByEmail(email);
+      if (!user) { setAdminMsg("No user found with that email"); setAdminLoading(false); return; }
+      if (user.role === "admin") { setAdminMsg(`${email} is already an admin`); setAdminLoading(false); return; }
+      await updateUser(user.id, { role: "admin", verified: true });
+      setAdminMsg(`Promoted ${user.name || email} to Admin`);
+      setAdminEmail("");
+      loadAdmins();
+    } catch (e) { setAdminMsg(e.message); }
+    setAdminLoading(false);
+  };
+
+  const handleDemote = async (id, name) => {
+    if (!window.confirm(`Demote ${name} from Admin to Mentee?`)) return;
+    setDemotingId(id);
+    try {
+      await updateUser(id, { role: "mentee" });
+      loadAdmins();
+    } catch (e) { console.error("demote error:", e); }
+    setDemotingId(null);
+  };
 
   useEffect(() => {
     if (selectedMentor) {
@@ -70,7 +105,7 @@ export default function AdminMentorship() {
   };
 
   return (
-    <Card data-aos="fade-up">
+    <><Card data-aos="fade-up">
       <style>{`
         .ms-panels{display:grid;grid-template-columns:1fr 1fr;gap:24px}
         .ms-row{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f9f9f9;border-radius:10px}
@@ -123,9 +158,13 @@ export default function AdminMentorship() {
                 <div className="ms-list">
                   {assignedMentees.map(m => (
                     <div key={m.id} className="ms-row">
-                      <div style={{width:32,height:32,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>
-                        {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
-                      </div>
+                      {m.photoURL ? (
+                        <img src={m.photoURL} alt="" style={{width:32,height:32,borderRadius:"50%",objectFit:"cover",flexShrink:0}} />
+                      ) : (
+                        <div style={{width:32,height:32,borderRadius:"50%",background:"#b50064",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>
+                          {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
+                        </div>
+                      )}
                       <span className="ms-row-name">{m.name}</span>
                       <Btn $red disabled={loading} onClick={() => doUnassign(m.id, m.name)} style={{fontSize:"0.75rem",padding:"6px 12px",minHeight:34,flexShrink:0}}>Unassign</Btn>
                     </div>
@@ -141,9 +180,13 @@ export default function AdminMentorship() {
                 <div className="ms-list">
                   {unassigned.map(m => (
                     <div key={m.id} className="ms-row">
-                      <div style={{width:32,height:32,borderRadius:"50%",background:"#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>
-                        {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
-                      </div>
+                      {m.photoURL ? (
+                        <img src={m.photoURL} alt="" style={{width:32,height:32,borderRadius:"50%",objectFit:"cover",flexShrink:0}} />
+                      ) : (
+                        <div style={{width:32,height:32,borderRadius:"50%",background:"#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>
+                          {(m.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
+                        </div>
+                      )}
                       <span className="ms-row-name">{m.name}</span>
                       <Btn disabled={loading || !selectedMentor} onClick={() => doAssign(m.id, m.name)} style={{fontSize:"0.75rem",padding:"6px 12px",minHeight:34,flexShrink:0}}>Assign</Btn>
                     </div>
@@ -155,5 +198,43 @@ export default function AdminMentorship() {
         </div>
       )}
     </Card>
+
+    {/* ── Admin Management ── */}
+    <Card data-aos="fade-up" data-aos-delay="100">
+      <CardTitle>🛡️ Admin Management</CardTitle>
+      <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Promote an existing user to Admin, or demote an existing Admin.</p>
+      {adminMsg && <p style={{fontSize:"0.85rem",color:adminMsg.includes("error")||adminMsg.includes("No user found")||adminMsg.includes("already")?"#e53935":"#2e7d32",fontWeight:600,marginBottom:12}}>{adminMsg}</p>}
+
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:20}}>
+        <Input id="admin-email" name="adminEmail" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} placeholder="Enter user email address" style={{flex:"1 1 280px",minWidth:0}} />
+        <Btn disabled={adminLoading} onClick={handleAddAdmin} style={{flexShrink:0}}>{adminLoading ? "Promoting..." : "Add Admin"}</Btn>
+      </div>
+
+      <h5 style={{fontSize:"0.9rem",fontWeight:700,color:"#2c3e50",marginBottom:12}}>Current Admins ({admins.filter(a => a.email !== "tripelkay@gmail.com").length})</h5>
+      {admins.length === 0 ? (
+        <p style={{fontSize:"0.85rem",color:"#999"}}>No admins found.</p>
+      ) : (
+        <div className="ms-list">
+          {admins.filter(a => a.email !== "tripelkay@gmail.com").map(a => (
+            <div key={a.id} className="ms-row">
+              {a.photoURL ? (
+                <img src={a.photoURL} alt="" style={{width:32,height:32,borderRadius:"50%",objectFit:"cover",flexShrink:0}} />
+              ) : (
+                <div style={{width:32,height:32,borderRadius:"50%",background:"#856404",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>
+                  {(a.name || "?").split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}
+                </div>
+              )}
+              <div style={{flex:1,minWidth:0}}>
+                <span className="ms-row-name">{a.name}</span>
+                <span style={{fontSize:"0.72rem",color:"#594048",display:"block"}}>{a.email}</span>
+              </div>
+              <Btn $red disabled={demotingId === a.id} onClick={() => handleDemote(a.id, a.name)} style={{fontSize:"0.75rem",padding:"6px 12px",minHeight:34,flexShrink:0}}>
+                {demotingId === a.id ? "Demoting..." : "Demote"}
+              </Btn>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card></>
   );
 }

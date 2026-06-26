@@ -9,7 +9,7 @@ import { auth } from "../firebase/config";
 import { db } from "../firebase/config";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { logActivity } from "../firebase/db";
-import { sendWelcomeEmail, sendAdminNotifyEmail } from "../lib/email";
+import { sendAdminNotifyEmail } from "../lib/email";
 
 const LOTTIE_URL = "https://assets-v2.lottiefiles.com/a/7400555a-117b-11ee-b7a8-3f5a379facbf/MaoSbTwAlQ.json";
 
@@ -102,13 +102,11 @@ export const AuthPage = () => {
           setAuthMessage({ text: "Registration successful! Your account is pending verification by an administrator.", type: "warning" });
           localStorage.removeItem("user");
           logActivity("Registered (pending verification)", { detail: `${fullName} registered as ${safeRole}` });
-          sendWelcomeEmail({ name: fullName, email, role: safeRole });
           sendAdminNotifyEmail({ name: fullName, email, role: safeRole });
           setLoading(false);
           return;
         }
         logActivity("Registered", { detail: `${fullName} registered as ${safeRole}` });
-        sendWelcomeEmail({ name: fullName, email, role: safeRole });
         navigate(`/dashboard/${safeRole}`);
       }
     } catch (err) {
@@ -155,27 +153,29 @@ export const AuthPage = () => {
           <form onSubmit={handleSubmit} ref={formRef}>
             <Title>{isLogin ? "Welcome Back" : "Create an Account"}</Title>
 
-            <InputGroup>
-              <label>I am a</label>
-              <RoleToggle role="radiogroup" aria-label="Select your role">
-                {[
-                  { value: "mentee", label: "Mentee" },
-                  { value: "mentor", label: "Mentor" },
-                ].map(({ value, label }) => (
-                  <RolePill
-                    key={value}
-                    as="button"
-                    type="button"
-                    role="radio"
-                    aria-checked={role === value}
-                    $active={role === value}
-                    onClick={() => setRole(value)}
-                  >
-                    {label}
-                  </RolePill>
-                ))}
-              </RoleToggle>
-            </InputGroup>
+            {!isLogin && (
+              <InputGroup>
+                <label>I am a</label>
+                <RoleToggle role="radiogroup" aria-label="Select your role">
+                  {[
+                    { value: "mentee", label: "Mentee" },
+                    { value: "mentor", label: "Mentor" },
+                  ].map(({ value, label }) => (
+                    <RolePill
+                      key={value}
+                      as="button"
+                      type="button"
+                      role="radio"
+                      aria-checked={role === value}
+                      $active={role === value}
+                      onClick={() => setRole(value)}
+                    >
+                      {label}
+                    </RolePill>
+                  ))}
+                </RoleToggle>
+              </InputGroup>
+            )}
 
             {isLogin ? (
               <>

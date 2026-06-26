@@ -43,6 +43,18 @@ export const getUser = async (uid) => {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 };
 
+export const getUserByEmail = async (email) => {
+  const q = query(collection(db, "users"), where("email", "==", email));
+  const snap = await getDocs(q);
+  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+};
+
+export const getAdmins = async () => {
+  const q = query(collection(db, "users"), where("role", "==", "admin"));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => !u.deleted);
+};
+
 export const updateUser = async (uid, data) => {
   await updateDoc(doc(db, "users", uid), sanitizeWrite(data));
 };
@@ -66,6 +78,7 @@ export const assignMenteeToMentor = async (mentorId, menteeId) => {
   await updateDoc(doc(db, "users", mentorId), {
     assignedMentees: arrayUnion(menteeId)
   });
+  logActivity("Mentee assigned", { detail: `Mentee ${menteeId} assigned to mentor ${mentorId}`, mentorId, menteeId });
 };
 
 export const removeMenteeFromMentor = async (mentorId, menteeId) => {
@@ -73,6 +86,7 @@ export const removeMenteeFromMentor = async (mentorId, menteeId) => {
   await updateDoc(doc(db, "users", mentorId), {
     assignedMentees: arrayRemove(menteeId)
   });
+  logActivity("Mentee removed", { detail: `Mentee ${menteeId} removed from mentor ${mentorId}`, mentorId, menteeId });
 };
 
 export const getMentors = async () => {
@@ -117,21 +131,72 @@ export const getCourse = async (id) => {
 
 export const addCourse = async (data) => {
   const ref = await addDoc(collection(db, "courses"), { ...sanitizeWrite(data), createdAt: serverTimestamp() });
+  logActivity("Course created", { detail: `Course "${data.title}" created` });
   return ref.id;
 };
 
 export const updateCourse = async (id, data) => {
   await updateDoc(doc(db, "courses", id), sanitizeWrite(data));
+  logActivity("Course updated", { detail: `Course "${data.title}" updated`, courseId: id });
 };
 
 export const deleteCourse = async (id) => {
   await deleteDoc(doc(db, "courses", id));
+  logActivity("Course deleted", { detail: `Course ${id} deleted` });
 };
 
 export const enrollMentee = async (courseId, menteeId) => {
   await updateDoc(doc(db, "courses", courseId), {
     enrolledMentees: arrayUnion(menteeId)
   });
+  logActivity("Mentee enrolled", { detail: `Mentee ${menteeId} enrolled in course ${courseId}`, courseId, menteeId });
+};
+
+// ── Enrollments (course progress per user) ──
+
+export const getEnrollments = async (userId) => {
+  const q = query(collection(db, "enrollments"), where("userId", "==", userId));
+  const snap = await getDocs(q);
+  const result = {};
+  snap.docs.forEach(d => {
+    const data = d.data();
+    result[data.courseTitle] = { firestoreId: d.id, ...data };
+  });
+  return result;
+};
+
+export const setEnrollment = async (userId, courseTitle, data) => {
+  const q = query(
+    collection(db, "enrollments"),
+    where("userId", "==", userId),
+    where("courseTitle", "==", courseTitle)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) {
+    await addDoc(collection(db, "enrollments"), {
+      userId,
+      courseTitle,
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+  } else {
+    await updateDoc(doc(db, "enrollments", snap.docs[0].id), {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+  }
+};
+
+export const deleteEnrollment = async (userId, courseTitle) => {
+  const q = query(
+    collection(db, "enrollments"),
+    where("userId", "==", userId),
+    where("courseTitle", "==", courseTitle)
+  );
+  const snap = await getDocs(q);
+  if (!snap.empty) {
+    await deleteDoc(doc(db, "enrollments", snap.docs[0].id));
+  }
 };
 
 // ── Assignments (top-level collection) ──
@@ -148,15 +213,18 @@ export const getAssignments = async (mentorId) => {
 
 export const addAssignment = async (data) => {
   const ref = await addDoc(collection(db, "assignments"), { ...sanitizeWrite(data), createdAt: serverTimestamp() });
+  logActivity("Assignment created", { detail: `Assignment "${data.title}" created for course "${data.course}"` });
   return ref.id;
 };
 
 export const updateAssignment = async (id, data) => {
   await updateDoc(doc(db, "assignments", id), sanitizeWrite(data));
+  logActivity("Assignment updated", { detail: `Assignment "${data.title}" updated`, assignmentId: id });
 };
 
 export const deleteAssignment = async (id) => {
   await deleteDoc(doc(db, "assignments", id));
+  logActivity("Assignment deleted", { detail: `Assignment ${id} deleted` });
 };
 
 // ── Submissions ──
@@ -175,11 +243,17 @@ export const addSubmission = async (data) => {
   const ref = await addDoc(collection(db, "submissions"), {
     ...sanitizeWrite(data), status: "pending", submittedAt: serverTimestamp()
   });
+  logActivity("Assignment submitted", { detail: `Submission for assignment "${data.assignmentId}" by mentee ${data.menteeId}` });
   return ref.id;
 };
 
 export const updateSubmission = async (id, data) => {
   await updateDoc(doc(db, "submissions", id), sanitizeWrite(data));
+  if (data.score !== undefined) {
+    logActivity("Submission graded", { detail: `Submission ${id} graded: ${data.score}`, submissionId: id });
+  } else {
+    logActivity("Submission updated", { detail: `Submission ${id} updated`, submissionId: id });
+  }
 };
 
 // ── Gradebook ──
@@ -208,8 +282,10 @@ export const setGradebookEntry = async (menteeId, courseId, scores) => {
   const snap = await getDocs(q);
   if (snap.empty) {
     await addDoc(collection(db, "gradebook"), { menteeId, courseId, scores: sanitizeWrite(scores), updatedAt: serverTimestamp() });
+    logActivity("Gradebook entry created", { detail: `Gradebook entry for mentee ${menteeId} course ${courseId}` });
   } else {
     await updateDoc(doc(db, "gradebook", snap.docs[0].id), { scores: sanitizeWrite(scores), updatedAt: serverTimestamp() });
+    logActivity("Gradebook entry updated", { detail: `Gradebook entry for mentee ${menteeId} course ${courseId}` });
   }
 };
 
