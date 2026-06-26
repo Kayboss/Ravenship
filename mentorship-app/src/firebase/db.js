@@ -4,10 +4,36 @@ import {
   query, where, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove, Timestamp, onSnapshot, writeBatch
 } from "firebase/firestore";
 import { getStoredUser } from "./auth";
+import { sanitizeInput } from "../lib/sanitize";
+
+// Fields that intentionally store HTML/structured data — rendered safely via DOMPurify or React JSX (auto-escaped)
+const RICH_FIELDS = new Set(["content", "lessonContent", "syllabus", "stack", "description"]);
+const sanitizeWrite = (data) => {
+  const out = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (typeof value === "string") {
+      if (RICH_FIELDS.has(key)) {
+        out[key] = value.length > 500000 ? value.slice(0, 500000) : value;
+      } else {
+        out[key] = sanitizeInput(value.length > 500000 ? value.slice(0, 500000) : value);
+      }
+    } else if (value !== null && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)) {
+      out[key] = sanitizeWrite(value);
+    } else {
+      out[key] = value;
+    }
+  }
+  return out;
+};
 
 // ── Users ──
 
-export const getUsers = async () => {
+export const getUsers = async (role) => {
+  if (role) {
+    const q = query(collection(db, "users"), where("role", "==", role));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => !u.deleted);
+  }
   const snap = await getDocs(collection(db, "users"));
   return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => !u.deleted);
 };
@@ -18,7 +44,7 @@ export const getUser = async (uid) => {
 };
 
 export const updateUser = async (uid, data) => {
-  await updateDoc(doc(db, "users", uid), data);
+  await updateDoc(doc(db, "users", uid), sanitizeWrite(data));
 };
 
 export const deleteUser = async (uid) => {
@@ -90,12 +116,12 @@ export const getCourse = async (id) => {
 };
 
 export const addCourse = async (data) => {
-  const ref = await addDoc(collection(db, "courses"), { ...data, createdAt: serverTimestamp() });
+  const ref = await addDoc(collection(db, "courses"), { ...sanitizeWrite(data), createdAt: serverTimestamp() });
   return ref.id;
 };
 
 export const updateCourse = async (id, data) => {
-  await updateDoc(doc(db, "courses", id), data);
+  await updateDoc(doc(db, "courses", id), sanitizeWrite(data));
 };
 
 export const deleteCourse = async (id) => {
@@ -121,12 +147,12 @@ export const getAssignments = async (mentorId) => {
 };
 
 export const addAssignment = async (data) => {
-  const ref = await addDoc(collection(db, "assignments"), { ...data, createdAt: serverTimestamp() });
+  const ref = await addDoc(collection(db, "assignments"), { ...sanitizeWrite(data), createdAt: serverTimestamp() });
   return ref.id;
 };
 
 export const updateAssignment = async (id, data) => {
-  await updateDoc(doc(db, "assignments", id), data);
+  await updateDoc(doc(db, "assignments", id), sanitizeWrite(data));
 };
 
 export const deleteAssignment = async (id) => {
@@ -147,13 +173,13 @@ export const getSubmissions = async (filters = {}) => {
 
 export const addSubmission = async (data) => {
   const ref = await addDoc(collection(db, "submissions"), {
-    ...data, status: "pending", submittedAt: serverTimestamp()
+    ...sanitizeWrite(data), status: "pending", submittedAt: serverTimestamp()
   });
   return ref.id;
 };
 
 export const updateSubmission = async (id, data) => {
-  await updateDoc(doc(db, "submissions", id), data);
+  await updateDoc(doc(db, "submissions", id), sanitizeWrite(data));
 };
 
 // ── Gradebook ──
@@ -170,7 +196,7 @@ export const getAllGradebook = async () => {
 };
 
 export const updateGradebook = async (id, data) => {
-  await updateDoc(doc(db, "gradebook", id), data);
+  await updateDoc(doc(db, "gradebook", id), sanitizeWrite(data));
 };
 
 export const setGradebookEntry = async (menteeId, courseId, scores) => {
@@ -181,9 +207,9 @@ export const setGradebookEntry = async (menteeId, courseId, scores) => {
   );
   const snap = await getDocs(q);
   if (snap.empty) {
-    await addDoc(collection(db, "gradebook"), { menteeId, courseId, scores, updatedAt: serverTimestamp() });
+    await addDoc(collection(db, "gradebook"), { menteeId, courseId, scores: sanitizeWrite(scores), updatedAt: serverTimestamp() });
   } else {
-    await updateDoc(doc(db, "gradebook", snap.docs[0].id), { scores, updatedAt: serverTimestamp() });
+    await updateDoc(doc(db, "gradebook", snap.docs[0].id), { scores: sanitizeWrite(scores), updatedAt: serverTimestamp() });
   }
 };
 
@@ -204,16 +230,16 @@ export const getPosts = async () => {
 export const addPost = async (data) => {
   const user = getStoredUser();
   const postData = {
-    text: data.text || "",
+    text: sanitizeInput(data.text || ""),
     authorId: user?.id || "",
-    authorName: user?.name || "Unknown",
+    authorName: sanitizeInput(user?.name || "Unknown"),
     authorRole: user?.role || "",
     authorPhotoURL: user?.photoURL || "",
     likes: [],
     comments: [],
     createdAt: serverTimestamp()
   };
-  if (data.image) postData.image = data.image;
+  if (data.image) postData.image = data.image && data.image.length > 500000 ? data.image.slice(0, 500000) : data.image;
   const ref = await addDoc(collection(db, "posts"), postData);
   return ref.id;
 };
@@ -240,15 +266,15 @@ export const addComment = async (postId, text) => {
     comments: arrayUnion({
       id: Date.now().toString(),
       authorId: user.id,
-      authorName: user.name,
-      text,
+      authorName: sanitizeInput(user.name),
+      text: sanitizeInput(text),
       createdAt: new Date().toISOString()
     })
   });
 };
 
 export const updatePost = async (postId, data) => {
-  await updateDoc(doc(db, "posts", postId), data);
+  await updateDoc(doc(db, "posts", postId), sanitizeWrite(data));
 };
 
 export const deletePost = async (postId) => {
@@ -272,7 +298,7 @@ export const getEvents = async () => {
 export const addEvent = async (data) => {
   const user = getStoredUser();
   const ref = await addDoc(collection(db, "events"), {
-    ...data, createdBy: user?.id || "", createdAt: serverTimestamp()
+    ...sanitizeWrite(data), createdBy: user?.id || "", createdAt: serverTimestamp()
   });
   return ref.id;
 };
@@ -295,7 +321,7 @@ export const getNotifications = async (userId) => {
 
 export const addNotification = async (data) => {
   const ref = await addDoc(collection(db, "notifications"), {
-    ...data, read: false, createdAt: serverTimestamp()
+    ...sanitizeWrite(data), read: false, createdAt: serverTimestamp()
   });
   return ref.id;
 };
@@ -315,7 +341,7 @@ export const getAnnouncements = async () => {
 export const addAnnouncement = async (data) => {
   const user = getStoredUser();
   const ref = await addDoc(collection(db, "announcements"), {
-    ...data, createdBy: user?.id || "", createdAt: serverTimestamp()
+    ...sanitizeWrite(data), createdBy: user?.id || "", createdAt: serverTimestamp()
   });
   return ref.id;
 };
@@ -327,7 +353,7 @@ export const getHelpGuides = async () => {
 
 export const addHelpGuide = async (data) => {
   const ref = await addDoc(collection(db, "helpGuides"), {
-    ...data, createdAt: serverTimestamp()
+    ...sanitizeWrite(data), createdAt: serverTimestamp()
   });
   return ref.id;
 };
@@ -337,10 +363,10 @@ export const addHelpGuide = async (data) => {
 export const addCounsellingRequest = async (data) => {
   const user = getStoredUser();
   const ref = await addDoc(collection(db, "counsellingRequests"), {
-    ...data,
+    ...sanitizeWrite(data),
     userId: user?.id || "",
-    userName: user?.name || data.name || "",
-    userEmail: user?.email || data.email || "",
+    userName: sanitizeInput(user?.name || data.name || ""),
+    userEmail: sanitizeInput(user?.email || data.email || ""),
     createdAt: serverTimestamp()
   });
   return ref.id;
@@ -390,8 +416,8 @@ export const getOrCreateConversation = async (participantIds) => {
   const ref = await addDoc(collection(db, "conversations"), {
     participants: participantIds,
     participantInfo: {
-      [participantIds[0]]: { name: user1?.name || "Unknown", photoURL: user1?.photoURL || "" },
-      [participantIds[1]]: { name: user2?.name || "Unknown", photoURL: user2?.photoURL || "" }
+      [participantIds[0]]: { name: sanitizeInput(user1?.name || "Unknown"), photoURL: user1?.photoURL || "" },
+      [participantIds[1]]: { name: sanitizeInput(user2?.name || "Unknown"), photoURL: user2?.photoURL || "" }
     },
     typing: {},
     lastMessage: null,
@@ -403,30 +429,32 @@ export const getOrCreateConversation = async (participantIds) => {
 export const sendMessage = async (conversationId, text) => {
   const user = getStoredUser();
   if (!user) return;
+  const safeText = sanitizeInput(text);
   const msgData = {
     senderId: user.id,
-    senderName: user.name,
-    text,
+    senderName: sanitizeInput(user.name),
+    text: safeText,
     status: "sent",
     createdAt: serverTimestamp()
   };
   await addDoc(collection(db, "conversations", conversationId, "messages"), msgData);
   await updateDoc(doc(db, "conversations", conversationId), {
-    lastMessage: { text, senderId: user.id, senderName: user.name, status: "sent" },
+    lastMessage: { text: safeText, senderId: user.id, senderName: sanitizeInput(user.name), status: "sent" },
     lastUpdated: serverTimestamp()
   });
 };
 
 export const markMessagesRead = async (conversationId, userId) => {
-  const snap = await getDocs(collection(db, "conversations", conversationId, "messages"));
-  const updates = [];
-  snap.docs.forEach(d => {
-    const data = d.data();
-    if (data.senderId !== userId && data.status !== "read") {
-      updates.push(updateDoc(doc(db, "conversations", conversationId, "messages", d.id), { status: "read", readAt: serverTimestamp() }));
-    }
-  });
-  if (updates.length) await Promise.all(updates);
+  const q = query(
+    collection(db, "conversations", conversationId, "messages"),
+    where("senderId", "!=", userId),
+    where("status", "==", "sent")
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return;
+  const batch = writeBatch(db);
+  snap.docs.forEach(d => batch.update(d.ref, { status: "read", readAt: serverTimestamp() }));
+  await batch.commit();
 };
 
 export const subscribeConversation = (conversationId, callback) => {
@@ -443,9 +471,12 @@ export const setTyping = async (conversationId, userId, isTyping) => {
 
 // ── Notifications (realtime) ──
 
-export const subscribeNotifications = (callback) => {
-  return onSnapshot(collection(db, "notifications"), (snap) => {
-    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+export const subscribeNotifications = (role, callback) => {
+  const ref = role
+    ? query(collection(db, "notifications"), where("targetRole", "in", [role, "all"]))
+    : collection(db, "notifications");
+  return onSnapshot(ref, (snap) => {
+    let data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     data.sort((a, b) => {
       const tA = a.createdAt?.toDate?.()?.getTime() || 0;
       const tB = b.createdAt?.toDate?.()?.getTime() || 0;
@@ -603,12 +634,12 @@ export const deleteCounsellingRequest = async (id) => {
 export const addSponsorshipRequest = async (data) => {
   const user = getStoredUser();
   const ref = await addDoc(collection(db, "sponsorshipRequests"), {
-    ...data,
+    ...sanitizeWrite(data),
     userId: user?.id || "",
-    userName: user?.name || data.name || "",
-    userEmail: user?.email || data.email || "",
-    userPhone: user?.phone || data.phone || "",
-    userCity: user?.city || data.city || "",
+    userName: sanitizeInput(user?.name || data.name || ""),
+    userEmail: sanitizeInput(user?.email || data.email || ""),
+    userPhone: sanitizeInput(user?.phone || data.phone || ""),
+    userCity: sanitizeInput(user?.city || data.city || ""),
     userPhotoURL: user?.photoURL || data.photoURL || "",
     createdAt: serverTimestamp()
   });

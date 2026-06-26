@@ -8,6 +8,7 @@ import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { fileToBase64 } from "../lib/upload";
 import { getUser, getCourses, getAssignments, addAssignment, updateAssignment, deleteAssignment } from "../firebase/db";
+import DOMPurify from "dompurify";
 
 const Page = styled.div`
   display: flex;
@@ -802,12 +803,12 @@ export const Assignments = () => {
                   <div style={{ fontSize: "0.9rem", lineHeight: "1.7", marginBottom: 8, color: "inherit" }}>
                     {expandedId === a.id ? (
                       <>
-                        <div dangerouslySetInnerHTML={{ __html: a.content }} />
+                        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(a.content) }} />
                         <span onClick={() => setExpandedId(null)} style={{ color: "#b50064", fontWeight: 700, fontSize: "0.82rem", cursor: "pointer", display: "inline-block", marginTop: 8 }}>▲ Show less</span>
                       </>
                     ) : (() => {
                       const preview = truncateHtml(a.content, 100);
-                      if (!preview) return <div dangerouslySetInnerHTML={{ __html: a.content }} />;
+                      if (!preview) return <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(a.content) }} />;
                       return (
                         <>
                           <div>{preview}</div>

@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() { return request.auth != null; }
+    function isAdmin() { return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; }
+    function isMentor() { return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'mentor'; }
+    function isMentee() { return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'mentee'; }
+    function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
+    function isCourseOwner() { return isAuthenticated() && resource.data.createdBy == request.auth.uid; }
+    function isAssignmentOwner() { return isAuthenticated() && resource.data.mentorId == request.auth.uid; }
+    function isParticipant(convId) { return isAuthenticated() && get(/databases/$(database)/documents/conversations/$(convId)).data.participants.hasAny([request.auth.uid]); }
+
+    // ── Users ──
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.auth.uid == userId
+        && request.resource.data.role in ['mentee', 'mentor']
+        && request.resource.data.verified == false;
+      allow update: if isAdmin()
+        || (isOwner(userId)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'verified', 'deleted']));
+      allow delete: if isAdmin();
+    }
+
+    // ── Courses ──
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow create: if isMentor() || isAdmin();
+      allow update: if isCourseOwner() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Assignments ──
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated();
+      allow create: if isMentor() || isAdmin();
+      allow update: if isAssignmentOwner() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Submissions ──
+    match /submissions/{submissionId} {
+      allow read: if isAuthenticated();
+      allow create: if isMentee() || isAdmin();
+      allow update: if isMentor() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Community posts ──
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if (isOwner(resource.data.authorId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['authorId'])) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Conversations ──
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && resource.data.participants.hasAny([request.auth.uid]);
+      allow create: if isAuthenticated() && request.resource.data.participants.hasAny([request.auth.uid]);
+      allow update: if isAuthenticated() && resource.data.participants.hasAny([request.auth.uid]);
+      allow delete: if isAdmin();
+    }
+
+    // ── Messages ──
+    match /conversations/{conversationId}/messages/{messageId} {
+      allow read: if isParticipant(conversationId);
+      allow create: if isParticipant(conversationId)
+        && request.resource.data.senderId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ── Notifications ──
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated()
+        && (resource.data.userId == request.auth.uid
+          || resource.data.targetRole == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+          || resource.data.targetRole == 'all');
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Events ──
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Announcements ──
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Activity log ──
+    match /activity/{activityId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Error log ──
+    match /errors/{errorId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Counselling requests ──
+    match /counsellingRequests/{requestId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Sponsorship requests ──
+    match /sponsorshipRequests/{requestId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Gradebook ──
+    match /gradebook/{entryId} {
+      allow read: if isAuthenticated()
+        && (resource.data.menteeId == request.auth.uid
+          || isAdmin()
+          || (isMentor() && get(/databases/$(database)/documents/users/$(resource.data.menteeId)).data.mentorId == request.auth.uid));
+      allow create: if isMentor() || isAdmin();
+      allow update: if isMentor() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Deny everything else ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

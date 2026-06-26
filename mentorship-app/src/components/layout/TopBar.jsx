@@ -312,8 +312,7 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
   }, [openDropdown]);
 
   useEffect(() => {
-    const unsub = subscribeNotifications((data) => {
-      const user = getStoredUser();
+    const unsub = subscribeNotifications(user?.role, (data) => {
       const filtered = data.filter(n => !n.targetRole || n.targetRole === "all" || n.targetRole === user?.role);
       const formatted = filtered.map(n => ({
         icon: "🔔",

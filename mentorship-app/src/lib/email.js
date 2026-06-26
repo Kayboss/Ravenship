@@ -89,11 +89,11 @@ import emailjs from "@emailjs/browser";
 // </td></tr></table></td></tr></table></body></html>
 
 const EMAILJS_CONFIG = {
-  publicKey: "F851oYn80X-lP3EH0",
-  serviceId: "ArsZpiX1uGqPQknvrNlII",
-  welcomeTemplateId: "YOUR_WELCOME_TEMPLATE_ID",
-  adminNotifyTemplateId: "template_unr4g9i",
-  approvedTemplateId: "template_1eunsv2",
+  publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || "YOUR_PUBLIC_KEY",
+  serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID || "YOUR_SERVICE_ID",
+  welcomeTemplateId: import.meta.env.VITE_EMAILJS_WELCOME_TEMPLATE || "YOUR_WELCOME_TEMPLATE_ID",
+  adminNotifyTemplateId: import.meta.env.VITE_EMAILJS_ADMIN_NOTIFY_TEMPLATE || "template_unr4g9i",
+  approvedTemplateId: import.meta.env.VITE_EMAILJS_APPROVED_TEMPLATE || "template_1eunsv2",
 };
 
 const ADMIN_EMAIL = "tripelkay@gmail.com";

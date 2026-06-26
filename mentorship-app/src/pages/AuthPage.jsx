@@ -83,32 +83,33 @@ export const AuthPage = () => {
         }
         const credential = await createUserWithEmailAndPassword(auth, email, password);
         const uid = credential.user.uid;
-        const isVerified = role === "admin";
+        const safeRole = role === "admin" ? "mentee" : role;
+        const isVerified = false;
         await setDoc(doc(db, "users", uid), {
           name: fullName,
           email,
-          role,
+          role: safeRole,
           verified: isVerified,
           phone: phone || "",
           city: city || "",
           bio: "",
           createdAt: serverTimestamp(),
         });
-        const stored = { id: uid, name: fullName, email, role, verified: isVerified, phone: phone || "", city: city || "" };
+        const stored = { id: uid, name: fullName, email, role: safeRole, verified: isVerified, phone: phone || "", city: city || "" };
         localStorage.setItem("user", JSON.stringify(stored));
         setAuthMessage({ text: "", type: "" });
         if (!isVerified) {
           setAuthMessage({ text: "Registration successful! Your account is pending verification by an administrator.", type: "warning" });
           localStorage.removeItem("user");
-          logActivity("Registered (pending verification)", { detail: `${fullName} registered as ${role}` });
-          sendWelcomeEmail({ name: fullName, email, role });
-          sendAdminNotifyEmail({ name: fullName, email, role });
+          logActivity("Registered (pending verification)", { detail: `${fullName} registered as ${safeRole}` });
+          sendWelcomeEmail({ name: fullName, email, role: safeRole });
+          sendAdminNotifyEmail({ name: fullName, email, role: safeRole });
           setLoading(false);
           return;
         }
-        logActivity("Registered", { detail: `${fullName} registered as ${role}` });
-        sendWelcomeEmail({ name: fullName, email, role });
-        navigate(`/dashboard/${role}`);
+        logActivity("Registered", { detail: `${fullName} registered as ${safeRole}` });
+        sendWelcomeEmail({ name: fullName, email, role: safeRole });
+        navigate(`/dashboard/${safeRole}`);
       }
     } catch (err) {
       const code = err.code;
@@ -160,7 +161,6 @@ export const AuthPage = () => {
                 {[
                   { value: "mentee", label: "Mentee" },
                   { value: "mentor", label: "Mentor" },
-                  { value: "admin", label: "Admin" },
                 ].map(({ value, label }) => (
                   <RolePill
                     key={value}

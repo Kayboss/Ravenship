@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthPage } from "./pages/AuthPage.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { MyCourses } from "./pages/MyCourses.jsx";
@@ -29,21 +29,35 @@ import { CounsellingRequest } from "./pages/CounsellingRequest.jsx";
 import { SponsorshipRequest } from "./pages/SponsorshipRequest.jsx";
 import { logError } from "./firebase/db";
 import { watchPresence, onAuthReady, getStoredUser } from "./firebase/auth";
+import { getUser } from "./firebase/db";
 
-const AuthGuard = ({ children }) => {
+const AuthGuard = ({ children, expectedRole }) => {
   const [ready, setReady] = useState(false);
-  const [hasUser, setHasUser] = useState(false);
+  const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    onAuthReady(() => {
+    onAuthReady(async () => {
+      const stored = getStoredUser();
+      if (!stored?.id) { setReady(true); setAllowed(false); return; }
+      try {
+        const fbUser = await getUser(stored.id);
+        if (!fbUser || fbUser.deleted) { setAllowed(false); }
+        else if (expectedRole && fbUser.role !== expectedRole) { setAllowed(false); }
+        else if (!expectedRole && stored.role !== fbUser.role) { setAllowed(false); }
+        else { setAllowed(true); }
+      } catch { setAllowed(false); }
       setReady(true);
-      setHasUser(!!getStoredUser());
     });
-  }, []);
+  }, [expectedRole]);
 
   if (!ready) return null;
-  if (!hasUser) return <Navigate to="/" replace />;
+  if (!allowed) return <Navigate to="/" replace />;
   return children;
+};
+
+const AuthGuardedRoute = ({ children }) => {
+  const { role } = useParams();
+  return <AuthGuard expectedRole={role}>{children}</AuthGuard>;
 };
 
 const AppLayout = ({ children }) => {
@@ -101,17 +115,17 @@ export const App = () => (
       <AppLayout>
         <Routes>
           <Route path="/" element={<AuthPage />} />
-          <Route path="/dashboard/:role" element={<AuthGuard><Dashboard /></AuthGuard>} />
-          <Route path="/dashboard/:role/my-courses" element={<AuthGuard><MyCourses /></AuthGuard>} />
-          <Route path="/dashboard/:role/my-mentees" element={<AuthGuard><MyMentees /></AuthGuard>} />
-          <Route path="/dashboard/:role/assignments" element={<AuthGuard><Assignments /></AuthGuard>} />
-          <Route path="/dashboard/:role/submissions" element={<AuthGuard><Submissions /></AuthGuard>} />
-          <Route path="/dashboard/:role/course/:title" element={<AuthGuard><CourseView /></AuthGuard>} />
-          <Route path="/dashboard/:role/community" element={<AuthGuard><Community /></AuthGuard>} />
-          <Route path="/dashboard/:role/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
-          <Route path="/dashboard/:role/gradebook" element={<AuthGuard><Gradebook /></AuthGuard>} />
-          <Route path="/dashboard/:role/settings" element={<AuthGuard><Settings /></AuthGuard>} />
-          <Route path="/dashboard/admin" element={<AuthGuard><AdminLayout /></AuthGuard>}>
+          <Route path="/dashboard/:role" element={<AuthGuardedRoute><Dashboard /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/my-courses" element={<AuthGuardedRoute><MyCourses /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/my-mentees" element={<AuthGuardedRoute><MyMentees /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/assignments" element={<AuthGuardedRoute><Assignments /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/submissions" element={<AuthGuardedRoute><Submissions /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/course/:title" element={<AuthGuardedRoute><CourseView /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/community" element={<AuthGuardedRoute><Community /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/analytics" element={<AuthGuardedRoute><Analytics /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/gradebook" element={<AuthGuardedRoute><Gradebook /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/settings" element={<AuthGuardedRoute><Settings /></AuthGuardedRoute>} />
+          <Route path="/dashboard/admin" element={<AuthGuard expectedRole="admin"><AdminLayout /></AuthGuard>}>
             <Route index element={<AdminOverview />} />
             <Route path="mentors" element={<AdminMentors />} />
             <Route path="mentees" element={<AdminMentees />} />
@@ -125,9 +139,9 @@ export const App = () => (
             <Route path="errors" element={<AdminErrors />} />
             <Route path="analytics" element={<AdminAnalytics />} />
           </Route>
-          <Route path="/dashboard/:role/help" element={<AuthGuard><HelpCenter /></AuthGuard>} />
-          <Route path="/dashboard/:role/counselling-request" element={<AuthGuard><CounsellingRequest /></AuthGuard>} />
-          <Route path="/dashboard/:role/sponsorship-request" element={<AuthGuard><SponsorshipRequest /></AuthGuard>} />
+          <Route path="/dashboard/:role/help" element={<AuthGuardedRoute><HelpCenter /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/counselling-request" element={<AuthGuardedRoute><CounsellingRequest /></AuthGuardedRoute>} />
+          <Route path="/dashboard/:role/sponsorship-request" element={<AuthGuardedRoute><SponsorshipRequest /></AuthGuardedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppLayout>

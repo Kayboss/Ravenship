@@ -231,7 +231,14 @@ const getVideoEmbedUrl = (url) => {
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-  return url;
+  return null;
+};
+
+const sanitizeUrl = (url) => {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+  if (/^https:\/\//.test(trimmed)) return trimmed;
+  return null;
 };
 
 export const CourseView = () => {
@@ -431,7 +438,7 @@ export const CourseView = () => {
                 <>
                   <SidebarTitle style={{ marginTop: 20 }}>📁 Resources</SidebarTitle>
                   {courseData.resources.map((r, i) => (
-                    <TopicItem key={i} onClick={() => { if (r.type === "link") window.open(r.value, "_blank"); }} style={{ cursor: r.type === "link" ? "pointer" : "default" }}>
+                    <TopicItem key={i} onClick={() => { if (r.type === "link") { const safe = sanitizeUrl(r.value); if (safe) window.open(safe, "_blank", "noopener,noreferrer"); } }} style={{ cursor: r.type === "link" ? "pointer" : "default" }}>
                       <span style={{ fontSize: "1rem" }}>{r.type === "link" ? "🔗" : "📄"}</span>
                       <span style={{ fontSize: "0.8rem" }}>{r.title}</span>
                     </TopicItem>
@@ -445,7 +452,7 @@ export const CourseView = () => {
                 <TopicTitle>{activeTopic}</TopicTitle>
                 <TopicDesc>{lesson.desc}</TopicDesc>
               </TopicHeader>
-              {(() => { const embed = getVideoEmbedUrl(lesson.videoUrl); return embed ? <iframe src={embed} title="Lesson Video" style={{ width: "100%", height: 340, borderRadius: 16, margin: "24px 0", border: "none" }} allowFullScreen /> : null; })()}
+                {(() => { const embed = getVideoEmbedUrl(lesson.videoUrl); return embed ? <iframe src={embed} title="Lesson Video" sandbox="allow-scripts allow-same-origin allow-popups" style={{ width: "100%", height: 340, borderRadius: 16, margin: "24px 0", border: "none" }} allowFullScreen /> : null; })()}
               <LessonContent>
                 {lesson.sections.map((s, i) =>
                   s.type === "text" ? <p key={i}>{s.content}</p> : <ul key={i}>{s.items.map((item, j) => <li key={j}>{item}</li>)}</ul>
@@ -603,7 +610,7 @@ export const CourseView = () => {
               <>
                 <SidebarTitle style={{ marginTop: 20 }}>📁 Resources</SidebarTitle>
                 {courseData.resources.map((r, i) => (
-                  <TopicItem key={i} onClick={() => { if (r.type === "link") window.open(r.value, "_blank"); }} style={{ cursor: r.type === "link" ? "pointer" : "default" }}>
+                    <TopicItem key={i} onClick={() => { if (r.type === "link") { const safe = sanitizeUrl(r.value); if (safe) window.open(safe, "_blank", "noopener,noreferrer"); } }} style={{ cursor: r.type === "link" ? "pointer" : "default" }}>
                     <span style={{ fontSize: "1rem" }}>{r.type === "link" ? "🔗" : "📄"}</span>
                     <span style={{ fontSize: "0.8rem" }}>{r.title}</span>
                   </TopicItem>
@@ -672,7 +679,7 @@ export const CourseView = () => {
               </div>
             ) : (
               <>
-                {(() => { const embed = getVideoEmbedUrl(lesson.videoUrl); return embed ? <iframe src={embed} title="Lesson Video" style={{ width: "100%", height: 340, borderRadius: 16, margin: "24px 0", border: "none" }} allowFullScreen /> : null; })()}
+              {(() => { const embed = getVideoEmbedUrl(lesson.videoUrl); return embed ? <iframe src={embed} title="Lesson Video" sandbox="allow-scripts allow-same-origin allow-popups" style={{ width: "100%", height: 340, borderRadius: 16, margin: "24px 0", border: "none" }} allowFullScreen /> : null; })()}
                 <LessonContent>
                   {lesson.sections.map((s, i) =>
                     s.type === "text" ? <p key={i}>{s.content}</p> : <ul key={i}>{s.items.map((item, j) => <li key={j}>{item}</li>)}</ul>

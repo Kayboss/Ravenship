@@ -202,7 +202,7 @@ export default function AdminHelpCenter() {
         <PdfOverlay onClick={() => setPdfModal(null)}>
           <PdfModalInner onClick={e => e.stopPropagation()}>
             <PdfCloseBtn onClick={() => setPdfModal(null)}>&times;</PdfCloseBtn>
-            {pdfModal.pdfData ? (
+            {pdfModal.pdfData?.startsWith("data:application/pdf") ? (
               <iframe src={pdfModal.pdfData} title="Sponsorship Request PDF" style={{width:"100%",height:"100%",border:"none",borderRadius:12}} />
             ) : (
               <p style={{padding:40,textAlign:"center",color:"#594048"}}>No PDF data available for this request.</p>
