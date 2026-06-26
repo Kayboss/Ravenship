@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthPage } from "./pages/AuthPage.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
@@ -28,7 +28,23 @@ import { HelpCenter } from "./pages/HelpCenter.jsx";
 import { CounsellingRequest } from "./pages/CounsellingRequest.jsx";
 import { SponsorshipRequest } from "./pages/SponsorshipRequest.jsx";
 import { logError } from "./firebase/db";
-import { watchPresence } from "./firebase/auth";
+import { watchPresence, onAuthReady, getStoredUser } from "./firebase/auth";
+
+const AuthGuard = ({ children }) => {
+  const [ready, setReady] = useState(false);
+  const [hasUser, setHasUser] = useState(false);
+
+  useEffect(() => {
+    onAuthReady(() => {
+      setReady(true);
+      setHasUser(!!getStoredUser());
+    });
+  }, []);
+
+  if (!ready) return null;
+  if (!hasUser) return <Navigate to="/" replace />;
+  return children;
+};
 
 const AppLayout = ({ children }) => {
   return <>{children}</>;
@@ -85,17 +101,17 @@ export const App = () => (
       <AppLayout>
         <Routes>
           <Route path="/" element={<AuthPage />} />
-          <Route path="/dashboard/:role" element={<Dashboard />} />
-          <Route path="/dashboard/:role/my-courses" element={<MyCourses />} />
-          <Route path="/dashboard/:role/my-mentees" element={<MyMentees />} />
-          <Route path="/dashboard/:role/assignments" element={<Assignments />} />
-          <Route path="/dashboard/:role/submissions" element={<Submissions />} />
-          <Route path="/dashboard/:role/course/:title" element={<CourseView />} />
-          <Route path="/dashboard/:role/community" element={<Community />} />
-          <Route path="/dashboard/:role/analytics" element={<Analytics />} />
-          <Route path="/dashboard/:role/gradebook" element={<Gradebook />} />
-          <Route path="/dashboard/:role/settings" element={<Settings />} />
-          <Route path="/dashboard/admin" element={<AdminLayout />}>
+          <Route path="/dashboard/:role" element={<AuthGuard><Dashboard /></AuthGuard>} />
+          <Route path="/dashboard/:role/my-courses" element={<AuthGuard><MyCourses /></AuthGuard>} />
+          <Route path="/dashboard/:role/my-mentees" element={<AuthGuard><MyMentees /></AuthGuard>} />
+          <Route path="/dashboard/:role/assignments" element={<AuthGuard><Assignments /></AuthGuard>} />
+          <Route path="/dashboard/:role/submissions" element={<AuthGuard><Submissions /></AuthGuard>} />
+          <Route path="/dashboard/:role/course/:title" element={<AuthGuard><CourseView /></AuthGuard>} />
+          <Route path="/dashboard/:role/community" element={<AuthGuard><Community /></AuthGuard>} />
+          <Route path="/dashboard/:role/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
+          <Route path="/dashboard/:role/gradebook" element={<AuthGuard><Gradebook /></AuthGuard>} />
+          <Route path="/dashboard/:role/settings" element={<AuthGuard><Settings /></AuthGuard>} />
+          <Route path="/dashboard/admin" element={<AuthGuard><AdminLayout /></AuthGuard>}>
             <Route index element={<AdminOverview />} />
             <Route path="mentors" element={<AdminMentors />} />
             <Route path="mentees" element={<AdminMentees />} />
@@ -109,9 +125,9 @@ export const App = () => (
             <Route path="errors" element={<AdminErrors />} />
             <Route path="analytics" element={<AdminAnalytics />} />
           </Route>
-          <Route path="/dashboard/:role/help" element={<HelpCenter />} />
-          <Route path="/dashboard/:role/counselling-request" element={<CounsellingRequest />} />
-          <Route path="/dashboard/:role/sponsorship-request" element={<SponsorshipRequest />} />
+          <Route path="/dashboard/:role/help" element={<AuthGuard><HelpCenter /></AuthGuard>} />
+          <Route path="/dashboard/:role/counselling-request" element={<AuthGuard><CounsellingRequest /></AuthGuard>} />
+          <Route path="/dashboard/:role/sponsorship-request" element={<AuthGuard><SponsorshipRequest /></AuthGuard>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AppLayout>
