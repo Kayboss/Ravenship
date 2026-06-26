@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { getEnrollments, setEnrollment, deleteEnrollment } from "../firebase/db";
+import { getEnrollments, setEnrollment, deleteEnrollment, getUser, getCourses } from "../firebase/db";
 import { getStoredUser } from "../firebase/auth";
 
 const CourseContext = createContext({
@@ -16,13 +16,26 @@ export const CourseProvider = ({ children }) => {
   const [enrolledCourses, setEnrolledCourses] = useState({});
 
   useEffect(() => {
-    const user = getStoredUser();
-    if (!user?.id) return;
-    getEnrollments(user.id).then(fireEnrollments => {
-      if (Object.keys(fireEnrollments).length > 0) {
-        setEnrolledCourses(fireEnrollments);
+    (async () => {
+      const user = getStoredUser();
+      if (!user?.id) return;
+      const u = await getUser(user.id).catch(() => null);
+      const mentorId = u?.mentorId || null;
+      const mentorCourses = mentorId ? await getCourses(mentorId).catch(() => []) : [];
+      const validTitles = new Set(mentorCourses.map(c => c.title));
+      const fireEnrollments = await getEnrollments(user.id).catch(() => ({}));
+      const filtered = {};
+      for (const [title, data] of Object.entries(fireEnrollments)) {
+        if (!mentorId || validTitles.has(title)) {
+          filtered[title] = data;
+        } else {
+          deleteEnrollment(user.id, title).catch(() => {});
+        }
       }
-    }).catch(e => console.error("getEnrollments error:", e));
+      if (Object.keys(filtered).length > 0) {
+        setEnrolledCourses(filtered);
+      }
+    })();
   }, []);
 
   const syncToFirestore = useCallback((title, data) => {

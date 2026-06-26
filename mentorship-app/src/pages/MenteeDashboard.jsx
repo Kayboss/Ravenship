@@ -602,9 +602,10 @@ export const MenteeDashboard = () => {
     })();
   }, [authReady]);
 
-  const enrolledList = Object.entries(enrolledCourses).map(([title, data]) => {
+  const enrolledList = Object.entries(enrolledCourses).flatMap(([title, data]) => {
     const course = coursesList.find(c => c.title === title);
-    return { title, desc: course?.desc || "", next: "", badge: course?.badge || "", emoji: course?.emoji || "📚", progress: data.progress || 0 };
+    if (!course) return [];
+    return [{ title, desc: course.desc || "", next: "", badge: course.badge || "", emoji: course.emoji || "📚", progress: data.progress || 0 }];
   });
 
   return (
