@@ -11,6 +11,10 @@ const firebaseConfig = {
   appId: "1:603507552625:web:7be06080ad56f3d4ca06d0"
 };
 
+// Clean up stale IndexedDB databases from before memory cache switch
+try { indexedDB.deleteDatabase("firebase-heartbeat-database"); } catch (_) {}
+try { indexedDB.deleteDatabase("firestore/[DEFAULT]/ravenship-693ab/main"); } catch (_) {}
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = initializeFirestore(app, {

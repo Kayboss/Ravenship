@@ -285,7 +285,7 @@ export const CourseView = () => {
   }, [authReady, courseName, courseTitle, isMentor]);
 
   useEffect(() => {
-    if (!editMode && firestoreCourseId && savedOnceRef.current) {
+    if (isMentor && !editMode && firestoreCourseId && savedOnceRef.current) {
       updateCourse(firestoreCourseId, { _title: courseTitle, lessons: topicKeys.length, lessonContent: courseData.lessons, syllabus: topicKeys, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color, featuredImage: courseData.featuredImage }).catch(e => console.error("updateCourse error:", e));
     }
     if (!editMode) savedOnceRef.current = true;
