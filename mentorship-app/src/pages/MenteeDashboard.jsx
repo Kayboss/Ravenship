@@ -601,6 +601,14 @@ export const MenteeDashboard = () => {
       // Load enrollments directly from Firestore
       if (menteeId) {
         const enrollments = await getEnrollments(menteeId).catch(() => ({}));
+        const courseTitles = coursesData?.map(c => c.title) || [];
+        console.log("[MenteeDashboard] mentorFilter:", mentorFilter);
+        console.log("[MenteeDashboard] course titles:", JSON.stringify(courseTitles));
+        console.log("[MenteeDashboard] enrollment keys:", JSON.stringify(Object.keys(enrollments)));
+        Object.keys(enrollments).forEach(ek => {
+          const match = courseTitles.find(ct => ct === ek);
+          console.log("[MenteeDashboard] enrollment key", JSON.stringify(ek), "length", ek.length, "=== match?", !!match, "match:", match ? JSON.stringify(match) : "none");
+        });
         setDirectEnrollments(enrollments);
       }
     })();
@@ -609,7 +617,10 @@ export const MenteeDashboard = () => {
   const enrolledData = Object.keys(directEnrollments).length > 0 ? directEnrollments : enrolledCourses;
   const enrolledList = Object.entries(enrolledData).flatMap(([title, data]) => {
     const course = coursesList.find(c => c.title === title);
-    if (!course) return [];
+    if (!course) {
+      console.log("[MenteeDashboard] MISSING course for enrollment:", JSON.stringify(title), "(length:", title.length, "), available titles:", JSON.stringify(coursesList.map(c => c.title)));
+      return [];
+    }
     return [{ title, desc: course.desc || "", next: "", badge: course.badge || "", emoji: course.emoji || "📚", progress: data.progress || 0 }];
   });
 
