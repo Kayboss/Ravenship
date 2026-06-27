@@ -12,7 +12,7 @@ const sanitizeWrite = (data) => {
   const out = {};
   for (const [key, value] of Object.entries(data)) {
     if (typeof value === "string") {
-      if (RICH_FIELDS.has(key)) {
+      if (RICH_FIELDS.has(key) || value.startsWith("data:")) {
         out[key] = value.length > 500000 ? value.slice(0, 500000) : value;
       } else {
         out[key] = sanitizeInput(value.length > 500000 ? value.slice(0, 500000) : value);
