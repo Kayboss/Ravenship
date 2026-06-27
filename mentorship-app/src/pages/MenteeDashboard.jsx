@@ -7,7 +7,7 @@ import { MenteeSidebar } from "../components/layout/MenteeSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getCourses, getSubmissions, updateSubmission, getAllGradebook, getUser, getEnrollments } from "../firebase/db";
+import { getCourses, getSubmissions, updateSubmission, getGradebook, getUser, getEnrollments } from "../firebase/db";
 
 const truncateWords = (text, max = 25) => text?.split(" ").slice(0, max).join(" ") + (text?.split(" ").length > max ? "..." : "");
 
@@ -578,7 +578,7 @@ export const MenteeDashboard = () => {
       const [coursesData, submissions, gradebook] = await Promise.all([
         getCourses(mentorFilter),
         menteeId ? getSubmissions({ menteeId }) : Promise.resolve([]),
-        menteeId ? getAllGradebook(menteeId) : Promise.resolve([]),
+        menteeId ? getGradebook(menteeId) : Promise.resolve([]),
       ]);
       setDashData({ courses: coursesData, submissions });
       setCoursesList(Array.isArray(coursesData) ? coursesData : []);
@@ -601,14 +601,6 @@ export const MenteeDashboard = () => {
       // Load enrollments directly from Firestore
       if (menteeId) {
         const enrollments = await getEnrollments(menteeId).catch(() => ({}));
-        const courseTitles = coursesData?.map(c => c.title) || [];
-        console.log("[MenteeDashboard] mentorFilter:", mentorFilter);
-        console.log("[MenteeDashboard] course titles:", JSON.stringify(courseTitles));
-        console.log("[MenteeDashboard] enrollment keys:", JSON.stringify(Object.keys(enrollments)));
-        Object.keys(enrollments).forEach(ek => {
-          const match = courseTitles.find(ct => ct === ek);
-          console.log("[MenteeDashboard] enrollment key", JSON.stringify(ek), "length", ek.length, "=== match?", !!match, "match:", match ? JSON.stringify(match) : "none");
-        });
         setDirectEnrollments(enrollments);
       }
     })();
@@ -617,10 +609,7 @@ export const MenteeDashboard = () => {
   const enrolledData = Object.keys(directEnrollments).length > 0 ? directEnrollments : enrolledCourses;
   const enrolledList = Object.entries(enrolledData).flatMap(([title, data]) => {
     const course = coursesList.find(c => c.title === title);
-    if (!course) {
-      console.log("[MenteeDashboard] MISSING course for enrollment:", JSON.stringify(title), "(length:", title.length, "), available titles:", JSON.stringify(coursesList.map(c => c.title)));
-      return [];
-    }
+    if (!course) return [];
     return [{ title, desc: course.desc || "", next: "", badge: course.badge || "", emoji: course.emoji || "📚", progress: data.progress || 0 }];
   });
 
