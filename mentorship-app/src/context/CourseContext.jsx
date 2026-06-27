@@ -21,8 +21,8 @@ export const CourseProvider = ({ children }) => {
       if (!user?.id) return;
       const u = await getUser(user.id).catch(() => null);
       const mentorId = u?.mentorId || null;
-      const allCourses = await getCourses().catch(() => []);
-      const validTitles = new Set(allCourses.map(c => c.title));
+      const mentorCourses = mentorId ? await getCourses(mentorId).catch(() => []) : [];
+      const validTitles = new Set(mentorCourses.map(c => c.title));
       const fireEnrollments = await getEnrollments(user.id).catch(() => ({}));
       const filtered = {};
       for (const [title, data] of Object.entries(fireEnrollments)) {

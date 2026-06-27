@@ -7,7 +7,7 @@ import { MenteeSidebar } from "../components/layout/MenteeSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getCourses, getSubmissions, updateSubmission, getAllGradebook, getUser } from "../firebase/db";
+import { getCourses, getSubmissions, updateSubmission, getAllGradebook, getUser, getEnrollments } from "../firebase/db";
 
 const truncateWords = (text, max = 25) => text?.split(" ").slice(0, max).join(" ") + (text?.split(" ").length > max ? "..." : "");
 
@@ -557,6 +557,7 @@ export const MenteeDashboard = () => {
   const [menteeStats, setMenteeStats] = useState({ hours: "0h", skills: "0", submissionsCount: 0, weekData: [0,0,0,0,0,0,0] });
   const [authReady, setAuthReady] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [directEnrollments, setDirectEnrollments] = useState({});
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => {
@@ -575,7 +576,7 @@ export const MenteeDashboard = () => {
         }
       }
       const [coursesData, submissions, gradebook] = await Promise.all([
-        getCourses(),
+        getCourses(mentorFilter),
         menteeId ? getSubmissions({ menteeId }) : Promise.resolve([]),
         menteeId ? getAllGradebook(menteeId) : Promise.resolve([]),
       ]);
@@ -597,10 +598,16 @@ export const MenteeDashboard = () => {
       const avgScore = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
       const hours = submissions ? Math.round(submissions.length * 1.5 * 10) / 10 : 0;
       setMenteeStats({ hours: `${hours}h`, skills: `${graded.length || allScores.length}`, submissionsCount: submissions?.length || 0, weekData: [0,0,0,0,0,0,0] });
+      // Load enrollments directly from Firestore
+      if (menteeId) {
+        const enrollments = await getEnrollments(menteeId).catch(() => ({}));
+        setDirectEnrollments(enrollments);
+      }
     })();
   }, [authReady]);
 
-  const enrolledList = Object.entries(enrolledCourses).flatMap(([title, data]) => {
+  const enrolledData = Object.keys(directEnrollments).length > 0 ? directEnrollments : enrolledCourses;
+  const enrolledList = Object.entries(enrolledData).flatMap(([title, data]) => {
     const course = coursesList.find(c => c.title === title);
     if (!course) return [];
     return [{ title, desc: course.desc || "", next: "", badge: course.badge || "", emoji: course.emoji || "📚", progress: data.progress || 0 }];
