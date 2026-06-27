@@ -268,7 +268,8 @@ const RelativeWrap = styled.div`
   position: relative;
 `;
 
-export const TopBar = ({ searchPlaceholder = "Search..." }) => {
+export const TopBar = ({ searchPlaceholder = "Search...", onSearch }) => {
+  const [searchTerm, setSearchTerm] = useState("");
   const [openDropdown, setOpenDropdown] = useState(null);
 
   const [messageList, setMessageList] = useState([]);
@@ -330,7 +331,7 @@ export const TopBar = ({ searchPlaceholder = "Search..." }) => {
     <Bar>
       <SearchWrapper>
         <span>🔍</span>
-        <input id="topbar-search" name="search" placeholder={searchPlaceholder} />
+        <input id="topbar-search" name="search" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); onSearch?.(e.target.value); }} placeholder={searchPlaceholder} />
       </SearchWrapper>
       <HeaderActions ref={ref}>
         <RelativeWrap>

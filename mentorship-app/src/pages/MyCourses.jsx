@@ -714,6 +714,7 @@ export const MyCourses = () => {
   const [authReady, setAuthReady] = useState(false);
   const [assignmentCounts, setAssignmentCounts] = useState({});
   const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
@@ -851,24 +852,26 @@ export const MyCourses = () => {
     alert("Selected programs deleted!");
   };
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
+  const q = searchTerm.toLowerCase();
+  const filteredCourses = coursesList.filter(c => c.title?.toLowerCase().includes(q) || c.badge?.toLowerCase().includes(q));
 
   return (
     <Page>
       <SidebarByRole />
       <Main>
-        <TopBar searchPlaceholder="Search courses..." />
+        <TopBar searchPlaceholder="Search courses..." onSearch={setSearchTerm} />
         <PageTitle data-aos="fade-down">{isMentor ? "My Programs" : "My Courses"}</PageTitle>
         {isMentor && coursesList.length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, color: "#594048" }}>
-              <input id="myCourses-selectAll" name="selectAll" type="checkbox" checked={selectedIds.length === coursesList.length && coursesList.length > 0} onChange={(e) => {
+              <input id="myCourses-selectAll" name="selectAll" type="checkbox" checked={selectedIds.length === filteredCourses.length && filteredCourses.length > 0} onChange={(e) => {
                 if (e.target.checked) {
-                  setSelectedIds(coursesList.map(c => c.id || c.title));
+                  setSelectedIds(filteredCourses.map(c => c.id || c.title));
                 } else {
                   setSelectedIds([]);
                 }
               }} style={{ width: 18, height: 18, cursor: "pointer" }} />
-              Select All ({coursesList.length})
+              Select All ({filteredCourses.length})
             </label>
             {selectedIds.length > 0 && (
               <button onClick={doBulkDelete} disabled={saving} style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "#e53935", color: "white", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1, fontSize: "0.85rem", fontFamily: "inherit" }}>
@@ -878,7 +881,7 @@ export const MyCourses = () => {
           </div>
         )}
         <Grid>
-          {coursesList.map((c, i) => isMentor ? (
+          {filteredCourses.length === 0 && searchTerm ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:48}}>No courses match "{searchTerm}".</p> : filteredCourses.map((c, i) => isMentor ? (
             <Card key={i} data-aos="fade-up" data-aos-delay={i * 50} style={{ position: "relative", outline: selectedIds.includes(c.id || c.title) ? "2px solid #b50064" : "none" }}>
               <label style={{ position: "absolute", top: 12, left: 12, zIndex: 2, cursor: "pointer" }} onClick={(e) => e.stopPropagation()}>
                 <input id={`myCourses-checkbox-${c.id || c.title}`} name={`course-${c.id || c.title}`} type="checkbox" checked={selectedIds.includes(c.id || c.title)} onChange={(e) => {

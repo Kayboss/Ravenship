@@ -262,6 +262,7 @@ export const Submissions = () => {
   const [gradeFeedback, setGradeFeedback] = useState("");
   const [authReady, setAuthReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [grading, setGrading] = useState(false);
 
   const handleGrade = (sub) => {
@@ -347,6 +348,21 @@ export const Submissions = () => {
     setSubmitting(false);
   };
 
+  useEffect(() => {
+    if (!authReady) return;
+    const loadCourses = async () => {
+      try {
+        const mentorId = getStoredUser()?.mentorId;
+        const coursesData = mentorId ? await getCourses(mentorId) : [];
+        setForm(prev => ({ ...prev, course: coursesData[0]?.title || "" }));
+      } catch (e) {
+        console.error("getCourses error:", e);
+        setForm(prev => ({ ...prev, course: "" }));
+      }
+    };
+    loadCourses();
+  }, [authReady]);
+
   const handlePreview = (sub) => setPreview(sub);
 
   const handleDownload = (sub) => {
@@ -359,11 +375,30 @@ export const Submissions = () => {
     URL.revokeObjectURL(url);
   };
 
+    const q = searchTerm.toLowerCase();
+  const filteredSubmissions = submissions.filter(s => s.title?.toLowerCase().includes(q) || s.course?.toLowerCase().includes(q));
+
+  useEffect(() => {
+    if (!authReady) return;
+    const user = getStoredUser();
+    const mentorId = user?.mentorId;
+    const loadCourses = async () => {
+      try {
+        const coursesData = await getCourses(mentorId);
+        setForm(prev => ({ ...prev, course: coursesData[0]?.title || "" }));
+      } catch (e) {
+        console.error("getCourses error:", e);
+        setForm(prev => ({ ...prev, course: "" }));
+      }
+    };
+    loadCourses();
+  }, [authReady]);
+
   return (
     <Page>
       <SidebarByRole />
       <Main>
-        <TopBar searchPlaceholder="Search submissions..." />
+        <TopBar searchPlaceholder="Search submissions..." onSearch={setSearchTerm} />
         <PageTitle data-aos="fade-down">{isMentor ? "Mentee Submissions" : "My Submissions"}</PageTitle>
 
         {!isMentor && (
@@ -420,7 +455,7 @@ export const Submissions = () => {
             </div>
           ) : (
           <>
-          {submissions.map((s, i) => (
+          {filteredSubmissions.length === 0 && searchTerm ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:48}}>No submissions match "{searchTerm}".</p> : filteredSubmissions.map((s, i) => (
             <SubmissionCard key={s.id} data-aos="fade-up" data-aos-delay={i * 50}>
               <SubIcon $color={s.color}>{s.icon}</SubIcon>
               <SubInfo>

@@ -663,6 +663,7 @@ export const MentorDashboard = () => {
   const [kpis, setKpis] = useState({ totalMentees: 0, avgGrade: "—", completionRate: 0, pendingTasks: 0, trendValues: [] });
   const [greeting, setGreeting] = useState("Good Morning");
   const [authReady, setAuthReady] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => {
     if (!authReady) return;
@@ -723,13 +724,16 @@ export const MentorDashboard = () => {
     loadDashboard().catch(() => { setLoading(false); })
   }, [authReady]);
   const { gradingQueue = [], mentees = [], activeCourses = [] } = dashboardData || {};
+  const q = searchTerm.toLowerCase();
+  const filteredMentees = mentees.filter(m => (m.name || "").toLowerCase().includes(q) || (m.email || "").toLowerCase().includes(q));
+  const filteredCourses = activeCourses.filter(c => (c.title || "").toLowerCase().includes(q));
 
   if (loading) {
     return (
       <DashboardContainer>
         <MentorSidebar />
         <MainContent>
-          <TopBar searchPlaceholder="Search mentees, courses, or tasks..." />
+          <TopBar searchPlaceholder="Search mentees, courses, or tasks..." onSearch={setSearchTerm} />
           <div style={{ textAlign: "center", paddingTop: 80, color: "#594048", fontSize: "1.1rem", fontWeight: 600 }}>
             <div style={{ fontSize: "2rem", marginBottom: 12 }}>⏳</div>
             Loading your dashboard...
@@ -742,7 +746,7 @@ export const MentorDashboard = () => {
     <DashboardContainer>
       <MentorSidebar />
       <MainContent>
-        <TopBar searchPlaceholder="Search mentees, courses, or tasks..." />
+        <TopBar searchPlaceholder="Search mentees, courses, or tasks..." onSearch={setSearchTerm} />
 
         <HeaderBar data-aos="fade-down">
           <div>
@@ -837,7 +841,7 @@ export const MentorDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {mentees.map((m, i) => (
+                {filteredMentees.map((m, i) => (
                   <Tr key={i}>
                     <Td>
                       <StudentInfo>

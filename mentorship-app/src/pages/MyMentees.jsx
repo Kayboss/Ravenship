@@ -305,6 +305,7 @@ export const MyMentees = () => {
   const [mentees, setMentees] = useState([]);
   const [viewing, setViewing] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -334,11 +335,14 @@ export const MyMentees = () => {
     }).catch(e => console.error("getMentees error:", e));
   }, [authReady]);
 
+  const q = searchTerm.toLowerCase();
+  const filteredMentees = mentees.filter(m => m.name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q));
+
   return (
     <Page>
       <MentorSidebar />
       <Main>
-        <TopBar searchPlaceholder="Search mentees..." />
+        <TopBar searchPlaceholder="Search mentees..." onSearch={setSearchTerm} />
         <PageTitle data-aos="fade-down">My Mentees</PageTitle>
         <PageSub data-aos="fade-down">View and manage the mentees enrolled in your courses.</PageSub>
 
@@ -347,7 +351,7 @@ export const MyMentees = () => {
             <CardTitle>All Mentees ({mentees.length})</CardTitle>
           </CardHeader>
           <MenteeGrid>
-            {mentees.map((m, i) => (
+            {filteredMentees.length === 0 && searchTerm ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:48}}>No mentees match "{searchTerm}".</p> : filteredMentees.map((m, i) => (
               <MenteeCard key={i} onClick={() => setViewing(m)}>
                 <MenteeTop>
                   <Avatar $color={m.avatarColor}>{m.initials}</Avatar>

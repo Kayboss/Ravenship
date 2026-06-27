@@ -246,6 +246,7 @@ export const Gradebook = () => {
   const { role } = useParams();
   const [mentees, setMentees] = useState([]);
   const [authReady, setAuthReady] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -291,16 +292,19 @@ export const Gradebook = () => {
     ? [...new Set(mentees.flatMap(m => Object.keys(m.scores)))]
     : [];
 
-  const totalMentees = mentees.length;
-  const passing = mentees.filter(m => m.avg >= 60).length;
-  const avgGrade = Math.round(mentees.reduce((s, m) => s + m.avg, 0) / (mentees.length || 1));
-  const failing = mentees.filter(m => m.avg < 60).length;
+  const q = searchTerm.toLowerCase();
+  const filteredMentees = mentees.filter(m => m.name?.toLowerCase().includes(q));
+
+  const totalMentees = filteredMentees.length;
+  const passing = filteredMentees.filter(m => m.avg >= 60).length;
+  const avgGrade = Math.round(filteredMentees.reduce((s, m) => s + m.avg, 0) / (filteredMentees.length || 1));
+  const failing = filteredMentees.filter(m => m.avg < 60).length;
 
   return (
     <Page>
       <SidebarByRole />
       <Main>
-        <TopBar searchPlaceholder="Search gradebook..." />
+        <TopBar searchPlaceholder="Search gradebook..." onSearch={setSearchTerm} />
         <PageTitle data-aos="fade-down">Gradebook</PageTitle>
         <PageSub data-aos="fade-down">View and track mentee performance across all assignments.</PageSub>
 
@@ -353,7 +357,7 @@ export const Gradebook = () => {
                 </tr>
               </thead>
               <tbody>
-                {mentees.map((m, i) => (
+            {filteredMentees.length === 0 && searchTerm ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:48}}>No mentees match "{searchTerm}".</p> : filteredMentees.map((m, i) => (
                   <Tr key={i}>
                     <Td>
                       <StudentInfo>

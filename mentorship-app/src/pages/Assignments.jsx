@@ -538,6 +538,7 @@ export const Assignments = () => {
   });
   const [authReady, setAuthReady] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -656,6 +657,9 @@ export const Assignments = () => {
     ? courseFiltered
     : courseFiltered.filter(a => a.status === activeTab);
 
+  const q = searchTerm.toLowerCase();
+  const searchedFiltered = filtered.filter(a => a.title?.toLowerCase().includes(q) || a.course?.toLowerCase().includes(q));
+
   const clearCourseFilter = () => {
     setSearchParams({});
   };
@@ -666,7 +670,7 @@ export const Assignments = () => {
     <Page>
       <SidebarByRole />
       <Main>
-        <TopBar searchPlaceholder="Search assignments..." />
+        <TopBar searchPlaceholder="Search assignments..." onSearch={setSearchTerm} />
         <style>{`
           .assignment-formatting h3 { font-size: 1.15rem; margin: 12px 0 6px; font-weight: 700; }
           .assignment-formatting h4 { font-size: 1rem; margin: 10px 0 4px; font-weight: 700; }
@@ -799,7 +803,7 @@ export const Assignments = () => {
           </>
         )}
 
-        {filtered.map((a, i) => (
+        {searchedFiltered.length === 0 && searchTerm ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:48}}>No assignments match "{searchTerm}".</p> : searchedFiltered.map((a, i) => (
           <AssignmentCard key={a.id} data-aos="fade-up" data-aos-delay={i * 50}>
             <CardTop>
               <IconBox $color={a.iconColor}>{a.icon}</IconBox>

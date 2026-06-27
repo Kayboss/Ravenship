@@ -556,13 +556,14 @@ export const MenteeDashboard = () => {
   const [groupName, setGroupName] = useState("");
   const [menteeStats, setMenteeStats] = useState({ hours: "0h", skills: "0", submissionsCount: 0, weekData: [0,0,0,0,0,0,0] });
   const [authReady, setAuthReady] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
   useEffect(() => {
     if (!authReady) return;
     AOS.init({ duration: 800, once: true, offset: 50 });
     const user = getStoredUser();
-    if (user?.name) setMenteeName(user.name);
+    if (user?.name) setMenteeName(user.name.split(' ')[0]);
     const menteeId = user?.id;
     (async () => {
       let mentorFilter = null;
@@ -573,32 +574,29 @@ export const MenteeDashboard = () => {
           getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(e => console.error("getUser/groupName error:", e));
         }
       }
-      Promise.all([
+      const [coursesData, submissions, gradebook] = await Promise.all([
         getCourses(mentorFilter),
         menteeId ? getSubmissions({ menteeId }) : Promise.resolve([]),
         menteeId ? getAllGradebook(menteeId) : Promise.resolve([]),
-      ])
-      .then(([courses, submissions, gradebook]) => {
-        setDashData({ courses, submissions });
-        setCoursesList(Array.isArray(courses) ? courses : []);
-        const pending = (submissions || []).filter(s => s.status === "pending" || s.status === "assigned").map(s => ({
-          id: s.id,
-          title: s.title || s.name || "Assignment",
-          course: s.courseName || s.course || "",
-          due: s.dueDate || s.due || "TBD",
-          marks: s.marks || s.totalMarks || 100,
-          urgent: s.urgent || false,
-          icon: s.icon || "📝",
-          color: s.color || "#006590",
-        }));
-        setDueAssignments(pending);
-        const graded = (submissions || []).filter(s => s.score != null);
-        const allScores = gradebook.flatMap(g => Object.values(g.scores || {}).filter(v => typeof v === 'number'));
-        const avgScore = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
-        const hours = submissions ? Math.round(submissions.length * 1.5 * 10) / 10 : 0;
-        setMenteeStats({ hours: `${hours}h`, skills: `${graded.length || allScores.length}`, submissionsCount: submissions?.length || 0, weekData: [0,0,0,0,0,0,0] });
-      })
-      .catch(e => console.error("MenteeDashboard load error:", e));
+      ]);
+      setDashData({ courses: coursesData, submissions });
+      setCoursesList(Array.isArray(coursesData) ? coursesData : []);
+      const pending = (submissions || []).filter(s => s.status === "pending" || s.status === "assigned").map(s => ({
+        id: s.id,
+        title: s.title || s.name || "Assignment",
+        course: s.courseName || s.course || "",
+        due: s.dueDate || s.due || "TBD",
+        marks: s.marks || s.totalMarks || 100,
+        urgent: s.urgent || false,
+        icon: s.icon || "📝",
+        color: s.color || "#006590",
+      }));
+      if (pending.length > 0) setDueAssignments(pending);
+      const graded = (submissions || []).filter(s => s.score != null);
+      const allScores = gradebook.flatMap(g => Object.values(g.scores || {}).filter(v => typeof v === 'number'));
+      const avgScore = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
+      const hours = submissions ? Math.round(submissions.length * 1.5 * 10) / 10 : 0;
+      setMenteeStats({ hours: `${hours}h`, skills: `${graded.length || allScores.length}`, submissionsCount: submissions?.length || 0, weekData: [0,0,0,0,0,0,0] });
     })();
   }, [authReady]);
 
@@ -608,11 +606,14 @@ export const MenteeDashboard = () => {
     return [{ title, desc: course.desc || "", next: "", badge: course.badge || "", emoji: course.emoji || "📚", progress: data.progress || 0 }];
   });
 
+  const q = searchTerm.toLowerCase();
+  const filteredEnrolled = enrolledList.filter(c => c.title?.toLowerCase().includes(q) || c.badge?.toLowerCase().includes(q));
+
   return (
     <DashboardContainer>
       <MenteeSidebar />
       <MainContent>
-        <TopBar searchPlaceholder="Search courses, mentors..." />
+        <TopBar searchPlaceholder="Search courses, mentors..." onSearch={setSearchTerm} />
 
         <HeroSection data-aos="fade-down">
           <HeroTitle>Welcome back, {menteeName}! 👋</HeroTitle>
@@ -644,13 +645,13 @@ export const MenteeDashboard = () => {
         </SectionHeader>
 
         <CoursesGrid>
-          {enrolledList.length === 0 ? (
+          {filteredEnrolled.length === 0 && !searchTerm ? (
             <CourseCard style={{ gridColumn: "1 / -1", textAlign: "center", padding: 48 }}>
               <p style={{ fontSize: "3rem", marginBottom: 12 }}>📚</p>
               <p style={{ color: "#594048", fontWeight: 600 }}>No active courses yet.</p>
               <p style={{ fontSize: "0.85rem", color: "#594048", marginTop: 4 }}>Go to My Courses and start one!</p>
             </CourseCard>
-          ) : enrolledList.map((course, i) => (
+          ) : filteredEnrolled.length === 0 && searchTerm ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:48}}>No courses match "{searchTerm}".</p> : filteredEnrolled.map((course, i) => (
             <CourseCard key={i} data-aos="fade-up" data-aos-delay={i * 100} onClick={() => navigate(`/dashboard/mentee/course/${encodeURIComponent(course.title)}`)} style={{ cursor: "pointer" }}>
               <CourseImage>{course.emoji}</CourseImage>
               <CourseBadge>{course.badge}</CourseBadge>
