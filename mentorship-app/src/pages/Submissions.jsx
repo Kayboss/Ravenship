@@ -7,7 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getSubmissions, addSubmission, updateSubmission, getAssignments } from "../firebase/db";
+import { getSubmissions, addSubmission, updateSubmission, getAssignments, getCourses } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
