@@ -575,7 +575,7 @@ export const MenteeDashboard = () => {
         }
       }
       const [coursesData, submissions, gradebook] = await Promise.all([
-        getCourses(mentorFilter),
+        getCourses(),
         menteeId ? getSubmissions({ menteeId }) : Promise.resolve([]),
         menteeId ? getAllGradebook(menteeId) : Promise.resolve([]),
       ]);
