@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { getErrorsPaginated, markErrorResolved, pruneOldErrors } from "../../firebase/db";
+import { getErrorsPaginated, markErrorResolved, pruneOldErrors, batchResolveErrors } from "../../firebase/db";
 import { Card, CardTitle, Badge } from "./adminStyles";
 
 export default function AdminErrors() {
@@ -12,9 +12,20 @@ export default function AdminErrors() {
   const [resolving, setResolving] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    pruneOldErrors(3);
+    pruneOldErrors(1);
     setLoading(true);
-    getErrorsPaginated(50, null).then(({ items, lastDoc: ld, hasMore: hm }) => {
+    getErrorsPaginated(50, null).then(async ({ items, lastDoc: ld, hasMore: hm }) => {
+      const now = Date.now();
+      const cutoff = 14 * 86400000;
+      const oldUnresolved = items.filter(e => {
+        if (e.resolved) return false;
+        const t = e.timestamp?.toDate ? e.timestamp.toDate().getTime() : new Date(e.timestamp).getTime();
+        return (now - t) > cutoff;
+      });
+      if (oldUnresolved.length > 0) {
+        await batchResolveErrors(oldUnresolved.map(e => e.id));
+        items.forEach(e => { if (oldUnresolved.find(r => r.id === e.id)) e.resolved = true; });
+      }
       setErrors(items);
       setLastDoc(ld);
       setHasMore(hm);
@@ -38,26 +49,29 @@ export default function AdminErrors() {
   return (
     <Card data-aos="fade-up">
       <style>{`
+        .err-list{overflow-x:auto;max-width:100%}
         .err-row{padding:20px 24px;border-radius:12px;border-left:5px solid;max-width:100%;box-shadow:0 1px 4px rgba(0,0,0,0.07)}
         .err-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
         .err-info{flex:1;min-width:0}
-        .err-meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;margin-left:12px}
-        .err-msg{font-weight:700;font-size:0.9rem;color:#2c3e50;margin-bottom:6px;line-height:1.5}
+        .err-meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-left:12px}
+        .err-msg{font-weight:700;font-size:0.9rem;color:#2c3e50;margin-bottom:6px;line-height:1.5;overflow-wrap:anywhere;word-break:break-word}
         .err-detail{font-size:0.75rem;color:#666;margin-bottom:3px;word-break:break-all}
         .err-stack-summary{font-size:0.78rem;color:#b50064;cursor:pointer;font-weight:600;padding:4px 0}
         .err-stack-pre{font-size:0.68rem;color:#444;background:#f5f5f5;padding:12px;border-radius:8px;margin-top:8px;max-height:180px;overflow:auto;white-space:pre-wrap;word-break:break-all;border:1px solid #e0e0e0}
-        .err-time{font-size:0.7rem;color:#999;white-space:nowrap}
+        .err-time{font-size:0.7rem;color:#999}
         .err-resolve-btn{margin-top:12px;padding:8px 20px;border-radius:6px;border:1px solid #2e7d32;background:transparent;color:#2e7d32;font-size:0.8rem;font-weight:600;cursor:pointer;font-family:inherit;min-height:36px;transition:all 0.15s}
         .err-resolve-btn:hover{background:#2e7d32;color:#fff}
         .err-resolve-btn:disabled{opacity:0.5;cursor:not-allowed}
         .err-load-btn{margin-top:16px;padding:10px 20px;border-radius:8px;border:1px solid #b50064;background:transparent;color:#b50064;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;width:100%;min-height:40px;transition:all 0.15s}
         .err-load-btn:hover{background:#b50064;color:#fff}
         .err-load-btn:disabled{opacity:0.5;cursor:not-allowed}
-        @media(max-width:640px){
+        @media(max-width:768px){
+          .err-row{padding:16px 18px}
+        }
+        @media(max-width:480px){
           .err-row{padding:14px 16px}
           .err-top{flex-direction:column;gap:10px}
           .err-meta{flex-direction:row;flex-wrap:wrap;align-items:center;align-self:flex-start;gap:6px;margin-left:0}
-          .err-meta span{white-space:normal}
           .err-msg{font-size:0.85rem}
         }
       `}</style>
@@ -65,7 +79,7 @@ export default function AdminErrors() {
       <p style={{fontSize:"0.85rem",color:"#594048",marginBottom:16}}>Unhandled errors and exceptions reported from the client.</p>
       {errors.length === 0 && !loading ? <p style={{color:"#594048"}}>No errors recorded.</p> : (
         <>
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div className="err-list" style={{display:"flex",flexDirection:"column",gap:12}}>
             {errors.map((e, i) => {
               const time = e.timestamp?.toDate ? e.timestamp.toDate() : new Date(e.timestamp);
               return (

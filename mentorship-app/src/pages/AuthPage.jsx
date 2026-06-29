@@ -359,6 +359,9 @@ const FormSide = styled.div`
   align-items: center;
   justify-content: center;
   padding: ${(props) => props.theme.spacing.lg};
+  @media (max-width: ${(props) => props.theme.breakpoints.mobile}) {
+    padding: ${(props) => props.theme.spacing.sm};
+  }
 `;
 
 const FormBox = styled.div`
@@ -368,6 +371,9 @@ const FormBox = styled.div`
   padding: ${(props) => props.theme.spacing.xl};
   border-radius: ${(props) => props.theme.borderRadius};
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  @media (max-width: ${(props) => props.theme.breakpoints.mobile}) {
+    padding: ${(props) => props.theme.spacing.md};
+  }
 `;
 
 const Title = styled.h2`

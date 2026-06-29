@@ -7,15 +7,15 @@ import { getStoredUser } from "./auth";
 import { sanitizeInput } from "../lib/sanitize";
 
 // Fields that intentionally store HTML/structured data — rendered safely via DOMPurify or React JSX (auto-escaped)
-const RICH_FIELDS = new Set(["content", "lessonContent", "syllabus", "stack", "description"]);
+const RICH_FIELDS = new Set(["content", "lessonContent", "syllabus", "stack", "description", "featuredImage"]);
 const sanitizeWrite = (data) => {
   const out = {};
   for (const [key, value] of Object.entries(data)) {
     if (typeof value === "string") {
       if (RICH_FIELDS.has(key) || value.startsWith("data:")) {
-        out[key] = value.length > 500000 ? value.slice(0, 500000) : value;
+        out[key] = value.length > 900000 ? value.slice(0, 900000) : value;
       } else {
-        out[key] = sanitizeInput(value.length > 500000 ? value.slice(0, 500000) : value);
+        out[key] = sanitizeInput(value.length > 900000 ? value.slice(0, 900000) : value);
       }
     } else if (value !== null && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)) {
       out[key] = sanitizeWrite(value);
@@ -112,13 +112,10 @@ export const getMenteesByMentor = async (mentorId) => {
 // ── Courses ──
 
 export const getCourses = async (mentorId) => {
-  if (mentorId) {
-    const q = query(collection(db, "courses"), where("createdBy", "==", mentorId));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  }
-  const snap = await getDocs(collection(db, "courses"));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const snapshot = mentorId
+    ? await getDocs(query(collection(db, "courses"), where("createdBy", "==", mentorId)))
+    : await getDocs(collection(db, "courses"));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 };
 
 export const getCourse = async (id) => {
@@ -495,6 +492,7 @@ export const getOrCreateConversation = async (participantIds) => {
       [participantIds[0]]: { name: sanitizeInput(user1?.name || "Unknown"), photoURL: user1?.photoURL || "" },
       [participantIds[1]]: { name: sanitizeInput(user2?.name || "Unknown"), photoURL: user2?.photoURL || "" }
     },
+    unreadCount: { [participantIds[0]]: 0, [participantIds[1]]: 0 },
     typing: {},
     lastMessage: null,
     lastUpdated: serverTimestamp()
@@ -513,23 +511,33 @@ export const sendMessage = async (conversationId, text) => {
     status: "sent",
     createdAt: serverTimestamp()
   };
+  const convRef = doc(db, "conversations", conversationId);
+  const convSnap = await getDoc(convRef);
+  const recipientId = convSnap.exists()
+    ? convSnap.data().participants?.find(id => id !== user.id)
+    : null;
   await addDoc(collection(db, "conversations", conversationId, "messages"), msgData);
-  await updateDoc(doc(db, "conversations", conversationId), {
+  const updateData = {
     lastMessage: { text: safeText, senderId: user.id, senderName: sanitizeInput(user.name), status: "sent" },
     lastUpdated: serverTimestamp()
-  });
+  };
+  if (recipientId) {
+    updateData[`unreadCount.${recipientId}`] = (convSnap.data().unreadCount?.[recipientId] || 0) + 1;
+  }
+  await updateDoc(convRef, updateData);
 };
 
 export const markMessagesRead = async (conversationId, userId) => {
   const q = query(
     collection(db, "conversations", conversationId, "messages"),
-    where("senderId", "!=", userId),
     where("status", "==", "sent")
   );
   const snap = await getDocs(q);
-  if (snap.empty) return;
+  const unread = snap.docs.filter(d => d.data().senderId !== userId);
+  if (!unread.length) return;
   const batch = writeBatch(db);
-  snap.docs.forEach(d => batch.update(d.ref, { status: "read", readAt: serverTimestamp() }));
+  unread.forEach(d => batch.update(d.ref, { status: "read", readAt: serverTimestamp() }));
+  batch.update(doc(db, "conversations", conversationId), { [`unreadCount.${userId}`]: 0 });
   await batch.commit();
 };
 
@@ -560,6 +568,23 @@ export const subscribeNotifications = (role, callback) => {
     });
     callback(data);
   }, (e) => console.error("subscribeNotifications error:", e));
+};
+
+export const markNotificationsRead = async (notificationIds) => {
+  if (!notificationIds?.length) return;
+  const batch = writeBatch(db);
+  notificationIds.forEach(id => batch.update(doc(db, "notifications", id), { read: true }));
+  await batch.commit();
+};
+
+export const markAllNotificationsRead = async (role) => {
+  const q = query(collection(db, "notifications"), where("targetRole", "in", [role, "all"]));
+  const snap = await getDocs(q);
+  const unread = snap.docs.filter(d => !d.data().read);
+  if (!unread.length) return;
+  const batch = writeBatch(db);
+  unread.forEach(d => batch.update(d.ref, { read: true }));
+  await batch.commit();
 };
 
 export const subscribeMessages = (conversationId, callback) => {
@@ -676,7 +701,14 @@ export const markErrorResolved = async (errorId) => {
   await updateDoc(doc(db, "errors", errorId), { resolved: true });
 };
 
-export const pruneOldErrors = async (months = 3) => {
+export const batchResolveErrors = async (ids) => {
+  if (!ids.length) return;
+  const batch = writeBatch(db);
+  ids.forEach(id => batch.update(doc(db, "errors", id), { resolved: true }));
+  await batch.commit();
+};
+
+export const pruneOldErrors = async (months = 1) => {
   try {
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - months);
@@ -730,4 +762,46 @@ export const getSponsorshipRequests = async () => {
 
 export const deleteSponsorshipRequest = async (id) => {
   await deleteDoc(doc(db, "sponsorshipRequests", id));
+};
+
+// ── Site Visits ──
+
+const VISIT_COOLDOWN = 30 * 60 * 1000;
+
+export const getSiteVisits = async () => {
+  try {
+    const snap = await getDoc(doc(db, "analytics", "siteVisits"));
+    if (!snap.exists()) return { total: 0, weekly: [], daily: [] };
+    return snap.data();
+  } catch { return { total: 0, weekly: [], daily: [] }; }
+};
+
+export const trackSiteVisit = async () => {
+  try {
+    const last = sessionStorage.getItem("lastVisitTracked");
+    if (last && Date.now() - Number(last) < VISIT_COOLDOWN) return;
+    const ref = doc(db, "analytics", "siteVisits");
+    const snap = await getDoc(ref);
+    const now = new Date();
+    const dayKey = now.toISOString().slice(0, 10);
+    const weekKey = `${now.getFullYear()}-W${String(Math.ceil((now.getDate() - now.getDay() + 1) / 7)).padStart(2, "0")}`;
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        total: 1,
+        daily: { [dayKey]: 1 },
+        weekly: { [weekKey]: 1 },
+        lastVisit: serverTimestamp(),
+      });
+    } else {
+      const data = snap.data();
+      const updates = {
+        total: (data.total || 0) + 1,
+        lastVisit: serverTimestamp(),
+        [`daily.${dayKey}`]: (data.daily?.[dayKey] || 0) + 1,
+        [`weekly.${weekKey}`]: (data.weekly?.[weekKey] || 0) + 1,
+      };
+      await updateDoc(ref, updates);
+    }
+    sessionStorage.setItem("lastVisitTracked", String(Date.now()));
+  } catch {} // silent
 };

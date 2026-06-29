@@ -27,7 +27,7 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics.jsx";
 import { HelpCenter } from "./pages/HelpCenter.jsx";
 import { CounsellingRequest } from "./pages/CounsellingRequest.jsx";
 import { SponsorshipRequest } from "./pages/SponsorshipRequest.jsx";
-import { logError } from "./firebase/db";
+import { logError, trackSiteVisit } from "./firebase/db";
 import { watchPresence, onAuthReady, getStoredUser } from "./firebase/auth";
 import { getUser } from "./firebase/db";
 
@@ -90,7 +90,7 @@ class ErrorBoundary extends React.Component {
 }
 
 const GlobalErrorLogger = () => {
-  useEffect(() => { watchPresence(); }, []);
+  useEffect(() => { watchPresence(); trackSiteVisit(); }, []);
   useEffect(() => {
     const onError = (event) => {
       logError(event.error || event.message, { type: "window.onerror" });

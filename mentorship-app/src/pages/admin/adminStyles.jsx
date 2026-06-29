@@ -23,14 +23,14 @@ export const PdfOverlay = styled.div`position:fixed;inset:0;background:rgba(0,0,
 export const PdfModalInner = styled.div`background:#fff;border-radius:16px;width:90%;max-width:800px;height:90vh;position:relative;overflow:hidden;`;
 export const PdfCloseBtn = styled.button`position:absolute;top:10px;right:14px;background:#e53935;color:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:1.2rem;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;font-family:inherit;&:hover{opacity:0.85}`;
 
-export const KpiGrid = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:20px;margin-bottom:32px;`;
+export const KpiGrid = styled.div`display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:20px;margin-bottom:32px;max-width:100%;overflow:hidden;`;
 export const KpiCard = styled.div`background:${p => p.theme.colors.surface || "#fff"};border-radius:16px;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.04);border-left:4px solid ${p => p.$border};border:1px solid ${p => p.theme.colors.outline}30;`;
 export const KpiIcon = styled.div`width:40px;height:40px;border-radius:12px;background:${p => p.$bg}20;display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:12px;`;
-export const KpiValue = styled.div`font-size:1.8rem;font-weight:800;color:${p => p.theme.colors.textPrimary};`;
+export const KpiValue = styled.div`font-size:1.8rem;font-weight:800;color:${p => p.theme.colors.textPrimary};overflow-wrap:break-word;word-break:break-word;`;
 export const KpiLabel = styled.div`font-size:0.78rem;color:${p => p.theme.colors.textSecondary};font-weight:600;text-transform:uppercase;letter-spacing:0.03em;margin-top:2px;`;
 export const KpiTrend = styled.span`font-size:0.75rem;font-weight:700;color:${p => p.$positive ? "#27AE60" : p.theme.colors.textSecondary};display:flex;align-items:center;gap:4px;`;
 
-export const DashboardGrid = styled.div`display:grid;grid-template-columns:2fr 1fr;gap:24px;@media(max-width:1024px){grid-template-columns:1fr;}`;
+export const DashboardGrid = styled.div`display:grid;grid-template-columns:2fr 1fr;gap:24px;max-width:100%;overflow:hidden;@media(max-width:1024px){grid-template-columns:1fr;}`;
 export const UserTable = styled.table`width:100%;border-collapse:collapse;font-size:0.85rem;`;
 export const UTh = styled.th`text-align:left;padding:14px 16px;border-bottom:2px solid ${p => p.theme.colors.outline}30;color:${p => p.theme.colors.textSecondary};font-weight:600;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;`;
 export const UTd = styled.td`padding:14px 16px;border-bottom:1px solid ${p => p.theme.colors.outline}15;color:${p => p.theme.colors.textPrimary};`;
@@ -56,7 +56,7 @@ export const StatNum = styled.div`font-size:1.8rem;font-weight:800;color:#2c3e50
 export const StatLabel = styled.div`font-size:0.75rem;color:#594048;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;margin-top:4px;`;
 
 export const AdminPageLayout = styled.div`display:flex;min-height:100vh;background:${p => p.theme.colors.background};`;
-export const AdminPageMain = styled.main`flex:1;margin-left:280px;padding:0 ${p => p.theme.spacing.xl} ${p => p.theme.spacing.xl};@media(min-width:${p => p.theme.breakpoints.mobile}) and (max-width:${p => p.theme.breakpoints.tablet}){margin-left:0;padding:${p => p.theme.spacing.lg}}@media(max-width:${p => p.theme.breakpoints.mobile}){margin-left:0;padding:${p => p.theme.spacing.sm}}`;
+export const AdminPageMain = styled.main`flex:1;margin-left:280px;padding:0 ${p => p.theme.spacing.xl} ${p => p.theme.spacing.xl};max-width:100%;overflow-x:hidden;@media(min-width:${p => p.theme.breakpoints.mobile}) and (max-width:${p => p.theme.breakpoints.tablet}){margin-left:0;padding:${p => p.theme.spacing.lg}}@media(max-width:${p => p.theme.breakpoints.mobile}){margin-left:0;padding:${p => p.theme.spacing.sm}}`;
 export const AdminPageTitle = styled.h2`font-size:1.6rem;font-weight:700;color:${p => p.theme.colors.textPrimary};margin-bottom:24px;@media(max-width:${p => p.theme.breakpoints.mobile}){font-size:1.3rem;margin-bottom:16px}`;
 
 export const BioModal = ({ user, onClose }) => {
@@ -74,10 +74,11 @@ export const BioModal = ({ user, onClose }) => {
             </div>
           )}
           <div><ModalTitle style={{margin:0}}>{user.name}</ModalTitle>
-            <span style={{fontSize:"0.85rem",color:"#594048"}}>{user.email} · {user.role}</span></div>
+            <span style={{fontSize:"0.85rem",color:"#594048"}}>{user.role}</span></div>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {user.phone && <Field label="Phone" value={user.phone} />}
+          {user.email && <Field label="Email" value={user.email} />}
           {user.city && <Field label="City" value={user.city} />}
           {dob && <Field label="Date of Birth" value={dob} />}
           {user.bio && <Field label="Bio" value={user.bio} />}

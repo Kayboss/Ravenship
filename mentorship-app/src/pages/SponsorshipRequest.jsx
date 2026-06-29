@@ -23,6 +23,10 @@ const Main = styled.main`
     margin-left: 0;
     padding: ${p => p.theme.spacing.lg};
   }
+  @media (max-width: ${p => p.theme.breakpoints.mobile}) {
+    margin-left: 0;
+    padding: ${p => p.theme.spacing.sm};
+  }
 `;
 
 const PageTitle = styled.h2`

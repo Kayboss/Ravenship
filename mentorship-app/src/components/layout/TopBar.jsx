@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
 import { logout, getStoredUser } from "../../firebase/auth";
-import { subscribeNotifications, subscribeConversations } from "../../firebase/db";
+import { subscribeNotifications, subscribeConversations, markAllNotificationsRead } from "../../firebase/db";
 
 const Bar = styled.header`
   display: flex;
@@ -292,11 +292,15 @@ export const TopBar = ({ searchPlaceholder = "Search...", onSearch }) => {
   useEffect(() => {
     if (!user?.id) return;
     const unsub = subscribeConversations(user.id, (data) => {
+      let totalUnread = 0;
       const msgs = data.map(c => {
         const otherId = c.participants?.find(id => id !== user.id);
         const info = otherId ? c.participantInfo?.[otherId] : null;
-        return { icon: "👤", name: info?.name || "Unknown", text: c.lastMessage?.text || "", time: "", otherId, photoURL: info?.photoURL || "", replies: c.lastMessage ? [c.lastMessage.text] : [] };
+        const unread = c.unreadCount?.[user.id] || 0;
+        totalUnread += unread;
+        return { icon: "👤", name: info?.name || "Unknown", text: c.lastMessage?.text || "", time: "", otherId, photoURL: info?.photoURL || "", replies: c.lastMessage ? [c.lastMessage.text] : [], unread };
       });
+      msgs._totalUnread = totalUnread;
       setMessageList(msgs);
     });
     return () => unsub();
@@ -309,15 +313,24 @@ export const TopBar = ({ searchPlaceholder = "Search...", onSearch }) => {
       const formatted = filtered.map(n => ({
         icon: "🔔",
         text: n.title ? `${n.title}: ${n.message}` : n.message,
-        time: n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : ""
+        time: n.createdAt?.toDate ? n.createdAt.toDate().toLocaleDateString() : "",
+        id: n.id,
+        read: n.read === true
       }));
       setNotificationList(formatted);
     });
     return () => unsub();
   }, [user?.role]);
 
-  const unreadMsgs = messageList.length;
-  const unreadNotifs = openDropdown === "notifications" ? 0 : notificationList.length;
+  useEffect(() => {
+    if (openDropdown === "notifications" && notificationList.length > 0) {
+      const unreadIds = notificationList.filter(n => !n.read).map(n => n.id);
+      if (unreadIds.length) markAllNotificationsRead(user.role).catch(() => {});
+    }
+  }, [openDropdown]);
+
+  const unreadMsgs = messageList._totalUnread || 0;
+  const unreadNotifs = notificationList.filter(n => !n.read).length;
 
   const initials = user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) || "U";
   const currentRole = role || user.role || "admin";
@@ -329,6 +342,7 @@ export const TopBar = ({ searchPlaceholder = "Search...", onSearch }) => {
 
   return (
     <Bar>
+      <style>{`@media(max-width:480px){.desktop-only{display:none!important}}`}</style>
       <SearchWrapper>
         <span>🔍</span>
         <input id="topbar-search" name="search" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); onSearch?.(e.target.value); }} placeholder={searchPlaceholder} />
@@ -352,30 +366,32 @@ export const TopBar = ({ searchPlaceholder = "Search...", onSearch }) => {
           )}
         </RelativeWrap>
 
-        <RelativeWrap>
-          <IconBtn $active={openDropdown === "messages"} onClick={() => setOpenDropdown(openDropdown === "messages" ? null : "messages")}>
-            ✉️{unreadMsgs > 0 ? <Badge>{unreadMsgs}</Badge> : null}
-          </IconBtn>
-          {openDropdown === "messages" && messageList.length > 0 && (
-            <Dropdown>
-              <DropdownHeader>Messages</DropdownHeader>
-              {messageList.map((m, i) => (
-                <DropdownItem key={i} onClick={() => {
-                  if (m.otherId) {
-                    navigate(`/dashboard/${currentRole}/community`, { state: { chatTarget: { id: m.otherId, name: m.name, photoURL: m.photoURL } } });
-                  }
-                  setOpenDropdown(null);
-                }}>
-                  <DropdownIcon>{m.icon}</DropdownIcon>
-                  <DropdownText><strong>{m.name}</strong></DropdownText>
-                  <DropdownTime>{m.time}</DropdownTime>
-                </DropdownItem>
-              ))}
-            </Dropdown>
-          )}
-        </RelativeWrap>
+        <span className="desktop-only">
+          <RelativeWrap>
+            <IconBtn $active={openDropdown === "messages"} onClick={() => setOpenDropdown(openDropdown === "messages" ? null : "messages")}>
+              ✉️{unreadMsgs > 0 ? <Badge>{unreadMsgs}</Badge> : null}
+            </IconBtn>
+            {openDropdown === "messages" && messageList.length > 0 && (
+              <Dropdown>
+                <DropdownHeader>Messages</DropdownHeader>
+                {messageList.map((m, i) => (
+                  <DropdownItem key={i} onClick={() => {
+                    if (m.otherId) {
+                      navigate(`/dashboard/${currentRole}/community`, { state: { chatTarget: { id: m.otherId, name: m.name, photoURL: m.photoURL } } });
+                    }
+                    setOpenDropdown(null);
+                  }}>
+                    <DropdownIcon>{m.icon}</DropdownIcon>
+                    <DropdownText><strong>{m.name}</strong></DropdownText>
+                    <DropdownTime>{m.time}</DropdownTime>
+                  </DropdownItem>
+                ))}
+              </Dropdown>
+            )}
+          </RelativeWrap>
+        </span>
 
-        <IconBtn onClick={() => navigate(`/dashboard/${currentRole}/settings`)}>⚙️</IconBtn>
+        <span className="desktop-only"><IconBtn onClick={() => navigate(`/dashboard/${currentRole}/settings`)}>⚙️</IconBtn></span>
 
         <RelativeWrap>
           <Avatar onClick={() => setOpenDropdown(openDropdown === "profile" ? null : "profile")}>
@@ -390,6 +406,9 @@ export const TopBar = ({ searchPlaceholder = "Search...", onSearch }) => {
                   <ProfileEmail>{user.email}</ProfileEmail>
                 </ProfileDropdownHeader>
               </ProfileRow>
+              <ProfileMenuItem onClick={() => { setOpenDropdown(null); navigate(`/dashboard/${currentRole}/community`); }}>
+                ✉️ Messages
+              </ProfileMenuItem>
               <ProfileMenuItem onClick={() => { setOpenDropdown(null); navigate(`/dashboard/${currentRole}/settings`); }}>
                 ⚙️ Settings
               </ProfileMenuItem>

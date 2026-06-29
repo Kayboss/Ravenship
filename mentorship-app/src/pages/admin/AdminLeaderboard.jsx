@@ -14,7 +14,7 @@ export default function AdminLeaderboard() {
   }, []);
   const mentors = users.filter(u => u.role === "mentor");
   const mentees = users.filter(u => u.role === "mentee");
-  const topMentors = [...mentors].sort((a, b) => (b.courseCount || courses.filter(c => c.instructor?.toLowerCase() === b.name?.toLowerCase()).length) - (a.courseCount || courses.filter(c => c.instructor?.toLowerCase() === a.name?.toLowerCase()).length)).slice(0, 5);
+  const topMentors = [...mentors].sort((a, b) => (b.courseCount || courses.filter(c => c.createdBy === b.id).length) - (a.courseCount || courses.filter(c => c.createdBy === a.id).length)).slice(0, 5);
   const topMentees = [...mentees].sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0)).slice(0, 5);
   const topCourses = [...courses].sort((a, b) => ((b.enrolledMentees || b.enrolled || []).length) - ((a.enrolledMentees || a.enrolled || []).length)).slice(0, 5);
   return (
@@ -25,7 +25,7 @@ export default function AdminLeaderboard() {
           <RankRow key={m.id}>
             <RankNum $c={i < 3 ? ["#FFD700","#C0C0C0","#CD7F32"][i] : "#006590"}>{i + 1}</RankNum>
             <div style={{width:36,height:36,borderRadius:"50%",background:"#006590",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.8rem",fontWeight:700,color:"#fff",flexShrink:0}}>{m.name?.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)}</div>
-            <div style={{flex:1}}><strong style={{fontSize:"0.9rem",display:"block",color:"#2c3e50"}}>{m.name}</strong><span style={{fontSize:"0.78rem",color:"#594048"}}>{courses.filter(c => c.instructor?.toLowerCase() === m.name?.toLowerCase()).length} courses</span></div>
+            <div style={{flex:1}}><strong style={{fontSize:"0.9rem",display:"block",color:"#2c3e50"}}>{m.name}</strong><span style={{fontSize:"0.78rem",color:"#594048"}}>{courses.filter(c => c.createdBy === m.id).length} courses</span></div>
             <Badge $c="#006590">{m.verified ? "Verified" : "Pending"}</Badge>
           </RankRow>
         ))}

@@ -26,6 +26,10 @@ const MainContent = styled.main`
     margin-left: 0;
     padding: ${(props) => props.theme.spacing.lg};
   }
+  @media (max-width: ${(props) => props.theme.breakpoints.mobile}) {
+    margin-left: 0;
+    padding: ${(props) => props.theme.spacing.sm};
+  }
 `;
 
 const HeroSection = styled.section`
@@ -156,7 +160,9 @@ const CourseImage = styled.div`
   height: 120px;
   border-radius: 16px;
   margin-bottom: 16px;
-  background: linear-gradient(135deg, ${(props) => props.theme.colors.primary}20, ${(props) => props.theme.colors.secondary}20);
+  background: ${(p) => p.$img ? `url(${p.$img})` : `linear-gradient(135deg, ${p.theme.colors.primary}20, ${p.theme.colors.secondary}20)`};
+  background-size: cover;
+  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -610,7 +616,7 @@ export const MenteeDashboard = () => {
   const enrolledList = Object.entries(enrolledData).flatMap(([title, data]) => {
     const course = coursesList.find(c => c.title === title);
     if (!course) return [];
-    return [{ title, desc: course.desc || "", next: "", badge: course.badge || "", emoji: course.emoji || "📚", progress: data.progress || 0 }];
+    return [{ title, desc: course.desc || "", next: "", badge: course.badge || "", emoji: course.emoji || "📚", featuredImage: course.featuredImage || "", progress: data.progress || 0 }];
   });
 
   const q = searchTerm.toLowerCase();
@@ -660,7 +666,7 @@ export const MenteeDashboard = () => {
             </CourseCard>
           ) : filteredEnrolled.length === 0 && searchTerm ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:48}}>No courses match "{searchTerm}".</p> : filteredEnrolled.map((course, i) => (
             <CourseCard key={i} data-aos="fade-up" data-aos-delay={i * 100} onClick={() => navigate(`/dashboard/mentee/course/${encodeURIComponent(course.title)}`)} style={{ cursor: "pointer" }}>
-              <CourseImage>{course.emoji}</CourseImage>
+              <CourseImage $img={course.featuredImage || undefined}>{!course.featuredImage && course.emoji}</CourseImage>
               <CourseBadge>{course.badge}</CourseBadge>
               <CourseTitle>{course.title}</CourseTitle>
               <CourseDesc>{truncateWords(course.desc)}</CourseDesc>

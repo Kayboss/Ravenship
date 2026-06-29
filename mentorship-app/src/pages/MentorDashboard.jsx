@@ -21,6 +21,10 @@ const MainContent = styled.main`
 
   @media (max-width: ${(props) => props.theme.breakpoints.tablet}) {
     margin-left: 0;
+    padding: ${(props) => props.theme.spacing.lg};
+  }
+  @media (max-width: ${(props) => props.theme.breakpoints.mobile}) {
+    margin-left: 0;
     padding: ${(props) => props.theme.spacing.sm};
   }
 `;

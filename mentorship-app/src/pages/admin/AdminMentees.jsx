@@ -3,7 +3,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
-import { Card, Badge, Btn, BioModal } from "./adminStyles";
+import { Card, Badge, BioModal } from "./adminStyles";
 
 export default function AdminMentees() {
   const [users, setUsers] = useState([]);
@@ -66,6 +66,7 @@ export default function AdminMentees() {
       .mentee-card h4,.mentee-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
       .course-detail{overflow:hidden;max-width:100%}
       .course-detail span{white-space:normal;word-break:break-word}
+      .actions-dropdown{padding:8px 12px;border-radius:8px;border:1px solid #b50064;background:#fff;color:#b50064;font-weight:600;font-size:0.78rem;cursor:pointer;font-family:inherit;min-height:36px;width:100%}
       @media(max-width:480px){
         .mentee-header{flex-direction:column;gap:10px}
         .mentee-meta{align-self:flex-start}
@@ -88,7 +89,7 @@ export default function AdminMentees() {
                 )}
                 <div style={{minWidth:0}}>
                   <h4 style={{margin:0,fontSize:"1rem",fontWeight:700,color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</h4>
-                  <span style={{fontSize:"0.8rem",color:"#594048",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.city ? ` · ${u.city}` : ""}</span>
+                  {u.phone && <span style={{fontSize:"0.8rem",color:"#594048",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>📞 {u.phone}</span>}
                 </div>
               </div>
               <div className="mentee-meta">
@@ -99,11 +100,14 @@ export default function AdminMentees() {
 
             {expandedMentee === u.id && (
               <div style={{marginTop:16,borderTop:"1px solid #e0e0e0",paddingTop:16}}>
-                <div style={{display:"flex",gap:8,marginBottom:16}}>
-                  <Btn $outline onClick={() => setBioUser(u)}>View Bio</Btn>
-                  {u.verified ? <Btn $outline disabled={verifying === u.id} onClick={() => doVerify(u.id, false)}>{verifying === u.id ? "Revoking..." : "Revoke"}</Btn> : <Btn disabled={verifying === u.id} onClick={() => doVerify(u.id, true)}>{verifying === u.id ? "Verifying..." : "✓ Verify"}</Btn>}
-                  <Btn $outline style={{color:"#006590",borderColor:"#006590"}} onClick={() => doChangeRole(u.id, "mentor")}>Make Mentor</Btn>
-                  <Btn $red disabled={verifying === u.id} onClick={() => doDelete(u.id)}>Delete</Btn>
+                <div style={{marginBottom:16}}>
+                  <select className="actions-dropdown" value="" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v === "bio") setBioUser(u); else if (v === "verify") doVerify(u.id, true); else if (v === "revoke") doVerify(u.id, false); else if (v === "mentor") doChangeRole(u.id, "mentor"); else if (v === "delete") doDelete(u.id); }}>
+                    <option value="" disabled>Actions...</option>
+                    <option value="bio">View Bio</option>
+                    {u.verified ? <option value="revoke">Revoke</option> : <option value="verify">✓ Verify</option>}
+                    <option value="mentor">Make Mentor</option>
+                    <option value="delete">Delete</option>
+                  </select>
                 </div>
 
                 <p style={{fontSize:"0.9rem",fontWeight:600,color:"#2c3e50",marginBottom:12}}>📚 Enrolled Courses ({menteeCourses.length})</p>

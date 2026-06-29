@@ -3,7 +3,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
-import { Card, Badge, Btn, Table, Th, Td, BioModal } from "./adminStyles";
+import { Card, Badge, Table, Th, Td, BioModal } from "./adminStyles";
 
 export default function AdminMentors() {
   const [users, setUsers] = useState([]);
@@ -68,6 +68,7 @@ export default function AdminMentors() {
       .mentor-card h4,.mentor-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
       .course-detail{overflow:hidden;max-width:100%}
       .course-detail span{white-space:normal;word-break:break-word}
+      .actions-dropdown{padding:8px 12px;border-radius:8px;border:1px solid #b50064;background:#fff;color:#b50064;font-weight:600;font-size:0.78rem;cursor:pointer;font-family:inherit;min-height:36px;width:100%}
       @media(max-width:480px){
         .mentor-header{flex-direction:column;gap:10px}
         .mentor-meta{align-self:flex-start}
@@ -76,7 +77,7 @@ export default function AdminMentors() {
     <div className="mentor-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
       {verifyMsg && <p style={{gridColumn:"1/-1",fontSize:"0.85rem",color:"#e53935",fontWeight:600,margin:0}}>{verifyMsg}</p>}
       {users.length === 0 ? <p style={{ color: "#594048", fontSize: "0.9rem", gridColumn:"1/-1" }}>No mentors registered.</p> : users.map((u, idx) => {
-        const mentorCourses = courses.filter(c => c.instructor?.toLowerCase() === u.name?.toLowerCase());
+        const mentorCourses = courses.filter(c => c.createdBy === u.id);
         return (
           <Card key={u.id} className="mentor-card" data-aos="fade-up" style={{marginBottom:0}}>
             <div className="mentor-header" onClick={() => setExpandedMentor(expandedMentor === u.id ? null : u.id)}>
@@ -90,7 +91,7 @@ export default function AdminMentors() {
                 )}
                 <div style={{minWidth:0}}>
                   <h4 style={{margin:0,fontSize:"1rem",fontWeight:700,color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</h4>
-                  <span style={{fontSize:"0.8rem",color:"#594048",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{u.email}{u.phone ? ` · ${u.phone}` : ""}{u.city ? ` · ${u.city}` : ""}</span>
+                  {u.phone && <span style={{fontSize:"0.8rem",color:"#594048",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>📞 {u.phone}</span>}
                 </div>
               </div>
               <div className="mentor-meta">
@@ -101,11 +102,14 @@ export default function AdminMentors() {
 
             {expandedMentor === u.id && (
               <div style={{marginTop:16,borderTop:"1px solid #e0e0e0",paddingTop:16}}>
-                <div style={{display:"flex",gap:8,marginBottom:16}}>
-                  <Btn $outline onClick={() => setBioUser(u)}>View Bio</Btn>
-                  {u.verified ? <Btn $outline disabled={verifying === u.id} onClick={() => doVerify(u.id, false)}>{verifying === u.id ? "Revoking..." : "Revoke"}</Btn> : <Btn disabled={verifying === u.id} onClick={() => doVerify(u.id, true)}>{verifying === u.id ? "Verifying..." : "✓ Verify"}</Btn>}
-                  <Btn $outline style={{color:"#e53935",borderColor:"#e53935"}} onClick={() => doChangeRole(u.id, "mentee")}>Make Mentee</Btn>
-                  <Btn $red disabled={verifying === u.id} onClick={() => doDelete(u.id)}>Delete</Btn>
+                <div style={{marginBottom:16}}>
+                  <select className="actions-dropdown" value="" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v === "bio") setBioUser(u); else if (v === "verify") doVerify(u.id, true); else if (v === "revoke") doVerify(u.id, false); else if (v === "mentee") doChangeRole(u.id, "mentee"); else if (v === "delete") doDelete(u.id); }}>
+                    <option value="" disabled>Actions...</option>
+                    <option value="bio">View Bio</option>
+                    {u.verified ? <option value="revoke">Revoke</option> : <option value="verify">✓ Verify</option>}
+                    <option value="mentee">Make Mentee</option>
+                    <option value="delete">Delete</option>
+                  </select>
                 </div>
 
                 <p style={{fontSize:"0.9rem",fontWeight:600,color:"#2c3e50",marginBottom:12}}>📚 Courses ({mentorCourses.length})</p>

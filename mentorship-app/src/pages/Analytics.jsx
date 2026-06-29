@@ -20,6 +20,10 @@ const Main = styled.main`
     margin-left: 0;
     padding: ${(props) => props.theme.spacing.lg};
   }
+  @media (max-width: ${(props) => props.theme.breakpoints.mobile}) {
+    margin-left: 0;
+    padding: ${(props) => props.theme.spacing.sm};
+  }
 `;
 
 const PageTitle = styled.h2`

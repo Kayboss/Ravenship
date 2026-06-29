@@ -23,6 +23,10 @@ const Main = styled.main`
     margin-left: 0;
     padding: ${(props) => props.theme.spacing.lg};
   }
+  @media (max-width: ${(props) => props.theme.breakpoints.mobile}) {
+    margin-left: 0;
+    padding: ${(props) => props.theme.spacing.sm};
+  }
 `;
 
 const BackLink = styled.button`
@@ -286,7 +290,9 @@ export const CourseView = () => {
 
   useEffect(() => {
     if (isMentor && !editMode && firestoreCourseId && savedOnceRef.current) {
-      updateCourse(firestoreCourseId, { _title: courseTitle, lessons: topicKeys.length, lessonContent: courseData.lessons, syllabus: topicKeys, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color, featuredImage: courseData.featuredImage }).catch(e => console.error("updateCourse error:", e));
+      const payload = { _title: courseTitle, lessons: topicKeys.length, lessonContent: courseData.lessons, syllabus: topicKeys, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color };
+      if (courseData.featuredImage) payload.featuredImage = courseData.featuredImage;
+      updateCourse(firestoreCourseId, payload).catch(e => console.error("updateCourse error:", e));
     }
     if (!editMode) savedOnceRef.current = true;
   }, [editMode, firestoreCourseId]);
@@ -510,7 +516,7 @@ export const CourseView = () => {
                     style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                 </div>
               )}
-              <input type="file" id="featured-image" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => setCourseData(prev => ({ ...prev, featuredImage: ev.target.result })); reader.readAsDataURL(file); } }}
+              <input type="file" id="featured-image" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; if (file.size > 500 * 1024) { alert("Image too large. Please choose an image under 500KB."); return; } const reader = new FileReader(); reader.onload = (ev) => setCourseData(prev => ({ ...prev, featuredImage: ev.target.result })); reader.readAsDataURL(file); }}
                 style={{ fontSize: "0.85rem", fontFamily: "inherit" }} />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>

@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from "react";
+import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { useNavigate } from "react-router-dom";
 import { getStoredUser } from "../../firebase/auth";
-import { getUsers, getAnnouncements, getAnalytics, getSubmissions } from "../../firebase/db";
+import { getUsers, getAnnouncements, getAnalytics, getSubmissions, getSiteVisits } from "../../firebase/db";
 import { db } from "../../firebase/config";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import {
   Card, CardTitle, KpiGrid, KpiCard, KpiIcon, KpiValue, KpiLabel, KpiTrend,
   DashboardGrid, UserTable, UTh, UTd, URow, RoleBadge, StatusDot,
-  ChartCard, ChartBar, ChartGrid, SectionTitle, AnnTag
+  ChartCard, ChartGrid, SectionTitle, AnnTag
 } from "./adminStyles";
 
 export default function AdminOverview() {
@@ -19,7 +20,7 @@ export default function AdminOverview() {
   const [roleFilter, setRoleFilter] = useState("all");
   const navigate = useNavigate();
   const user = getStoredUser() || { name: "Admin" };
-  const [weekData, setWeekData] = useState([]);
+  const [visits, setVisits] = useState(null);
   const [sourceData, setSourceData] = useState([]);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
@@ -38,18 +39,7 @@ export default function AdminOverview() {
       });
       setNotifs(merged);
     }).catch(e => console.error("getAnnouncements/notifications error:", e));
-    getSubmissions({}).then(subs => {
-      const days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-      const counts = [0,0,0,0,0,0,0];
-      const now = new Date();
-      const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay()); startOfWeek.setHours(0,0,0,0);
-      subs.forEach(s => {
-        const ts = s.submittedAt?.toDate ? s.submittedAt.toDate() : new Date(s.submittedAt);
-        if (ts >= startOfWeek) counts[ts.getDay()]++;
-      });
-      const max = Math.max(...counts, 1);
-      setWeekData(days.map((d, i) => ({ day: d, val: Math.round((counts[i]/max)*100) })));
-    }).catch(e => console.error("getSubmissions/weekData error:", e));
+    getSiteVisits().then(d => setVisits(d)).catch(e => console.error("getSiteVisits error:", e));
     getUsers().then(allUsers => {
       const cities = {};
       allUsers.forEach(u => { const c = u.city || "Unknown"; cities[c] = (cities[c]||0)+1; });
@@ -74,18 +64,25 @@ export default function AdminOverview() {
           .um-cards > div + div{margin-top:6px}
         }
         @media(min-width:769px){.um-cards{display:none!important}}
+        @media(max-width:480px){
+          .um-header{flex-direction:column;align-items:stretch}
+          .um-header > div{width:100%}
+          .um-header select,.um-header button{width:100%;text-align:center;box-sizing:border-box}
+          .um-cards > div{gap:6px;padding:8px 10px}
+          .mobile-hidden{display:none}
+        }
       `}</style>
       <Card data-aos="fade-down">
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
+        <GreetingRow>
           <div style={{flex:1,minWidth:200}}>
             <h2 style={{fontSize:"clamp(1.3rem, 5vw, 1.8rem)",fontWeight:800,color:"#2c3e50",margin:0}}>{greeting}, {user.name.split(" ")[0]}! 👋</h2>
             <p style={{color:"#594048",fontSize:"clamp(0.8rem, 2.5vw, 0.9rem)",margin:"4px 0 0"}}>Here's what's happening with your mentorship program today.</p>
           </div>
-          <div style={{textAlign:"right",flexShrink:0}}>
+          <TotalUserBox>
             <div style={{fontSize:"clamp(1.3rem, 5vw, 2rem)",fontWeight:800,color:"#b50064"}}>{totalUsers}</div>
             <div style={{fontSize:"0.78rem",color:"#594048",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.03em"}}>Total Users</div>
-          </div>
-        </div>
+          </TotalUserBox>
+        </GreetingRow>
       </Card>
       <div style={{marginBottom:"clamp(16px, 4vw, 32px)"}} data-aos="fade-down">
         <h2 style={{fontSize:"clamp(1.2rem, 4.5vw, 1.5rem)",fontWeight:700,color:user.name==="Admin"?"#2c3e50":"inherit",marginBottom:4}}>Program Oversight</h2>
@@ -118,7 +115,7 @@ export default function AdminOverview() {
 
       <DashboardGrid data-aos="fade-up">
         <div style={{display:"flex",flexDirection:"column",gap:24}}>
-          <Card style={{padding:0,overflow:"hidden",marginBottom:0}}>
+          <Card className="mobile-hidden" style={{padding:0,overflow:"hidden",marginBottom:0}}>
             <div className="um-header">
               <CardTitle style={{margin:0,fontSize:"clamp(0.9rem, 3vw, 1.05rem)"}}>User Management</CardTitle>
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -164,8 +161,8 @@ export default function AdminOverview() {
                   <div style={{width:32,height:32,borderRadius:"50%",background:u.role === "mentor" ? "#b50064" : "#0298D7",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:700,color:"#fff",flexShrink:0}}>
                     {u.name?.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2) || "?"}
                   </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:700,fontSize:"0.82rem",color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{u.name}</div>
+                  <div style={{flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    <span style={{fontWeight:700,fontSize:"0.82rem",color:"#2c3e50"}}>{u.name}</span>
                   </div>
                   <RoleBadge $role={u.role}>{u.role === "admin" ? "Admin" : u.role === "mentor" ? "Mentor" : "Mentee"}</RoleBadge>
                   <span style={{display:"flex",alignItems:"center",fontSize:"0.7rem",fontWeight:600,color:u.verified ? "#27AE60" : "#f57f17",flexShrink:0}}>
@@ -185,24 +182,32 @@ export default function AdminOverview() {
 
           <ChartGrid>
             <ChartCard>
-              <SectionTitle>Weekly Engagement</SectionTitle>
-              <div style={{display:"flex",alignItems:"flex-end",height:160,gap:8}}>
-                {weekData.map((d, i) => (
-                  <ChartBar key={i} $active={i === 3 || i === 5} style={{height:`${d.val}%`,flex:1}} />
-                ))}
-              </div>
-              <div style={{display:"flex",justifyContent:"space-between",marginTop:12,fontSize:"0.72rem",color:"#594048"}}>
-                {weekData.map((d,i) => <span key={i}>{d.day}</span>)}
+              <SectionTitle>Site Visits</SectionTitle>
+              <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#f5f5f5",borderRadius:12}}>
+                  <span style={{fontSize:"0.85rem",fontWeight:600,color:"#594048"}}>All Time</span>
+                  <span style={{fontSize:"1.5rem",fontWeight:800,color:"#b50064"}}>{(visits?.total ?? 0).toLocaleString()}</span>
+                </div>
+                <div style={{display:"flex",gap:12}}>
+                  <div style={{flex:1,padding:"12px 16px",background:"#f5f5f5",borderRadius:12,textAlign:"center"}}>
+                    <div style={{fontSize:"0.72rem",fontWeight:600,color:"#594048",textTransform:"uppercase",letterSpacing:"0.03em",marginBottom:4}}>Today</div>
+                    <div style={{fontSize:"1.3rem",fontWeight:800,color:"#2c3e50"}}>{visits?.daily?.[new Date().toISOString().slice(0,10)] ?? 0}</div>
+                  </div>
+                  <div style={{flex:1,padding:"12px 16px",background:"#f5f5f5",borderRadius:12,textAlign:"center"}}>
+                    <div style={{fontSize:"0.72rem",fontWeight:600,color:"#594048",textTransform:"uppercase",letterSpacing:"0.03em",marginBottom:4}}>Week</div>
+                    <div style={{fontSize:"1.3rem",fontWeight:800,color:"#2c3e50"}}>{(() => { const now = new Date(); const w = `${now.getFullYear()}-W${String(Math.ceil((now.getDate() - now.getDay() + 1) / 7)).padStart(2,"0")}`; return visits?.weekly?.[w] ?? 0; })()}</div>
+                  </div>
+                </div>
               </div>
             </ChartCard>
-            <ChartCard>
+            <ChartCard className="mobile-hidden">
               <SectionTitle>Enrollment Sources</SectionTitle>
               <div style={{display:"flex",flexDirection:"column",gap:16}}>
                 {sourceData.length === 0 ? (
                   <p style={{color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:24}}>No enrollment data yet.</p>
                 ) : sourceData.map((s, i) => (
                   <div key={i}>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:"0.78rem",marginBottom:6}}><span style={{color:"#2c3e50"}}>{s.l}</span><span style={{fontWeight:700}}>{s.v}%</span></div>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:"0.78rem",marginBottom:6}}><span style={{color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0,flex:1}}>{s.l}</span><span style={{fontWeight:700,flexShrink:0,marginLeft:8}}>{s.v}%</span></div>
                     <div style={{height:8,borderRadius:4,background:"#e4e2e1",overflow:"hidden"}}>
                       <div style={{height:"100%",borderRadius:4,background:["#b50064","#0298D7","#cca800","#27AE60","#e53935","#8e44ad"][i%6],width:`${s.v}%`}} />
                     </div>
@@ -228,7 +233,7 @@ export default function AdminOverview() {
                   <span style={{fontSize:"0.7rem",color:"#999"}}>{n.createdAt ? new Date(n.createdAt.toDate ? n.createdAt.toDate() : n.createdAt).toLocaleDateString() : "Today"}</span>
                 </div>
                 <h5 style={{margin:"0 0 4px",fontWeight:700,fontSize:"0.85rem",color:"#2c3e50"}}>{n.title}</h5>
-                <p style={{margin:0,fontSize:"0.78rem",color:"#594048",lineHeight:1.4}}>{n.message}</p>
+                <p style={{margin:0,fontSize:"0.78rem",color:"#594048",lineHeight:1.4,overflowWrap:"break-word",wordBreak:"break-word"}}>{n.message}</p>
               </div>
             ))}
           </div>
@@ -239,4 +244,25 @@ export default function AdminOverview() {
       </DashboardGrid>
     </>
   );
-}
+};
+
+const GreetingRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+`;
+
+const TotalUserBox = styled.div`
+  text-align: right;
+  flex-shrink: 1;
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    text-align: left;
+    width: 100%;
+  }
+`;
