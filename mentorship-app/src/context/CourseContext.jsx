@@ -21,19 +21,23 @@ export const CourseProvider = ({ children }) => {
       if (!user?.id) return;
       const u = await getUser(user.id).catch(() => null);
       const mentorId = u?.mentorId || null;
-      const mentorCourses = mentorId ? await getCourses(mentorId).catch(() => []) : [];
-      const validTitles = new Set(mentorCourses.map(c => c.title));
       const fireEnrollments = await getEnrollments(user.id).catch(() => ({}));
-      const filtered = {};
-      for (const [title, data] of Object.entries(fireEnrollments)) {
-        if (validTitles.has(title)) {
-          filtered[title] = data;
-        } else {
-          deleteEnrollment(user.id, title).catch(() => {});
+      if (mentorId) {
+        const mentorCourses = await getCourses(mentorId).catch(() => []);
+        const validTitles = new Set(mentorCourses.map(c => c.title));
+        const filtered = {};
+        for (const [title, data] of Object.entries(fireEnrollments)) {
+          if (validTitles.has(title)) {
+            filtered[title] = data;
+          } else {
+            deleteEnrollment(user.id, title).catch(() => {});
+          }
         }
-      }
-      if (Object.keys(filtered).length > 0) {
-        setEnrolledCourses(filtered);
+        if (Object.keys(filtered).length > 0) {
+          setEnrolledCourses(filtered);
+        }
+      } else {
+        setEnrolledCourses(fireEnrollments);
       }
     })();
   }, []);
@@ -42,10 +46,10 @@ export const CourseProvider = ({ children }) => {
     const user = getStoredUser();
     if (!user?.id) return;
     setEnrollment(user.id, title, {
+      ...data,
       startedAt: data.startedAt || new Date().toISOString(),
       progress: data.progress ?? 0,
       lastTopic: data.lastTopic ?? 0,
-      completedLessons: data.completedLessons || [],
     }).catch(e => console.error("setEnrollment error:", e));
   }, []);
 
