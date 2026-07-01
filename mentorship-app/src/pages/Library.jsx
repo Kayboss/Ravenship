@@ -73,7 +73,7 @@ const FormTitle = styled.h3`
   font-size: 1.1rem;
   font-weight: 700;
   color: ${(props) => props.theme.colors.textPrimary};
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 `;
 
 const FormRow = styled.div`
@@ -115,10 +115,43 @@ const TextArea = styled.textarea`
   &:focus { outline: none; border-color: ${(props) => props.theme.colors.primary}; }
 `;
 
-const FileInput = styled.input`
+const UploadZone = styled.label`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 16px;
+  border: 2px dashed ${(p) => p.$accent || p.theme.colors.outline};
+  background: ${(p) => p.$accent ? `${p.$accent}08` : p.theme.colors.background};
+  cursor: pointer;
+  transition: all 0.2s;
   margin-bottom: 16px;
+  &:hover { border-color: ${(p) => p.$accent || p.theme.colors.primary}; background: ${(p) => p.$accent ? `${p.$accent}15` : p.theme.colors.surface}; }
+  input { display: none; }
+`;
+
+const UploadZoneIcon = styled.span`
+  font-size: 1.5rem;
+`;
+
+const UploadZoneLabel = styled.span`
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: ${(props) => props.theme.colors.textPrimary};
+`;
+
+const UploadZoneHint = styled.span`
+  font-size: 0.75rem;
   color: ${(props) => props.theme.colors.textSecondary};
-  font-family: inherit;
+`;
+
+const UploadZoneFile = styled.div`
+  font-size: 0.8rem;
+  color: ${(p) => p.$accent || p.theme.colors.primary};
+  font-weight: 600;
+  text-align: center;
 `;
 
 const SubmitBtn = styled.button`
@@ -146,6 +179,8 @@ const BookCard = styled.div`
   border-radius: 24px;
   overflow: hidden;
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
   &:hover {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     transform: translateY(-2px);
@@ -153,31 +188,51 @@ const BookCard = styled.div`
 `;
 
 const BookCover = styled.div`
-  height: 200px;
+  height: 220px;
   background: ${(p) => p.$img ? `url(${p.$img})` : `linear-gradient(135deg, ${p.theme.colors.primary}20, ${p.theme.colors.secondary}20)`};
   background-size: cover;
   background-position: center;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 3rem;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 20px;
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  > * { position: relative; z-index: 1; }
 `;
 
-const BookBody = styled.div`
-  padding: 20px;
+const CoverEmoji = styled.div`
+  font-size: 3rem;
+  text-align: center;
+  margin-bottom: auto;
+  margin-top: auto;
+  align-self: center;
 `;
 
 const BookTitle = styled.h4`
-  font-size: 1.1rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  color: ${(props) => props.theme.colors.textPrimary};
+  color: ${(p) => p.$img ? "#fff" : p.theme.colors.textPrimary};
   margin-bottom: 4px;
 `;
 
 const BookAuthor = styled.p`
   font-size: 0.85rem;
-  color: ${(props) => props.theme.colors.textSecondary};
-  margin-bottom: 8px;
+  color: ${(p) => p.$img ? "rgba(255,255,255,0.8)" : p.theme.colors.textSecondary};
+  margin-bottom: 0;
+`;
+
+const BookBody = styled.div`
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 `;
 
 const BookDesc = styled.p`
@@ -196,6 +251,7 @@ const BookMeta = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-top: auto;
 `;
 
 const FileSize = styled.span`
@@ -341,16 +397,25 @@ export const Library = () => {
         {isAdmin && showUpload && (
           <UploadForm data-aos="fade-up">
             <FormTitle>Upload a Book</FormTitle>
+            <UploadZone $accent="#006590">
+              <input type="file" accept="image/*" onChange={(e) => setForm({ ...form, coverFile: e.target.files[0] })} />
+              <UploadZoneIcon>🖼️</UploadZoneIcon>
+              <UploadZoneLabel>Featured Image</UploadZoneLabel>
+              <UploadZoneHint>Upload a cover image (appears on top of title)</UploadZoneHint>
+              {form.coverFile && <UploadZoneFile $accent="#006590">✓ {form.coverFile.name}</UploadZoneFile>}
+            </UploadZone>
             <FormRow>
               <Input placeholder="Book title *" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
               <Input placeholder="Author" value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} />
             </FormRow>
             <TextArea placeholder="Short description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-            <FileInput type="file" accept=".pdf,.epub,.mobi,.doc,.docx" onChange={(e) => setForm({ ...form, file: e.target.files[0] })} />
-            {form.file && <p style={{ fontSize: "0.8rem", color: "#594048", marginBottom: 8 }}>PDF: {form.file.name} ({formatSize(form.file.size)})</p>}
-            <FileInput type="file" accept="image/*" onChange={(e) => setForm({ ...form, coverFile: e.target.files[0] })} style={{ marginBottom: 4 }} />
-            <p style={{ fontSize: "0.75rem", color: "#594048", marginBottom: 16 }}>Optional cover image</p>
-            {form.coverFile && <p style={{ fontSize: "0.8rem", color: "#594048", marginBottom: 8 }}>Cover: {form.coverFile.name}</p>}
+            <UploadZone $accent="#b50064">
+              <input type="file" accept=".pdf,.epub,.mobi,.doc,.docx" onChange={(e) => setForm({ ...form, file: e.target.files[0] })} />
+              <UploadZoneIcon>📄</UploadZoneIcon>
+              <UploadZoneLabel>PDF File *</UploadZoneLabel>
+              <UploadZoneHint>Upload the book PDF or document</UploadZoneHint>
+              {form.file && <UploadZoneFile $accent="#b50064">✓ {form.file.name} ({formatSize(form.file.size)})</UploadZoneFile>}
+            </UploadZone>
             <SubmitBtn disabled={uploading} onClick={handleUpload}>
               {uploading ? "Uploading..." : "Upload"}
             </SubmitBtn>
@@ -366,16 +431,14 @@ export const Library = () => {
           ) : filtered.map((book, i) => (
             <BookCard key={book.id} data-aos="fade-up" data-aos-delay={i * 80}>
               <BookCover $img={book.coverUrl || undefined}>
-                {!book.coverUrl && "📕"}
+                {!book.coverUrl && <CoverEmoji>📕</CoverEmoji>}
+                {book.coverUrl && <><BookTitle $img={book.coverUrl}>{book.title}</BookTitle><BookAuthor $img={book.coverUrl}>by {book.author || "Unknown"}</BookAuthor></>}
               </BookCover>
               <BookBody>
-                <BookTitle>{book.title}</BookTitle>
-                <BookAuthor>by {book.author || "Unknown"}</BookAuthor>
+                {!book.coverUrl && <><BookTitle>{book.title}</BookTitle><BookAuthor>by {book.author || "Unknown"}</BookAuthor></>}
                 {book.description && <BookDesc>{book.description}</BookDesc>}
                 <BookMeta>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <FileSize>{formatSize(book.fileSize)}</FileSize>
-                  </div>
+                  <FileSize>{formatSize(book.fileSize)}</FileSize>
                   <div style={{ display: "flex", gap: 8 }}>
                     <DownloadBtn onClick={() => handleDownload(book)}>Download</DownloadBtn>
                     {isAdmin && <DeleteBtn onClick={() => handleDelete(book.id, book.title)}>Delete</DeleteBtn>}
