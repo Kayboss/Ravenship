@@ -11,6 +11,7 @@ export const lightTheme = {
     textPrimary: "#1b1c1c", // Deep charcoal
     textSecondary: "#594048",
     success: "#27AE60",
+    error: "#e53935",
     outline: "#e0e0e0",
   },
   spacing: {

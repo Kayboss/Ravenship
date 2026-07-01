@@ -49,6 +49,13 @@ export const uploadBookFile = async (file, bookId) => {
   return await getDownloadURL(storageRef);
 };
 
+export const uploadBookCover = async (file, bookId) => {
+  const ext = file.name.split(".").pop();
+  const storageRef = ref(storage, `library/${bookId}/cover.${ext}`);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+};
+
 export const downloadFromUrl = async (url, fileName) => {
   try {
     const response = await fetch(url);

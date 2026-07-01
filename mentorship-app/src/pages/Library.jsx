@@ -9,7 +9,7 @@ import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getBooks, addBook, deleteBook } from "../firebase/db";
-import { uploadBookFile, downloadFromUrl } from "../lib/upload";
+import { uploadBookFile, uploadBookCover, downloadFromUrl } from "../lib/upload";
 
 const Page = styled.div`
   display: flex;
@@ -222,14 +222,14 @@ const DeleteBtn = styled.button`
   padding: 8px 16px;
   border-radius: 50px;
   border: 1px solid ${(props) => props.theme.colors.error};
-  background: transparent;
+  background: ${(props) => props.theme.colors.error}10;
   color: ${(props) => props.theme.colors.error};
   font-family: inherit;
   font-weight: 600;
   font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.2s;
-  &:hover { background: ${(props) => props.theme.colors.error}; color: white; }
+  &:hover { background: ${(props) => props.theme.colors.error}; color: #fff; }
 `;
 
 const EmptyState = styled.div`
@@ -255,7 +255,7 @@ export const Library = () => {
   const [showUpload, setShowUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState(null);
-  const [form, setForm] = useState({ title: "", author: "", description: "", file: null });
+  const [form, setForm] = useState({ title: "", author: "", description: "", file: null, coverFile: null });
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
@@ -285,8 +285,13 @@ export const Library = () => {
         fileType: form.file.type,
       });
       const fileUrl = await uploadBookFile(form.file, bookId);
-      await updateDoc(doc(db, "library", bookId), { fileUrl });
-      setForm({ title: "", author: "", description: "", file: null });
+      const updateData = { fileUrl };
+      if (form.coverFile) {
+        const coverUrl = await uploadBookCover(form.coverFile, bookId);
+        updateData.coverUrl = coverUrl;
+      }
+      await updateDoc(doc(db, "library", bookId), updateData);
+      setForm({ title: "", author: "", description: "", file: null, coverFile: null });
       setShowUpload(false);
       setMsg({ text: "Book uploaded successfully!", error: false });
       loadBooks();
@@ -342,7 +347,10 @@ export const Library = () => {
             </FormRow>
             <TextArea placeholder="Short description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
             <FileInput type="file" accept=".pdf,.epub,.mobi,.doc,.docx" onChange={(e) => setForm({ ...form, file: e.target.files[0] })} />
-            {form.file && <p style={{ fontSize: "0.8rem", color: "#594048", marginBottom: 8 }}>{form.file.name} ({formatSize(form.file.size)})</p>}
+            {form.file && <p style={{ fontSize: "0.8rem", color: "#594048", marginBottom: 8 }}>PDF: {form.file.name} ({formatSize(form.file.size)})</p>}
+            <FileInput type="file" accept="image/*" onChange={(e) => setForm({ ...form, coverFile: e.target.files[0] })} style={{ marginBottom: 4 }} />
+            <p style={{ fontSize: "0.75rem", color: "#594048", marginBottom: 16 }}>Optional cover image</p>
+            {form.coverFile && <p style={{ fontSize: "0.8rem", color: "#594048", marginBottom: 8 }}>Cover: {form.coverFile.name}</p>}
             <SubmitBtn disabled={uploading} onClick={handleUpload}>
               {uploading ? "Uploading..." : "Upload"}
             </SubmitBtn>
