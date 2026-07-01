@@ -60,7 +60,7 @@ export default function AdminMentors() {
     <>
     <style>{`
       .mentor-grid{max-width:100%;overflow:hidden}
-      @media(max-width:560px){.mentor-grid{grid-template-columns:1fr !important}}
+      @media(max-width:768px){.mentor-grid{grid-template-columns:1fr !important}}
       .mentor-header{display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;overflow:hidden}
       .mentor-info{display:flex;gap:16px;align-items:center;flex:1;min-width:0;overflow:hidden}
       .mentor-meta{display:flex;gap:8px;align-items:center;flex-shrink:0}

@@ -10,6 +10,7 @@ import { CourseView } from "./pages/CourseView.jsx";
 import { Community } from "./pages/Community.jsx";
 import { Analytics } from "./pages/Analytics.jsx";
 import { Gradebook } from "./pages/Gradebook.jsx";
+import { Library } from "./pages/Library.jsx";
 import { Settings } from "./pages/Settings.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import AdminOverview from "./pages/admin/AdminOverview.jsx";
@@ -139,6 +140,7 @@ export const App = () => (
             <Route path="errors" element={<AdminErrors />} />
             <Route path="analytics" element={<AdminAnalytics />} />
           </Route>
+          <Route path="/dashboard/:role/library" element={<AuthGuardedRoute><Library /></AuthGuardedRoute>} />
           <Route path="/dashboard/:role/help" element={<AuthGuardedRoute><HelpCenter /></AuthGuardedRoute>} />
           <Route path="/dashboard/:role/counselling-request" element={<AuthGuardedRoute><CounsellingRequest /></AuthGuardedRoute>} />
           <Route path="/dashboard/:role/sponsorship-request" element={<AuthGuardedRoute><SponsorshipRequest /></AuthGuardedRoute>} />

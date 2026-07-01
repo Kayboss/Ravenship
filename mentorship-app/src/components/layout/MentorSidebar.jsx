@@ -149,6 +149,7 @@ const navItems = [
   { label: "Submissions", path: "/dashboard/mentor/submissions", icon: "📂" },
   { label: "Gradebook",   path: "/dashboard/mentor/gradebook",   icon: "📋" },
   { label: "Community",   path: "/dashboard/mentor/community",   icon: "💬" },
+  { label: "Library",     path: "/dashboard/mentor/library",      icon: "📖" },
   { label: "Help Center", path: "/dashboard/mentor/help",        icon: "❓" },
 ];
 

@@ -239,7 +239,7 @@ export const CourseView = () => {
   const navigate = useNavigate();
   const { enrolledCourses, updateProgress, saveProgress } = useCourses();
   const courseName = decodeURIComponent(title);
-  const isMentor = role === "mentor";
+  const isMentor = role === "mentor" || role === "admin";
 
   const [courseData, setCourseData] = useState({ emoji: "📚", color: "#006590", resources: [], lessons: { "Introduction": { desc: "Begin your learning journey.", video: "🎬", videoUrl: "", sections: [{ type: "text", content: "Welcome to the course!" }, { type: "list", items: ["Overview", "Setup"] }] } } });
   const [courseTitle, setCourseTitle] = useState(courseName);
@@ -278,7 +278,16 @@ export const CourseView = () => {
       if (match) {
         setFirestoreCourseId(match.id);
         if (match._title) setCourseTitle(match._title);
-        if (match.lessonContent) setCourseData(prev => ({ ...prev, lessons: match.lessonContent }));
+        if (match.lessonContent) {
+          if (Array.isArray(match.syllabus) && match.syllabus.length > 0) {
+            const ordered = {};
+            match.syllabus.forEach(key => { if (match.lessonContent[key]) ordered[key] = match.lessonContent[key]; });
+            Object.keys(match.lessonContent).forEach(key => { if (!ordered[key]) ordered[key] = match.lessonContent[key]; });
+            setCourseData(prev => ({ ...prev, lessons: ordered }));
+          } else {
+            setCourseData(prev => ({ ...prev, lessons: match.lessonContent }));
+          }
+        }
         if (match.featuredImage) setCourseData(prev => ({ ...prev, featuredImage: match.featuredImage }));
         if (match.emoji) setCourseData(prev => ({ ...prev, emoji: match.emoji }));
         if (match.color) setCourseData(prev => ({ ...prev, color: match.color }));
@@ -304,6 +313,13 @@ export const CourseView = () => {
     }
   }, [enrollment.lastTopic, topicKeys.length]);
 
+  // Reset activeTopic when lessons change and current topic no longer exists
+  useEffect(() => {
+    if (!courseData.lessons[activeTopic] && topicKeys.length > 0) {
+      setActiveTopic(topicKeys[0]);
+    }
+  }, [courseData.lessons]);
+
   // Sync completed lessons from enrollment data
   useEffect(() => {
     if (enrollment.completedLessons) {
@@ -319,7 +335,8 @@ export const CourseView = () => {
     }
   };
 
-  const lesson = courseData.lessons[activeTopic];
+  const safeTopic = courseData.lessons[activeTopic] ? activeTopic : (topicKeys[0] || activeTopic);
+  const lesson = courseData.lessons[safeTopic];
   const currentIdx = topicKeys.indexOf(activeTopic);
   const progress = enrollment.progress || 0;
 
@@ -394,7 +411,7 @@ export const CourseView = () => {
       if (firestoreCourseId) {
         deleteCourseFromDb(firestoreCourseId).catch(e => console.error("deleteCourseFromDb error:", e));
       }
-      navigate(`/dashboard/${role}/my-courses`);
+      navigate(role === "admin" ? "/dashboard/admin/courses" : `/dashboard/${role}/my-courses`);
     }
   };
 
@@ -446,6 +463,17 @@ export const CourseView = () => {
                   s.type === "text" ? <p key={i}>{s.content}</p> : <ul key={i}>{s.items.map((item, j) => <li key={j}>{item}</li>)}</ul>
                 )}
               </LessonContent>
+              {currentIdx === topicKeys.length - 1 && completedLessons.length >= topicKeys.length ? (
+                <div style={{ textAlign: "center", margin: "32px 0", padding: "40px 24px", borderRadius: 20, background: "linear-gradient(135deg,#e8f5e9,#c8e6c9)" }}>
+                  <div style={{ fontSize: "3rem", marginBottom: 12 }}>🎉</div>
+                  <h3 style={{ margin: "0 0 8px", fontSize: "1.3rem", fontWeight: 800, color: "#2e7d32" }}>Congratulations!</h3>
+                  <p style={{ margin: "0 0 24px", fontSize: "0.95rem", color: "#1b5e20" }}>You've completed <strong>{courseTitle}</strong>! 🚀</p>
+                  <button onClick={() => navigate(`/dashboard/${role}/my-courses`)} style={{ padding: "12px 32px", borderRadius: 50, border: "none", background: "#2e7d32", color: "#fff", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer", fontFamily: "inherit" }}>
+                    ← Back to My Courses
+                  </button>
+                </div>
+              ) : (
+                <>
               <div style={{ textAlign: "center", margin: "24px 0" }}>
                 {completedLessons.includes(activeTopic) ? (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px", borderRadius: 50, background: "#e8f5e9", color: "#2e7d32", fontWeight: 700, fontSize: "0.9rem" }}>
@@ -469,6 +497,8 @@ export const CourseView = () => {
                 <NavBtn disabled={currentIdx === 0} onClick={() => handleTopicChange(topicKeys[currentIdx - 1])}>← Previous</NavBtn>
                 <NavBtn $primary disabled={currentIdx === topicKeys.length - 1} onClick={() => handleTopicChange(topicKeys[currentIdx + 1])}>Next Lesson →</NavBtn>
               </NavRow>
+              </>
+              )}
             </ContentArea>
           </Layout>
         </Main>
@@ -481,7 +511,7 @@ export const CourseView = () => {
       <SidebarByRole />
       <Main>
         <TopBar searchPlaceholder="Search lessons..." />
-        <BackLink onClick={() => navigate(`/dashboard/${role}/my-courses`)}>← Back to My Programs</BackLink>
+        <BackLink onClick={() => navigate(role === "admin" ? "/dashboard/admin/courses" : `/dashboard/${role}/my-courses`)}>← Back to {role === "admin" ? "Admin Courses" : "My Programs"}</BackLink>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <div>

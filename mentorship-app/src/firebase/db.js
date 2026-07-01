@@ -143,10 +143,28 @@ export const deleteCourse = async (id) => {
 };
 
 export const enrollMentee = async (courseId, menteeId) => {
+  const [courseSnap, menteeSnap] = await Promise.all([
+    getDoc(doc(db, "courses", courseId)),
+    getDoc(doc(db, "users", menteeId))
+  ]);
+  if (!courseSnap.exists()) throw new Error("Course not found");
+  if (!menteeSnap.exists()) throw new Error("Mentee not found");
+  const course = courseSnap.data();
+  const mentee = menteeSnap.data();
+  if (mentee.mentorId && course.createdBy && mentee.mentorId !== course.createdBy) {
+    throw new Error("You can only enroll in courses from your assigned mentor");
+  }
   await updateDoc(doc(db, "courses", courseId), {
     enrolledMentees: arrayUnion(menteeId)
   });
   logActivity("Mentee enrolled", { detail: `Mentee ${menteeId} enrolled in course ${courseId}`, courseId, menteeId });
+};
+
+export const unenrollMentee = async (courseId, menteeId) => {
+  await updateDoc(doc(db, "courses", courseId), {
+    enrolledMentees: arrayRemove(menteeId)
+  });
+  logActivity("Mentee unenrolled", { detail: `Mentee ${menteeId} unenrolled from course ${courseId}`, courseId, menteeId });
 };
 
 // ── Enrollments (course progress per user) ──
@@ -764,6 +782,26 @@ export const deleteSponsorshipRequest = async (id) => {
   await deleteDoc(doc(db, "sponsorshipRequests", id));
 };
 
+// ── Library / Books ──
+
+export const getBooks = async () => {
+  const snap = await getDocs(collection(db, "library"));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+};
+
+export const addBook = async (data) => {
+  const ref = await addDoc(collection(db, "library"), {
+    ...sanitizeWrite(data), createdAt: serverTimestamp()
+  });
+  logActivity("Book added", { detail: `Book "${data.title}" added to library`, bookId: ref.id });
+  return ref.id;
+};
+
+export const deleteBook = async (id) => {
+  await deleteDoc(doc(db, "library", id));
+  logActivity("Book deleted", { detail: `Book ${id} deleted from library` });
+};
+
 // ── Site Visits ──
 
 const VISIT_COOLDOWN = 30 * 60 * 1000;
@@ -784,7 +822,10 @@ export const trackSiteVisit = async () => {
     const snap = await getDoc(ref);
     const now = new Date();
     const dayKey = now.toISOString().slice(0, 10);
-    const weekKey = `${now.getFullYear()}-W${String(Math.ceil((now.getDate() - now.getDay() + 1) / 7)).padStart(2, "0")}`;
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const daysSinceStart = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
+    const weekNum = Math.ceil((daysSinceStart + startOfYear.getDay() + 1) / 7);
+    const weekKey = `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
     if (!snap.exists()) {
       await setDoc(ref, {
         total: 1,

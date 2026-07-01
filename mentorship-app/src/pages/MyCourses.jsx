@@ -712,6 +712,7 @@ export const MyCourses = () => {
   const mentorName = currentUser?.name || "You";
 
   const [coursesList, setCoursesList] = useState([]);
+  const [hasMentor, setHasMentor] = useState(true);
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -728,11 +729,13 @@ export const MyCourses = () => {
     const load = async () => {
       try {
         let mentorFilter = null;
+        let hasMentor = true;
         if (isMentor && currentUser?.id) {
           mentorFilter = currentUser.id;
         } else if (isMentee && currentUser?.id) {
           const u = await getUser(currentUser.id);
-          if (u?.mentorId) mentorFilter = u.mentorId;
+          if (u?.mentorId) { mentorFilter = u.mentorId; }
+          else { setHasMentor(false); setCoursesList([]); return; }
         }
         const allUsers = await getUsers();
         const userMap = Object.fromEntries(allUsers.map(u => [u.id, u]));
@@ -885,7 +888,7 @@ export const MyCourses = () => {
           </div>
         )}
         <Grid>
-          {filteredCourses.length === 0 && searchTerm ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:48}}>No courses match "{searchTerm}".</p> : filteredCourses.map((c, i) => isMentor ? (
+          {isMentee && !hasMentor ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.9rem",textAlign:"center",padding:48}}>You don't have a mentor assigned yet. Please contact an administrator.</p> : filteredCourses.length === 0 && searchTerm ? <p style={{gridColumn:"1/-1",color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:48}}>No courses match "{searchTerm}".</p> : filteredCourses.map((c, i) => isMentor ? (
             <Card key={i} data-aos="fade-up" data-aos-delay={i * 50} style={{ position: "relative", outline: selectedIds.includes(c.id || c.title) ? "2px solid #b50064" : "none" }}>
               <label style={{ position: "absolute", top: 12, left: 12, zIndex: 2, cursor: "pointer" }} onClick={(e) => e.stopPropagation()}>
                 <input id={`myCourses-checkbox-${c.id || c.title}`} name={`course-${c.id || c.title}`} type="checkbox" checked={selectedIds.includes(c.id || c.title)} onChange={(e) => {
@@ -941,11 +944,15 @@ export const MyCourses = () => {
               {enrolledCourses[c.title] && (
                 <>
                   <ProgressRow>
-                    <span style={{ color: "#006590", fontWeight: 600 }}>{enrolledCourses[c.title].progress}% Complete</span>
+                    {enrolledCourses[c.title].completed ? (
+                      <span style={{ color: "#2e7d32", fontWeight: 700 }}>🎉 Completed</span>
+                    ) : (
+                      <span style={{ color: "#006590", fontWeight: 600 }}>{enrolledCourses[c.title].progress}% Complete</span>
+                    )}
                     <AssignmentCount>{(assignmentCounts[c.title] || 0)} assignment{(assignmentCounts[c.title] || 0) > 1 ? "s" : ""}</AssignmentCount>
                   </ProgressRow>
                   <ProgressBar>
-                    <ProgressFill $w={enrolledCourses[c.title].progress} />
+                    <ProgressFill $w={enrolledCourses[c.title].completed ? 100 : enrolledCourses[c.title].progress} />
                   </ProgressBar>
                 </>
               )}
@@ -1016,7 +1023,7 @@ export const MyCourses = () => {
 
               {enrolledCourses[selected.title] && (
                 <p style={{ textAlign: "center", marginBottom: 16, fontSize: "0.85rem", color: "#594048" }}>
-                  📖 {enrolledCourses[selected.title].progress}% complete
+                  {enrolledCourses[selected.title].completed ? "🎉 Completed!" : `📖 ${enrolledCourses[selected.title].progress}% complete`}
                 </p>
               )}
               {enrolledCourses[selected.title] ? (

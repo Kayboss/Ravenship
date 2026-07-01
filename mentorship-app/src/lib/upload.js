@@ -1,3 +1,6 @@
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "../firebase/config";
+
 export const fileToBase64 = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -33,3 +36,30 @@ export const toBase64ImageWithProgress = (file, onProgress) =>
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+
+export const uploadSubmissionFile = async (file, submissionId) => {
+  const storageRef = ref(storage, `submissions/${submissionId}/${file.name}`);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+};
+
+export const uploadBookFile = async (file, bookId) => {
+  const storageRef = ref(storage, `library/${bookId}/${file.name}`);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+};
+
+export const downloadFromUrl = async (url, fileName) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    window.open(url, "_blank");
+  }
+};

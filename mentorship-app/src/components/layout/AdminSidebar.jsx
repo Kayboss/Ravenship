@@ -151,6 +151,7 @@ const navItems = [
   { label: "Community",     path: "/dashboard/admin/community",    icon: "👥" },
   { label: "Notifications", path: "/dashboard/admin/notifications",icon: "🔔" },
   { label: "Mentorship",    path: "/dashboard/admin/mentorship",   icon: "🔗" },
+  { label: "Library",       path: "/dashboard/admin/library",      icon: "📖" },
   { label: "Help Center",   path: "/dashboard/admin/help",         icon: "❓" },
   { label: "Activity Log",  path: "/dashboard/admin/activity",     icon: "📊" },
   { label: "Error Log",     path: "/dashboard/admin/errors",       icon: "⚠️" },

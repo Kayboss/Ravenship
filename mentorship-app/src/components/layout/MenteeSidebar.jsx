@@ -147,6 +147,7 @@ const navItems = [
   { label: "Assignments", path: "/dashboard/mentee/assignments", icon: "📝" },
   { label: "Submissions", path: "/dashboard/mentee/submissions", icon: "📂" },
   { label: "Community",   path: "/dashboard/mentee/community",   icon: "💬" },
+  { label: "Library",     path: "/dashboard/mentee/library",      icon: "📖" },
   { label: "Help Center", path: "/dashboard/mentee/help",        icon: "❓" },
 ];
 

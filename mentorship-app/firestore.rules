@@ -167,6 +167,20 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Library ──
+    match /library/{bookId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Site analytics ──
+    match /analytics/{doc} {
+      allow read: if isAdmin();
+      allow create, update: if isAuthenticated();
+    }
+
     // ── Deny everything else ──
     match /{document=**} {
       allow read, write: if false;

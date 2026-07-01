@@ -69,9 +69,12 @@ export const CourseProvider = ({ children }) => {
 
   const saveProgress = useCallback((title, topicIndex, completedLessons, totalTopics) => {
     const prog = totalTopics > 0 ? Math.round((completedLessons.length / totalTopics) * 100) : 0;
+    const completed = totalTopics > 0 && completedLessons.length >= totalTopics;
     setEnrolledCourses((prev) => {
       const current = prev[title] || {};
       const entry = { ...current, progress: prog, lastTopic: topicIndex, completedLessons };
+      if (completed) { entry.completed = true; entry.completedAt = new Date().toISOString(); }
+      else { delete entry.completed; delete entry.completedAt; }
       syncToFirestore(title, entry);
       return { ...prev, [title]: entry };
     });

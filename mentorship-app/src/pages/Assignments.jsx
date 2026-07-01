@@ -7,6 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getUser, getCourses, getAssignments, addAssignment, updateAssignment, deleteAssignment, addSubmission } from "../firebase/db";
+import { uploadSubmissionFile } from "../lib/upload";
 import DOMPurify from "dompurify";
 
 const Page = styled.div`
@@ -524,7 +525,7 @@ const truncateHtml = (html, wordLimit) => {
 
 export const Assignments = () => {
   const { role } = useParams();
-  const isMentor = role === "mentor";
+  const isMentor = role === "mentor" || role === "admin";
   const isMentee = role === "mentee";
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -555,7 +556,12 @@ export const Assignments = () => {
     const currentUser = getStoredUser();
     const load = async () => {
       try {
-        if (isMentor && currentUser?.id) {
+        if (currentUser?.id && role === "admin") {
+          const c = await getCourses();
+          if (Array.isArray(c)) setCourses(c);
+          const d = await getAssignments();
+          if (Array.isArray(d)) setAssignments(d);
+        } else if (isMentor && currentUser?.id) {
           const c = await getCourses(currentUser.id);
           if (Array.isArray(c)) setCourses(c);
           const d = await getAssignments(currentUser.id);
@@ -579,6 +585,7 @@ export const Assignments = () => {
 
   const currentUser = getStoredUser();
   const mentorFiltered = (() => {
+    if (role === "admin") return assignments;
     if (isMentor && currentUser?.id) return assignments.filter(a => a.mentorId === currentUser.id);
     if (isMentee && menteeMentorId) return assignments.filter(a => a.mentorId === menteeMentorId);
     return assignments;
@@ -775,7 +782,7 @@ export const Assignments = () => {
 
         {courseFilter && (
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <BackBtn onClick={() => { clearCourseFilter(); navigate(`/dashboard/${role}/my-courses`); }}>
+            <BackBtn onClick={() => { clearCourseFilter(); navigate(role === "admin" ? "/dashboard/admin/courses" : `/dashboard/${role}/my-courses`); }}>
               ← Back to Courses
             </BackBtn>
             <CourseFilterTag>
@@ -904,12 +911,18 @@ export const Assignments = () => {
                   <button onClick={async () => {
                     const f = document.getElementById(`file-${a.id}`).files?.[0];
                     if (!f) return alert("Please select a file");
+                    if (f.size > 5000000) { alert("File too large. Maximum size is 5MB."); return; }
+                    let fileUrl = "";
+                    try {
+                      fileUrl = await uploadSubmissionFile(f, Date.now().toString());
+                    } catch { alert("File upload failed. Try again."); return; }
                     const u = getStoredUser();
                     const subData = {
                       assignmentId: a.id,
                       assignmentTitle: a.title,
                       course: a.course,
                       fileName: f.name,
+                      fileUrl: fileUrl,
                       fileSize: (f.size / 1024).toFixed(0) + " KB",
                       menteeId: u?.id || null,
                       menteeName: u?.name || "Unknown",

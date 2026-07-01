@@ -7,7 +7,8 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getSubmissions, addSubmission, updateSubmission, getAssignments, getCourses } from "../firebase/db";
+import { getSubmissions, addSubmission, updateSubmission, getAssignments, getCourses, getMenteesByMentor } from "../firebase/db";
+import { uploadSubmissionFile, downloadFromUrl } from "../lib/upload";
 
 const Page = styled.div`
   display: flex;
@@ -252,7 +253,7 @@ const PreviewClose = styled.button`
 
 export const Submissions = () => {
   const { role } = useParams();
-  const isMentor = role === "mentor";
+  const isMentor = role === "mentor" || role === "admin";
   const isMentee = role === "mentee";
   const { enrolledCourses } = useCourses();
   const [submissions, setSubmissions] = useState([]);
@@ -260,6 +261,7 @@ export const Submissions = () => {
   const [drag, setDrag] = useState(false);
   const [form, setForm] = useState({ title: "", course: "" });
   const [fileName, setFileName] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [gradeTarget, setGradeTarget] = useState(null);
   const [gradeScore, setGradeScore] = useState("");
@@ -311,13 +313,26 @@ export const Submissions = () => {
       setAcceptedAssignments(acc);
     }).catch(e => console.error("getAssignments error:", e));
 
-    const filter = isMentee ? { menteeId: currentUser.id } : {};
-    getSubmissions(filter).then(d => { if (Array.isArray(d)) setSubmissions(d); }).catch(e => console.error("getSubmissions error:", e));
+    if (isMentor && currentUser?.id && role !== "admin") {
+      getMenteesByMentor(currentUser.id).then(mentees => {
+        const menteeIds = new Set(mentees.map(m => m.id));
+        getSubmissions().then(d => {
+          if (Array.isArray(d)) setSubmissions(d.filter(s => menteeIds.has(s.menteeId)));
+        }).catch(e => console.error("getSubmissions error:", e));
+      }).catch(e => console.error("getMenteesByMentor error:", e));
+    } else {
+      const filter = isMentee ? { menteeId: currentUser.id } : {};
+      getSubmissions(filter).then(d => { if (Array.isArray(d)) setSubmissions(d); }).catch(e => console.error("getSubmissions error:", e));
+    }
   }, [authReady]);
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
-    if (file) setFileName(file.name);
+    if (file) {
+      if (file.size > 5000000) { alert("File too large. Maximum size is 5MB."); return; }
+      setFileName(file.name);
+      setSelectedFile(file);
+    }
   };
 
   const handleAssignmentSelect = (value) => {
@@ -328,13 +343,21 @@ export const Submissions = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !fileName) return;
+    if (!selectedFile) { alert("Please select a file first"); return; }
     setSubmitting(true);
     const currentUser = getStoredUser();
+    const tempId = Date.now().toString();
+    let fileUrl = "";
+    try {
+      fileUrl = await uploadSubmissionFile(selectedFile, tempId);
+    } catch (e) { console.error("Upload failed:", e); alert("File upload failed. Try again."); setSubmitting(false); return; }
+    const sizeStr = selectedFile.size < 1024 ? "<1 KB" : ((selectedFile.size / 1024).toFixed(0) + " KB");
     const newSub = {
       title: form.title,
       course: form.course || "General",
       file: fileName,
-      size: "~1.2 MB",
+      fileUrl: fileUrl,
+      size: sizeStr,
       date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       color: "#b50064",
       icon: "📄",
@@ -349,6 +372,7 @@ export const Submissions = () => {
     setSubmissions([newSub, ...submissions]);
     setForm({ title: "", course: "" });
     setFileName("");
+    setSelectedFile(null);
     setSubmitting(false);
   };
 
@@ -370,13 +394,11 @@ export const Submissions = () => {
   const handlePreview = (sub) => setPreview(sub);
 
   const handleDownload = (sub) => {
-    const blob = new Blob([`Simulated file content for: ${sub.file}`], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = sub.file;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (sub.fileUrl) {
+      downloadFromUrl(sub.fileUrl, sub.file);
+    } else {
+      alert("No file available for this submission");
+    }
   };
 
     const q = searchTerm.toLowerCase();
@@ -433,7 +455,7 @@ export const Submissions = () => {
                 $drag={drag}
                 onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
                 onDragLeave={() => setDrag(false)}
-                onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) setFileName(f.name); }}
+                onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) { if (f.size > 5000000) { alert("File too large. Maximum size is 5MB."); return; } setFileName(f.name); setSelectedFile(f); } }}
                 onClick={() => document.getElementById("file-input").click()}
               >
                 <input id="file-input" type="file" style={{ display: "none" }} onChange={handleFile} />

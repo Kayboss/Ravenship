@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser } from "../../firebase/db";
+import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser, unenrollMentee } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, BioModal } from "./adminStyles";
 
@@ -58,7 +58,7 @@ export default function AdminMentees() {
     <>
     <style>{`
       .mentee-grid{max-width:100%;overflow:hidden}
-      @media(max-width:560px){.mentee-grid{grid-template-columns:1fr !important}}
+      @media(max-width:768px){.mentee-grid{grid-template-columns:1fr !important}}
       .mentee-header{display:flex;justify-content:space-between;align-items:flex-start;cursor:pointer;overflow:hidden}
       .mentee-info{display:flex;gap:16px;align-items:center;flex:1;min-width:0;overflow:hidden}
       .mentee-meta{display:flex;gap:8px;align-items:center;flex-shrink:0}
@@ -128,6 +128,7 @@ export default function AdminMentees() {
                           <div style={{padding:"12px 16px",borderTop:"1px solid #e0e0e0"}}>
                             <p style={{fontSize:"0.8rem",fontWeight:600,color:"#2c3e50",marginBottom:6}}>Course Details</p>
                             <p style={{fontSize:"0.78rem",color:"#594048"}}>Instructor: {c.instructor} · Level: {c.level} · Duration: {c.duration}</p>
+                            <button onClick={async () => { if (confirm(`Remove ${u.name} from "${c.title}"?`)) { try { await unenrollMentee(c.id, u.id); setExpandedCourse(null); } catch (e) { alert(e.message); } } }} style={{marginTop:8,padding:"6px 14px",borderRadius:8,border:"1px solid #e53935",background:"transparent",color:"#e53935",fontFamily:"inherit",fontWeight:600,fontSize:"0.78rem",cursor:"pointer"}}>Unenroll</button>
                           </div>
                         )}
                       </div>
