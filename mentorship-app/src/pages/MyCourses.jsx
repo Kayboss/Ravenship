@@ -743,8 +743,11 @@ export const MyCourses = () => {
         const userMap = Object.fromEntries(allUsers.map(u => [u.id, u]));
         const firestoreCourses = await getCourses(mentorFilter);
         const allAssignments = await getAssignments(mentorFilter);
-        const enrollmentSnap = await getDocs(collection(db, "enrollments"));
-        const enrollmentList = enrollmentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let enrollmentList = [];
+        try {
+          const enrollmentSnap = await getDocs(collection(db, "enrollments"));
+          enrollmentList = enrollmentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) { console.warn("enrollments fetch skipped:", e.message); }
         const counts = {};
         for (const a of allAssignments) {
           if (a.course) counts[a.course] = (counts[a.course] || 0) + 1;
