@@ -4,9 +4,9 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { useNavigate } from "react-router-dom";
 import { getStoredUser } from "../../firebase/auth";
-import { getUsers, getAnnouncements, getAnalytics, getSubmissions, getSiteVisits } from "../../firebase/db";
+import { getUsers, getAnnouncements, getAnalytics, getSubmissions, getSiteVisits, getCourses } from "../../firebase/db";
 import { db } from "../../firebase/config";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, onSnapshot } from "firebase/firestore";
 import {
   Card, CardTitle, KpiGrid, KpiCard, KpiIcon, KpiValue, KpiLabel, KpiTrend,
   DashboardGrid, UserTable, UTh, UTd, URow, RoleBadge, StatusDot,
@@ -16,6 +16,7 @@ import {
 export default function AdminOverview() {
   const [data, setData] = useState(null);
   const [users, setUsers] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [notifs, setNotifs] = useState([]);
   const [roleFilter, setRoleFilter] = useState("all");
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ export default function AdminOverview() {
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
     getAnalytics().then(d => setData(d)).catch(e => console.error("getAnalytics error:", e));
-    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => !u.deleted) : [])).catch(e => console.error("getUsers error:", e));
+    getSiteVisits().then(d => setVisits(d)).catch(e => console.error("getSiteVisits error:", e));
     Promise.all([
       getAnnouncements(),
       getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
@@ -39,13 +40,21 @@ export default function AdminOverview() {
       });
       setNotifs(merged);
     }).catch(e => console.error("getAnnouncements/notifications error:", e));
-    getSiteVisits().then(d => setVisits(d)).catch(e => console.error("getSiteVisits error:", e));
     getUsers().then(allUsers => {
       const cities = {};
       allUsers.forEach(u => { const c = u.city || "Unknown"; cities[c] = (cities[c]||0)+1; });
       const total = allUsers.length || 1;
       setSourceData(Object.entries(cities).map(([l, v]) => ({ l, v: Math.round((v/total)*100), c: "#b50064" })));
     }).catch(e => console.error("getUsers/sourceData error:", e));
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => !u.deleted);
+      setUsers(all);
+      getAnalytics().then(d => setData(d)).catch(() => {});
+    }, (e) => console.error("users onSnapshot error:", e));
+    const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
+      setCourses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (e) => console.error("courses onSnapshot error:", e));
+    return () => { unsubUsers(); unsubCourses(); };
   }, []);
   const filteredUsers = roleFilter === "all" ? users : users.filter(u => u.role === roleFilter);
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Good morning"; if (h < 18) return "Good afternoon"; return "Good evening"; })();
