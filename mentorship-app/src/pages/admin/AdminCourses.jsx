@@ -3,6 +3,8 @@ import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { useNavigate } from "react-router-dom";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../firebase/config";
 import { getCourses, getUsers, addCourse, updateCourse, deleteCourse, logActivity } from "../../firebase/db";
 import { Badge, SectionBox, ModalOverlay, ModalBox, ModalTitle, Input, Textarea, Select, Btn } from "./adminStyles";
 
@@ -387,6 +389,7 @@ export default function AdminCourses() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
   const [userMap, setUserMap] = useState({});
+  const [enrollmentMap, setEnrollmentMap] = useState([]);
   const [form, setForm] = useState({ title:"", desc:"", badge:"Design", emoji:"🎨", duration:"", level:"Beginner", featuredImage:"", mentorId:"" });
 
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
@@ -406,6 +409,9 @@ export default function AdminCourses() {
         const users = Array.isArray(d) ? d : [];
         setMentors(users.filter(u => u.role === "mentor" && !u.deleted));
         setUserMap(Object.fromEntries(users.map(u => [u.id, u])));
+      }),
+      getDocs(collection(db, "enrollments")).then(snap => {
+        setEnrollmentMap(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       })
     ]).catch(e => console.error("load error:", e));
   };
@@ -481,7 +487,9 @@ export default function AdminCourses() {
   };
 
   const confirmDelete = (course) => {
-    const count = (course.enrolledMentees || []).length;
+    const fromArray = (course.enrolledMentees || []).length;
+    const fromEnrollments = enrollmentMap.filter(e => e.courseTitle === course.title).length;
+    const count = Math.max(fromArray, fromEnrollments);
     if (count > 0) { alert(`Cannot delete "${course.title}" — ${count} mentee(s) are enrolled.`); return; }
     setDeleteTarget(course);
   };
@@ -504,12 +512,16 @@ export default function AdminCourses() {
     <>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <h3 style={{margin:0,fontSize:"1.2rem",fontWeight:700,color:"#2c3e50"}}>All Courses ({courses.length})</h3>
+        <button onClick={loadData} style={{padding:"8px 16px",borderRadius:8,border:"1px solid #b50064",background:"#fff",color:"#b50064",fontWeight:600,fontSize:"0.8rem",cursor:"pointer",fontFamily:"inherit"}}>🔄 Refresh</button>
       </div>
 
       <Grid>
         {courses.map((c, i) => {
-          const count = (c.enrolledMentees || []).length;
-          const initials = (c.enrolledMentees || []).map(id => {
+          const fromArray = c.enrolledMentees || [];
+          const fromEnrollments = enrollmentMap.filter(e => e.courseTitle === c.title).map(e => e.userId);
+          const allIds = [...new Set([...fromArray, ...fromEnrollments])];
+          const count = allIds.length;
+          const initials = allIds.map(id => {
             const u = userMap[id];
             return u?.name ? u.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) : null;
           }).filter(Boolean);
