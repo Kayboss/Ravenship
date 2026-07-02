@@ -512,7 +512,6 @@ export default function AdminCourses() {
     <>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <h3 style={{margin:0,fontSize:"1.2rem",fontWeight:700,color:"#2c3e50"}}>All Courses ({courses.length})</h3>
-        <button onClick={loadData} style={{padding:"8px 16px",borderRadius:8,border:"1px solid #b50064",background:"#fff",color:"#b50064",fontWeight:600,fontSize:"0.8rem",cursor:"pointer",fontFamily:"inherit"}}>🔄 Refresh</button>
       </div>
 
       <Grid>

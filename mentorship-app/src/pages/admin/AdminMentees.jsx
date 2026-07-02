@@ -83,9 +83,6 @@ export default function AdminMentees() {
       }
     `}</style>
     <div className="mentee-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-      <div style={{gridColumn:"1/-1",display:"flex",justifyContent:"flex-end"}}>
-        <button onClick={loadData} style={{padding:"8px 16px",borderRadius:8,border:"1px solid #b50064",background:"#fff",color:"#b50064",fontWeight:600,fontSize:"0.8rem",cursor:"pointer",fontFamily:"inherit"}}>🔄 Refresh</button>
-      </div>
       {verifyMsg && <p style={{gridColumn:"1/-1",fontSize:"0.85rem",color:"#e53935",fontWeight:600,margin:0}}>{verifyMsg}</p>}
       {users.length === 0 ? <p style={{ gridColumn:"1/-1",color: "#594048", fontSize: "0.9rem" }}>No mentees registered.</p> : users.map((u) => {
         const enrolledTitles = enrollmentMap.filter(e => e.userId === u.id).map(e => e.courseTitle);
