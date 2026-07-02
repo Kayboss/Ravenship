@@ -6,7 +6,7 @@ import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getUsers, getCourses, getAllGradebook, updateGradebook, getSubmissions } from "../firebase/db";
+import { getUsers, getCourses, getAllGradebook, updateGradebook, getSubmissions, getMenteesByMentor } from "../firebase/db";
 
 const Page = styled.div`
   display: flex;
@@ -253,12 +253,20 @@ export const Gradebook = () => {
   useEffect(() => {
     if (!authReady) return;
     AOS.init({ duration: 800, once: true, offset: 50 });
-    Promise.all([getAllGradebook(), getUsers(), getCourses()])
-      .then(([gradebooks, users, courses]) => {
+    const user = getStoredUser();
+    const load = async () => {
+      try {
+        const [allGradebooks, users, courses] = await Promise.all([getAllGradebook(), getUsers(), getCourses()]);
+        let filteredGradebooks = allGradebooks;
+        if (role === "mentor" && user?.id) {
+          const mentees = await getMenteesByMentor(user.id).catch(() => []);
+          const menteeIds = new Set(mentees.map(m => m.id));
+          filteredGradebooks = allGradebooks.filter(gb => menteeIds.has(gb.menteeId));
+        }
         const userMap = {};
         users.forEach(u => { userMap[u.id] = u; });
         const menteeMap = {};
-        gradebooks.forEach(gb => {
+        filteredGradebooks.forEach(gb => {
           const menteeId = gb.menteeId;
           if (!menteeMap[menteeId]) {
             const user = userMap[menteeId] || {};
@@ -284,8 +292,9 @@ export const Gradebook = () => {
           m.avg = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
         });
         setMentees(result);
-      })
-      .catch(e => console.error("getGradebook error:", e));
+      } catch (e) { console.error("getGradebook error:", e); }
+    };
+    load();
   }, [authReady]);
 
   const allAssignments = mentees.length > 0
