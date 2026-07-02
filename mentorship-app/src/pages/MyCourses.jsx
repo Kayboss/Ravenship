@@ -3,6 +3,8 @@ import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { useParams, useNavigate } from "react-router-dom";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase/config";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
@@ -741,6 +743,8 @@ export const MyCourses = () => {
         const userMap = Object.fromEntries(allUsers.map(u => [u.id, u]));
         const firestoreCourses = await getCourses(mentorFilter);
         const allAssignments = await getAssignments(mentorFilter);
+        const enrollmentSnap = await getDocs(collection(db, "enrollments"));
+        const enrollmentList = enrollmentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const counts = {};
         for (const a of allAssignments) {
           if (a.course) counts[a.course] = (counts[a.course] || 0) + 1;
@@ -750,11 +754,14 @@ export const MyCourses = () => {
           const lessonTopics = typeof c.lessonContent === 'object' && c.lessonContent !== null
             ? Object.keys(c.lessonContent)
             : (Array.isArray(c.syllabus) ? c.syllabus : []);
+          const fromArray = c.enrolledMentees || [];
+          const fromEnrollments = enrollmentList.filter(e => e.courseTitle === c.title).map(e => e.userId);
+          const allIds = [...new Set([...fromArray, ...fromEnrollments])];
           return {
             ...c,
             syllabus: lessonTopics,
-            enrolledMentees: c.enrolledMentees || [],
-            menteeInitials: (c.enrolledMentees || []).map(id => {
+            enrolledMentees: allIds,
+            menteeInitials: allIds.map(id => {
               const u = userMap[id];
               return u?.name ? u.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2) : null;
             }).filter(Boolean)
