@@ -28,7 +28,7 @@ service cloud.firestore {
     match /courses/{courseId} {
       allow read: if isAuthenticated();
       allow create: if isMentor() || isAdmin();
-      allow update: if isCourseOwner() || isAdmin();
+      allow update: if isCourseOwner() || isAdmin() || isMentee();
       allow delete: if isAdmin();
     }
 
