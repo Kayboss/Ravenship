@@ -684,6 +684,13 @@ export const MentorDashboard = () => {
       ]);
       const mentees = (users || []).filter(u => (u.mentorId === mentorId) && u.role !== "mentor" && u.role !== "admin");
       const menteeIds = mentees.map(m => m.id);
+      let allSubs = submissions || [];
+      if (menteeIds.length > 0) {
+        const menteeIdSet = new Set(menteeIds);
+        allSubs = allSubs.filter(s => menteeIdSet.has(s.menteeId));
+      } else {
+        allSubs = [];
+      }
       let gradebook = [];
       if (menteeIds.length > 0) {
         const results = await Promise.all(menteeIds.map(id =>
@@ -691,9 +698,9 @@ export const MentorDashboard = () => {
         ));
         gradebook = results.flat();
       }
-      const pending = (submissions || []).filter(s => s.status === "pending" || s.grade === undefined);
-      const graded = (submissions || []).filter(s => s.score != null);
-      const completion = submissions.length ? Math.round((graded.length / submissions.length) * 100) : 0;
+      const pending = allSubs.filter(s => s.status === "pending" || s.grade === undefined);
+      const graded = allSubs.filter(s => s.score != null);
+      const completion = allSubs.length ? Math.round((graded.length / allSubs.length) * 100) : 0;
       const allScores = gradebook.flatMap(g => Object.values(g.scores || {}).filter(v => typeof v === 'number'));
       const avg = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
       const gradeLetter = avg >= 90 ? "A" : avg >= 80 ? "B" : avg >= 70 ? "C" : avg >= 60 ? "D" : "F";
@@ -701,7 +708,7 @@ export const MentorDashboard = () => {
       const days = [0,0,0,0,0,0,0];
       const now = new Date();
       const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay()); startOfWeek.setHours(0,0,0,0);
-      submissions.forEach(s => {
+      allSubs.forEach(s => {
         const ts = s.submittedAt?.toDate ? s.submittedAt.toDate() : new Date(s.submittedAt);
         if (ts >= startOfWeek) days[ts.getDay()]++;
       });
