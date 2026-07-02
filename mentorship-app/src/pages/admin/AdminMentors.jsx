@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../../firebase/config";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, Table, Th, Td, BioModal } from "./adminStyles";
@@ -16,8 +18,15 @@ export default function AdminMentors() {
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getUsers().then(d => { const arr = Array.isArray(d) ? d : []; setAllUsers(arr); setUsers(arr.filter(u => u.role === "mentor" && !u.deleted)); }).catch(e => console.error("getUsers error:", e));
-    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => !u.deleted);
+      setAllUsers(all);
+      setUsers(all.filter(u => u.role === "mentor"));
+    }, (e) => console.error("users onSnapshot error:", e));
+    const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
+      setCourses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (e) => console.error("courses onSnapshot error:", e));
+    return () => { unsubUsers(); unsubCourses(); };
   }, []);
   const resolveMentees = (ids) => ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
   const doVerify = (id, v) => {
