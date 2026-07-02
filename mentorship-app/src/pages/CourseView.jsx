@@ -615,7 +615,25 @@ export const CourseView = () => {
                   {topic}
                 </TopicItem>
                 {editMode && (
-                  <button onClick={() => deleteTopic(topic)} style={{ background: "none", border: "none", cursor: "pointer", color: "#e53935", fontSize: "0.8rem", padding: "4px" }}>✕</button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                    <button disabled={i === 0} onClick={() => {
+                      if (i === 0) return;
+                      setCourseData(prev => {
+                        const entries = Object.entries(prev.lessons);
+                        [entries[i - 1], entries[i]] = [entries[i], entries[i - 1]];
+                        return { ...prev, lessons: Object.fromEntries(entries) };
+                      });
+                    }} style={{ background: "none", border: "none", cursor: i === 0 ? "default" : "pointer", color: i === 0 ? "#ccc" : "#006590", fontSize: "0.6rem", padding: "2px 4px", lineHeight: 1 }}>▲</button>
+                    <button disabled={i === topicKeys.length - 1} onClick={() => {
+                      if (i === topicKeys.length - 1) return;
+                      setCourseData(prev => {
+                        const entries = Object.entries(prev.lessons);
+                        [entries[i], entries[i + 1]] = [entries[i + 1], entries[i]];
+                        return { ...prev, lessons: Object.fromEntries(entries) };
+                      });
+                    }} style={{ background: "none", border: "none", cursor: i === topicKeys.length - 1 ? "default" : "pointer", color: i === topicKeys.length - 1 ? "#ccc" : "#006590", fontSize: "0.6rem", padding: "2px 4px", lineHeight: 1 }}>▼</button>
+                    <button onClick={() => deleteTopic(topic)} style={{ background: "none", border: "none", cursor: "pointer", color: "#e53935", fontSize: "0.7rem", padding: "2px 4px", lineHeight: 1 }}>✕</button>
+                  </div>
                 )}
               </div>
             ))}
