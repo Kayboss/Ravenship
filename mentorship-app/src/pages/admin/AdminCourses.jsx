@@ -3,6 +3,8 @@ import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { useNavigate } from "react-router-dom";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "../../firebase/config";
 import { getCourses, getUsers, addCourse, updateCourse, deleteCourse, logActivity } from "../../firebase/db";
 import { Badge, SectionBox, ModalOverlay, ModalBox, ModalTitle, Input, Textarea, Select, Btn } from "./adminStyles";
 
@@ -391,26 +393,23 @@ export default function AdminCourses() {
 
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
 
-  const loadData = () => {
-    Promise.all([
-      getCourses().then(d => {
-        const arr = Array.isArray(d) ? d : [];
-        setCourses(arr.map(c => {
-          const topics = typeof c.lessonContent === 'object' && c.lessonContent !== null
-            ? Object.keys(c.lessonContent)
-            : (Array.isArray(c.syllabus) ? c.syllabus : []);
-          return { ...c, syllabus: topics, enrolledMentees: c.enrolledMentees || [] };
-        }));
-      }),
-      getUsers().then(d => {
-        const users = Array.isArray(d) ? d : [];
-        setMentors(users.filter(u => u.role === "mentor" && !u.deleted));
-        setUserMap(Object.fromEntries(users.map(u => [u.id, u])));
-      })
-    ]).catch(e => console.error("load error:", e));
-  };
-
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
+      const arr = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setCourses(arr.map(c => {
+        const topics = typeof c.lessonContent === 'object' && c.lessonContent !== null
+          ? Object.keys(c.lessonContent)
+          : (Array.isArray(c.syllabus) ? c.syllabus : []);
+        return { ...c, syllabus: topics, enrolledMentees: c.enrolledMentees || [] };
+      }));
+    }, (e) => console.error("courses onSnapshot error:", e));
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => !u.deleted);
+      setMentors(all.filter(u => u.role === "mentor"));
+      setUserMap(Object.fromEntries(all.map(u => [u.id, u])));
+    }, (e) => console.error("users onSnapshot error:", e));
+    return () => { unsubCourses(); unsubUsers(); };
+  }, []);
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.desc.trim() || !form.duration.trim() || !form.mentorId) {
