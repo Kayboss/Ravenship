@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../../firebase/config";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, Table, Th, Td, BioModal } from "./adminStyles";
@@ -17,17 +15,15 @@ export default function AdminMentors() {
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
-  useEffect(() => {
-    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => !u.deleted);
-      setAllUsers(all);
-      setUsers(all.filter(u => u.role === "mentor"));
-    }, (e) => console.error("users onSnapshot error:", e));
-    const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
-      setCourses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, (e) => console.error("courses onSnapshot error:", e));
-    return () => { unsubUsers(); unsubCourses(); };
+  const loadData = useCallback(() => {
+    getUsers().then(d => {
+      const arr = Array.isArray(d) ? d : [];
+      setAllUsers(arr);
+      setUsers(arr.filter(u => u.role === "mentor" && !u.deleted));
+    }).catch(e => console.error("getUsers error:", e));
+    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
   }, []);
+  useEffect(() => { loadData(); }, [loadData]);
   const resolveMentees = (ids) => ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
   const doVerify = (id, v) => {
     setVerifying(id);
@@ -84,6 +80,9 @@ export default function AdminMentors() {
       }
     `}</style>
     <div className="mentor-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      <div style={{gridColumn:"1/-1",display:"flex",justifyContent:"flex-end"}}>
+        <button onClick={loadData} style={{padding:"8px 16px",borderRadius:8,border:"1px solid #b50064",background:"#fff",color:"#b50064",fontWeight:600,fontSize:"0.8rem",cursor:"pointer",fontFamily:"inherit"}}>🔄 Refresh</button>
+      </div>
       {verifyMsg && <p style={{gridColumn:"1/-1",fontSize:"0.85rem",color:"#e53935",fontWeight:600,margin:0}}>{verifyMsg}</p>}
       {users.length === 0 ? <p style={{ color: "#594048", fontSize: "0.9rem", gridColumn:"1/-1" }}>No mentors registered.</p> : users.map((u, idx) => {
         const mentorCourses = courses.filter(c => c.createdBy === u.id);

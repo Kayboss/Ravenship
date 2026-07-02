@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { db } from "../../firebase/config";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser, unenrollMentee } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, BioModal } from "./adminStyles";
@@ -16,16 +14,11 @@ export default function AdminMentees() {
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
-  useEffect(() => {
+  const loadData = useCallback(() => {
     getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentee" && !u.deleted) : [])).catch(e => console.error("getUsers error:", e));
-    const unsubCourses = onSnapshot(collection(db, "courses"), (snap) => {
-      setCourses(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, (e) => console.error("courses onSnapshot error:", e));
-    const unsubUsers = onSnapshot(query(collection(db, "users"), where("role", "==", "mentee")), (snap) => {
-      setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(u => !u.deleted));
-    }, (e) => console.error("users onSnapshot error:", e));
-    return () => { unsubCourses(); unsubUsers(); };
+    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
   }, []);
+  useEffect(() => { loadData(); }, [loadData]);
   const doVerify = (id, v) => {
     setVerifying(id);
     setVerifyMsg(null);
