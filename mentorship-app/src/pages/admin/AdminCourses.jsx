@@ -399,9 +399,9 @@ export default function AdminCourses() {
       getCourses().then(d => {
         const arr = Array.isArray(d) ? d : [];
         setCourses(arr.map(c => {
-          const topics = typeof c.lessonContent === 'object' && c.lessonContent !== null
-            ? Object.keys(c.lessonContent)
-            : (Array.isArray(c.syllabus) ? c.syllabus : []);
+          const topics = Array.isArray(c.syllabus) && c.syllabus.length > 0
+            ? c.syllabus
+            : (typeof c.lessonContent === 'object' && c.lessonContent !== null ? Object.keys(c.lessonContent) : []);
           return { ...c, syllabus: topics, enrolledMentees: c.enrolledMentees || [] };
         }));
       }),

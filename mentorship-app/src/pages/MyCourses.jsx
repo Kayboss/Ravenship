@@ -754,9 +754,9 @@ export const MyCourses = () => {
         }
         setAssignmentCounts(counts);
         const enrich = (courses) => courses.map(c => {
-          const lessonTopics = typeof c.lessonContent === 'object' && c.lessonContent !== null
-            ? Object.keys(c.lessonContent)
-            : (Array.isArray(c.syllabus) ? c.syllabus : []);
+          const lessonTopics = Array.isArray(c.syllabus) && c.syllabus.length > 0
+            ? c.syllabus
+            : (typeof c.lessonContent === 'object' && c.lessonContent !== null ? Object.keys(c.lessonContent) : []);
           const fromArray = c.enrolledMentees || [];
           const fromEnrollments = enrollmentList.filter(e => e.courseTitle === c.title).map(e => e.userId);
           const allIds = [...new Set([...fromArray, ...fromEnrollments])];
