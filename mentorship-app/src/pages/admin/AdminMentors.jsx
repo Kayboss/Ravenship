@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../firebase/config";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, Table, Th, Td, BioModal } from "./adminStyles";
@@ -9,6 +11,7 @@ export default function AdminMentors() {
   const [users, setUsers] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [enrollmentMap, setEnrollmentMap] = useState([]);
   const [bioUser, setBioUser] = useState(null);
   const [expandedMentor, setExpandedMentor] = useState(null);
   const [expandedCourse, setExpandedCourse] = useState(null);
@@ -16,12 +19,17 @@ export default function AdminMentors() {
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   const loadData = useCallback(() => {
-    getUsers().then(d => {
-      const arr = Array.isArray(d) ? d : [];
-      setAllUsers(arr);
-      setUsers(arr.filter(u => u.role === "mentor" && !u.deleted));
-    }).catch(e => console.error("getUsers error:", e));
-    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
+    Promise.all([
+      getUsers().then(d => {
+        const arr = Array.isArray(d) ? d : [];
+        setAllUsers(arr);
+        setUsers(arr.filter(u => u.role === "mentor" && !u.deleted));
+      }),
+      getCourses().then(d => setCourses(Array.isArray(d) ? d : [])),
+      getDocs(collection(db, "enrollments")).then(snap => {
+        setEnrollmentMap(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      })
+    ]).catch(e => console.error("loadData error:", e));
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
   const resolveMentees = (ids) => ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
@@ -134,21 +142,31 @@ export default function AdminMentors() {
                             <span style={{fontSize:"0.78rem",color:"#594048"}}>{c.badge} · {c.level} · {c.duration}</span>
                           </div>
                           <div style={{textAlign:"right"}}>
-                            <span style={{fontWeight:700,fontSize:"1rem",color:"#b50064"}}>{(c.enrolledMentees || c.enrolled || []).length}</span>
+                            <span style={{fontWeight:700,fontSize:"1rem",color:"#b50064"}}>{(() => {
+                              const byArray = (c.enrolledMentees || []).length;
+                              const byEnrollments = enrollmentMap.filter(e => e.courseTitle === c.title).length;
+                              return Math.max(byArray, byEnrollments);
+                            })()}</span>
                             <span style={{fontSize:"0.72rem",color:"#594048",display:"block"}}>mentees</span>
                           </div>
                         </div>
                         {expandedCourse === c.id && (
                           <div style={{padding:"12px 16px",borderTop:"1px solid #e0e0e0"}}>
                             <p style={{fontSize:"0.8rem",fontWeight:600,color:"#2c3e50",marginBottom:6}}>Enrolled Mentees:</p>
-                              {(!c.enrolledMentees || c.enrolledMentees.length === 0) ? (
-                              <p style={{fontSize:"0.78rem",color:"#999"}}>No mentees enrolled yet.</p>
-                            ) : (
-                              <div style={{overflowX:"auto",maxWidth:"100%"}}><Table><thead><tr><Th>Name</Th><Th>Email</Th></tr></thead>
-                              <tbody>{resolveMentees(c.enrolledMentees || []).map((m, i) => (
-                                <tr key={i}><Td>{m.name}</Td><Td>{m.email}</Td></tr>
-                              ))}</tbody></Table></div>
-                            )}
+                              {(() => {
+                                const fromArray = c.enrolledMentees || [];
+                                const fromEnrollments = enrollmentMap.filter(e => e.courseTitle === c.title).map(e => e.userId);
+                                const allIds = [...new Set([...fromArray, ...fromEnrollments])];
+                                const mentees = resolveMentees(allIds);
+                                return mentees.length === 0 ? (
+                                  <p style={{fontSize:"0.78rem",color:"#999"}}>No mentees enrolled yet.</p>
+                                ) : (
+                                  <div style={{overflowX:"auto",maxWidth:"100%"}}><Table><thead><tr><Th>Name</Th><Th>Email</Th></tr></thead>
+                                  <tbody>{mentees.map((m, i) => (
+                                    <tr key={i}><Td>{m.name}</Td><Td>{m.email}</Td></tr>
+                                  ))}</tbody></Table></div>
+                                );
+                              })()}
                           </div>
                         )}
                       </div>

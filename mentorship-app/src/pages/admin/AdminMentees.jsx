@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../firebase/config";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser, unenrollMentee } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, BioModal } from "./adminStyles";
@@ -8,6 +10,7 @@ import { Card, Badge, BioModal } from "./adminStyles";
 export default function AdminMentees() {
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [enrollmentMap, setEnrollmentMap] = useState([]);
   const [bioUser, setBioUser] = useState(null);
   const [expandedMentee, setExpandedMentee] = useState(null);
   const [expandedCourse, setExpandedCourse] = useState(null);
@@ -15,8 +18,14 @@ export default function AdminMentees() {
   const [verifyMsg, setVerifyMsg] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   const loadData = useCallback(() => {
-    getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentee" && !u.deleted) : [])).catch(e => console.error("getUsers error:", e));
-    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
+    Promise.all([
+      getUsers().then(d => setUsers(Array.isArray(d) ? d.filter(u => u.role === "mentee" && !u.deleted) : [])),
+      getCourses().then(d => setCourses(Array.isArray(d) ? d : [])),
+      getDocs(collection(db, "enrollments")).then(snap => {
+        const enrollments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setEnrollmentMap(enrollments);
+      })
+    ]).catch(e => console.error("loadData error:", e));
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
   const doVerify = (id, v) => {
@@ -74,9 +83,13 @@ export default function AdminMentees() {
       }
     `}</style>
     <div className="mentee-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      <div style={{gridColumn:"1/-1",display:"flex",justifyContent:"flex-end"}}>
+        <button onClick={loadData} style={{padding:"8px 16px",borderRadius:8,border:"1px solid #b50064",background:"#fff",color:"#b50064",fontWeight:600,fontSize:"0.8rem",cursor:"pointer",fontFamily:"inherit"}}>🔄 Refresh</button>
+      </div>
       {verifyMsg && <p style={{gridColumn:"1/-1",fontSize:"0.85rem",color:"#e53935",fontWeight:600,margin:0}}>{verifyMsg}</p>}
       {users.length === 0 ? <p style={{ gridColumn:"1/-1",color: "#594048", fontSize: "0.9rem" }}>No mentees registered.</p> : users.map((u) => {
-        const menteeCourses = courses.filter(c => (c.enrolledMentees || []).includes(u.id));
+        const enrolledTitles = enrollmentMap.filter(e => e.userId === u.id).map(e => e.courseTitle);
+        const menteeCourses = courses.filter(c => (c.enrolledMentees || []).includes(u.id) || enrolledTitles.includes(c.title));
         return (
           <Card key={u.id} className="mentee-card" data-aos="fade-up" style={{marginBottom:0}}>
             <div className="mentee-header" onClick={() => setExpandedMentee(expandedMentee === u.id ? null : u.id)}>
