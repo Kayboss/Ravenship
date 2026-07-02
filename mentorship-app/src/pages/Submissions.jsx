@@ -7,7 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getSubmissions, addSubmission, updateSubmission, getAssignments, getCourses, getMenteesByMentor } from "../firebase/db";
+import { getSubmissions, addSubmission, updateSubmission, getAssignments, getCourses, getMenteesByMentor, setGradebookEntry } from "../firebase/db";
 import { uploadSubmissionFile, downloadFromUrl } from "../lib/upload";
 
 const Page = styled.div`
@@ -287,7 +287,11 @@ export const Submissions = () => {
       if (orig.firestoreId || orig.id) {
         await updateSubmission(orig.firestoreId || orig.id, { status: "reviewed", grade: score, feedback: gradeFeedback });
       }
-    } catch (e) { console.error("updateSubmission error:", e); }
+      if (orig.menteeId) {
+        const assignmentLabel = orig.assignmentTitle || orig.assignmentId || orig.title || "Assignment";
+        await setGradebookEntry(orig.menteeId, orig.courseId || "", { [assignmentLabel]: score });
+      }
+    } catch (e) { console.error("submitGrade error:", e); }
     setSubmissions(prev => prev.map(s =>
       (s.id === subId || s.firestoreId === subId) ? { ...s, status: "reviewed", grade: score, feedback: gradeFeedback } : s
     ));

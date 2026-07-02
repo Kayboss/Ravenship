@@ -299,7 +299,8 @@ export const setGradebookEntry = async (menteeId, courseId, scores) => {
     await addDoc(collection(db, "gradebook"), { menteeId, courseId, scores: sanitizeWrite(scores), updatedAt: serverTimestamp() });
     logActivity("Gradebook entry created", { detail: `Gradebook entry for mentee ${menteeId} course ${courseId}` });
   } else {
-    await updateDoc(doc(db, "gradebook", snap.docs[0].id), { scores: sanitizeWrite(scores), updatedAt: serverTimestamp() });
+    const existing = snap.docs[0].data().scores || {};
+    await updateDoc(doc(db, "gradebook", snap.docs[0].id), { scores: sanitizeWrite({ ...existing, ...scores }), updatedAt: serverTimestamp() });
     logActivity("Gradebook entry updated", { detail: `Gradebook entry for mentee ${menteeId} course ${courseId}` });
   }
 };
