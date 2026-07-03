@@ -560,10 +560,13 @@ export const Assignments = () => {
           const c = await getCourses();
           if (Array.isArray(c)) setCourses(c);
           const d = await getAssignments();
-          const subs = await getSubmissions({}).catch(() => []);
+          const subs = await getSubmissions({}).catch(e => { console.error("getSubmissions error:", e); return []; });
           if (Array.isArray(d)) {
+            console.log("DEBUG submissions:", subs.length, subs.map(s => ({id: s.id, assignmentId: s.assignmentId, menteeId: s.menteeId})));
+            console.log("DEBUG assignments:", d.map(a => ({id: a.id, firestoreId: a.firestoreId, title: a.title})));
             const subCounts = {};
             (subs || []).forEach(s => { if (s.assignmentId) subCounts[s.assignmentId] = (subCounts[s.assignmentId] || 0) + 1; });
+            console.log("DEBUG subCounts:", subCounts);
             const courseMap = Object.fromEntries((c || []).map(co => [co.title, (co.enrolledMentees || []).length]));
             setAssignments(d.map(a => ({
               ...a,
@@ -575,10 +578,13 @@ export const Assignments = () => {
           const c = await getCourses(currentUser.id);
           if (Array.isArray(c)) setCourses(c);
           const d = await getAssignments(currentUser.id);
-          const subs = await getSubmissions({}).catch(() => []);
+          const subs = await getSubmissions({}).catch(e => { console.error("getSubmissions error:", e); return []; });
           if (Array.isArray(d)) {
+            console.log("DEBUG mentor submissions:", subs.length, subs.map(s => ({id: s.id, assignmentId: s.assignmentId, menteeId: s.menteeId})));
+            console.log("DEBUG mentor assignments:", d.map(a => ({id: a.id, firestoreId: a.firestoreId, title: a.title})));
             const subCounts = {};
             (subs || []).forEach(s => { if (s.assignmentId) subCounts[s.assignmentId] = (subCounts[s.assignmentId] || 0) + 1; });
+            console.log("DEBUG mentor subCounts:", subCounts);
             const courseMap = Object.fromEntries((c || []).map(co => [co.title, (co.enrolledMentees || []).length]));
             setAssignments(d.map(a => ({
               ...a,
