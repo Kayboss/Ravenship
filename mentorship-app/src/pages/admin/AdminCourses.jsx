@@ -5,7 +5,7 @@ import "aos/dist/aos.css";
 import { useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/config";
-import { getCourses, getUsers, addCourse, updateCourse, deleteCourse, logActivity } from "../../firebase/db";
+import { getCourses, getUsers, getAssignments, addCourse, updateCourse, deleteCourse, logActivity } from "../../firebase/db";
 import { Badge, SectionBox, ModalOverlay, ModalBox, ModalTitle, Input, Textarea, Select, Btn } from "./adminStyles";
 
 // ── Styled components matching MyCourses.jsx mentor card layout ──
@@ -390,6 +390,7 @@ export default function AdminCourses() {
   const [saving, setSaving] = useState(false);
   const [userMap, setUserMap] = useState({});
   const [enrollmentMap, setEnrollmentMap] = useState([]);
+  const [assignmentCounts, setAssignmentCounts] = useState({});
   const [form, setForm] = useState({ title:"", desc:"", badge:"Design", emoji:"🎨", duration:"", level:"Beginner", featuredImage:"", mentorId:"" });
 
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
@@ -412,6 +413,11 @@ export default function AdminCourses() {
       }),
       getDocs(collection(db, "enrollments")).then(snap => {
         setEnrollmentMap(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }),
+      getAssignments().then(d => {
+        const counts = {};
+        (d || []).forEach(a => { if (a.course) counts[a.course] = (counts[a.course] || 0) + 1; });
+        setAssignmentCounts(counts);
       })
     ]).catch(e => console.error("load error:", e));
   };
@@ -538,7 +544,7 @@ export default function AdminCourses() {
                 <p>enrolled</p>
               </StatBox>
               <StatBox>
-                <p>{c.assignments || 0}</p>
+                <p>{assignmentCounts[c.title] || 0}</p>
                 <p>assignments</p>
               </StatBox>
             </MentorStats>
