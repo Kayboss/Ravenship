@@ -7,7 +7,7 @@ import { getStoredUser } from "./auth";
 import { sanitizeInput } from "../lib/sanitize";
 
 // Fields that intentionally store HTML/structured data — rendered safely via DOMPurify or React JSX (auto-escaped)
-const RICH_FIELDS = new Set(["content", "lessonContent", "syllabus", "stack", "description", "featuredImage"]);
+const RICH_FIELDS = new Set(["content", "lessonContent", "syllabus", "stack", "description", "featuredImage", "fileUrl", "filePath", "file"]);
 const sanitizeWrite = (data) => {
   const out = {};
   for (const [key, value] of Object.entries(data)) {

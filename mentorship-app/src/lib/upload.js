@@ -56,11 +56,18 @@ export const uploadBookCover = async (file, bookId) => {
   return await getDownloadURL(storageRef);
 };
 
+const decodeHtmlEntities = (str) => {
+  if (!str || typeof str !== "string") return str;
+  return str.replace(/&#x2F;/g, "/").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#96;/g, "`");
+};
+
 export const downloadFromUrl = async (url, fileName, filePath) => {
   if (!url) { alert("No file available"); return; }
-  if (filePath) {
+  const cleanUrl = decodeHtmlEntities(url);
+  const cleanPath = decodeHtmlEntities(filePath);
+  if (cleanPath) {
     try {
-      const fileRef = ref(storage, filePath);
+      const fileRef = ref(storage, cleanPath);
       const blob = await getBlob(fileRef);
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -75,5 +82,5 @@ export const downloadFromUrl = async (url, fileName, filePath) => {
       console.error("SDK download failed, trying fallback:", err);
     }
   }
-  window.open(url, "_blank");
+  window.open(cleanUrl, "_blank");
 };
