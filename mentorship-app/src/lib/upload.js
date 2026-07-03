@@ -57,11 +57,21 @@ export const uploadBookCover = async (file, bookId) => {
 };
 
 export const downloadFromUrl = async (url, fileName) => {
-  const a = document.createElement("a");
-  a.href = url;
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  try {
+    const response = await fetch(url, { mode: "cors" });
+    const contentType = response.headers.get("content-type") || "application/octet-stream";
+    const arrayBuffer = await response.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: contentType });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = fileName || "download";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(blobUrl); }, 100);
+  } catch (err) {
+    console.error("Download failed:", err);
+    window.location.href = url;
+  }
 };
