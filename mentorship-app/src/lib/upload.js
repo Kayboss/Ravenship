@@ -64,23 +64,11 @@ const decodeHtmlEntities = (str) => {
 export const downloadFromUrl = async (url, fileName, filePath) => {
   if (!url) { alert("No file available"); return; }
   const cleanUrl = decodeHtmlEntities(url);
-  const cleanPath = decodeHtmlEntities(filePath);
-  if (cleanPath) {
-    try {
-      const fileRef = ref(storage, cleanPath);
-      const blob = await getBlob(fileRef);
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = fileName || "download";
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(blobUrl); }, 1000);
-      return;
-    } catch (err) {
-      console.error("SDK download failed, trying fallback:", err);
-    }
-  }
-  window.open(cleanUrl, "_blank");
+  const a = document.createElement("a");
+  a.href = cleanUrl;
+  a.target = "_blank";
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 };
