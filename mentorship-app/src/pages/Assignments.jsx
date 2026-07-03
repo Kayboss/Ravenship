@@ -6,7 +6,7 @@ import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getUser, getCourses, getAssignments, addAssignment, updateAssignment, deleteAssignment, addSubmission } from "../firebase/db";
+import { getUser, getCourses, getAssignments, addAssignment, updateAssignment, deleteAssignment, addSubmission, getSubmissions } from "../firebase/db";
 import { uploadSubmissionFile } from "../lib/upload";
 import DOMPurify from "dompurify";
 
@@ -560,12 +560,22 @@ export const Assignments = () => {
           const c = await getCourses();
           if (Array.isArray(c)) setCourses(c);
           const d = await getAssignments();
-          if (Array.isArray(d)) setAssignments(d);
+          const subs = await getSubmissions({}).catch(() => []);
+          if (Array.isArray(d)) {
+            const subCounts = {};
+            (subs || []).forEach(s => { if (s.assignmentId) subCounts[s.assignmentId] = (subCounts[s.assignmentId] || 0) + 1; });
+            setAssignments(d.map(a => ({ ...a, submissions: subCounts[a.firestoreId || a.id] || a.submissions || 0 })));
+          }
         } else if (isMentor && currentUser?.id) {
           const c = await getCourses(currentUser.id);
           if (Array.isArray(c)) setCourses(c);
           const d = await getAssignments(currentUser.id);
-          if (Array.isArray(d)) setAssignments(d);
+          const subs = await getSubmissions({}).catch(() => []);
+          if (Array.isArray(d)) {
+            const subCounts = {};
+            (subs || []).forEach(s => { if (s.assignmentId) subCounts[s.assignmentId] = (subCounts[s.assignmentId] || 0) + 1; });
+            setAssignments(d.map(a => ({ ...a, submissions: subCounts[a.firestoreId || a.id] || a.submissions || 0 })));
+          }
         } else if (isMentee && currentUser?.id) {
           const u = await getUser(currentUser.id);
           const mentorId = u?.mentorId;
