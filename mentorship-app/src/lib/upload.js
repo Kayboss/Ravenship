@@ -72,6 +72,6 @@ export const downloadFromUrl = async (url, fileName) => {
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(blobUrl); }, 100);
   } catch (err) {
     console.error("Download failed:", err);
-    window.location.href = url;
+    alert("Download failed. Please try right-clicking the link and choosing 'Save link as...'");
   }
 };
