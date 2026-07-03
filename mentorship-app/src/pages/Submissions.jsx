@@ -399,7 +399,7 @@ export const Submissions = () => {
 
   const handleDownload = (sub) => {
     if (sub.fileUrl) {
-      downloadFromUrl(sub.fileUrl, sub.file);
+      downloadFromUrl(sub.fileUrl, sub.fileName || "submission");
     } else {
       alert("No file available for this submission");
     }
