@@ -564,7 +564,12 @@ export const Assignments = () => {
           if (Array.isArray(d)) {
             const subCounts = {};
             (subs || []).forEach(s => { if (s.assignmentId) subCounts[s.assignmentId] = (subCounts[s.assignmentId] || 0) + 1; });
-            setAssignments(d.map(a => ({ ...a, submissions: subCounts[a.firestoreId || a.id] || a.submissions || 0 })));
+            const courseMap = Object.fromEntries((c || []).map(co => [co.title, (co.enrolledMentees || []).length]));
+            setAssignments(d.map(a => ({
+              ...a,
+              submissions: subCounts[a.firestoreId || a.id] || a.submissions || 0,
+              spots: courseMap[a.course] || a.spots || 0
+            })));
           }
         } else if (isMentor && currentUser?.id) {
           const c = await getCourses(currentUser.id);
@@ -574,7 +579,12 @@ export const Assignments = () => {
           if (Array.isArray(d)) {
             const subCounts = {};
             (subs || []).forEach(s => { if (s.assignmentId) subCounts[s.assignmentId] = (subCounts[s.assignmentId] || 0) + 1; });
-            setAssignments(d.map(a => ({ ...a, submissions: subCounts[a.firestoreId || a.id] || a.submissions || 0 })));
+            const courseMap = Object.fromEntries((c || []).map(co => [co.title, (co.enrolledMentees || []).length]));
+            setAssignments(d.map(a => ({
+              ...a,
+              submissions: subCounts[a.firestoreId || a.id] || a.submissions || 0,
+              spots: courseMap[a.course] || a.spots || 0
+            })));
           }
         } else if (isMentee && currentUser?.id) {
           const u = await getUser(currentUser.id);
