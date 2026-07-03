@@ -1,4 +1,4 @@
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, getBlob } from "firebase/storage";
 import { storage } from "../firebase/config";
 
 export const fileToBase64 = (file) =>
@@ -57,11 +57,10 @@ export const uploadBookCover = async (file, bookId) => {
 };
 
 export const downloadFromUrl = async (url, fileName) => {
+  if (!url) { alert("No file available"); return; }
   try {
-    const response = await fetch(url, { mode: "cors" });
-    const contentType = response.headers.get("content-type") || "application/octet-stream";
-    const arrayBuffer = await response.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: contentType });
+    const fileRef = ref(storage, url);
+    const blob = await getBlob(fileRef);
     const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = blobUrl;
@@ -69,9 +68,9 @@ export const downloadFromUrl = async (url, fileName) => {
     a.style.display = "none";
     document.body.appendChild(a);
     a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(blobUrl); }, 100);
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(blobUrl); }, 1000);
   } catch (err) {
     console.error("Download failed:", err);
-    alert("Download failed. Please try right-clicking the link and choosing 'Save link as...'");
+    alert("Download failed: " + err.message);
   }
 };
