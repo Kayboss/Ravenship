@@ -939,8 +939,11 @@ export const Assignments = () => {
                     if (!f) return alert("Please select a file");
                     if (f.size > 5000000) { alert("File too large. Maximum size is 5MB."); return; }
                     let fileUrl = "";
+                    let filePath = "";
                     try {
-                      fileUrl = await uploadSubmissionFile(f, Date.now().toString());
+                      const submissionId = Date.now().toString();
+                      fileUrl = await uploadSubmissionFile(f, submissionId);
+                      filePath = `submissions/${submissionId}/${f.name}`;
                     } catch { alert("File upload failed. Try again."); return; }
                     const u = getStoredUser();
                     const subData = {
@@ -949,6 +952,7 @@ export const Assignments = () => {
                       course: a.course,
                       fileName: f.name,
                       fileUrl: fileUrl,
+                      filePath: filePath,
                       fileSize: (f.size / 1024).toFixed(0) + " KB",
                       menteeId: u?.id || null,
                       menteeName: u?.name || "Unknown",

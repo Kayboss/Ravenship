@@ -56,21 +56,24 @@ export const uploadBookCover = async (file, bookId) => {
   return await getDownloadURL(storageRef);
 };
 
-export const downloadFromUrl = async (url, fileName) => {
+export const downloadFromUrl = async (url, fileName, filePath) => {
   if (!url) { alert("No file available"); return; }
-  try {
-    const fileRef = ref(storage, url);
-    const blob = await getBlob(fileRef);
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = fileName || "download";
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(blobUrl); }, 1000);
-  } catch (err) {
-    console.error("Download failed:", err);
-    alert("Download failed: " + err.message);
+  if (filePath) {
+    try {
+      const fileRef = ref(storage, filePath);
+      const blob = await getBlob(fileRef);
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName || "download";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(blobUrl); }, 1000);
+      return;
+    } catch (err) {
+      console.error("SDK download failed, trying fallback:", err);
+    }
   }
+  window.open(url, "_blank");
 };

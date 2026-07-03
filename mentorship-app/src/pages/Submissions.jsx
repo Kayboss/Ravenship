@@ -352,8 +352,10 @@ export const Submissions = () => {
     const currentUser = getStoredUser();
     const tempId = Date.now().toString();
     let fileUrl = "";
+    let filePath = "";
     try {
       fileUrl = await uploadSubmissionFile(selectedFile, tempId);
+      filePath = `submissions/${tempId}/${selectedFile.name}`;
     } catch (e) { console.error("Upload failed:", e); alert("File upload failed. Try again."); setSubmitting(false); return; }
     const sizeStr = selectedFile.size < 1024 ? "<1 KB" : ((selectedFile.size / 1024).toFixed(0) + " KB");
     const newSub = {
@@ -361,6 +363,7 @@ export const Submissions = () => {
       course: form.course || "General",
       file: fileName,
       fileUrl: fileUrl,
+      filePath: filePath,
       size: sizeStr,
       date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       color: "#b50064",
@@ -399,7 +402,7 @@ export const Submissions = () => {
 
   const handleDownload = (sub) => {
     if (sub.fileUrl) {
-      downloadFromUrl(sub.fileUrl, sub.fileName || "submission");
+      downloadFromUrl(sub.fileUrl, sub.fileName || "submission", sub.filePath);
     } else {
       alert("No file available for this submission");
     }
