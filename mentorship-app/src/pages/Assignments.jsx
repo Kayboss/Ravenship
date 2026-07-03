@@ -598,7 +598,21 @@ export const Assignments = () => {
           if (mentorId) {
             setMenteeMentorId(mentorId);
             const d = await getAssignments(mentorId);
-            if (Array.isArray(d)) setAssignments(d);
+            const subs = await getSubmissions({}).catch(e => { console.error("getSubmissions error:", e); return []; });
+            if (Array.isArray(d)) {
+              const subCounts = {};
+              (subs || []).forEach(s => {
+                const key = s.assignmentTitle || s.assignmentId;
+                if (key) subCounts[key] = (subCounts[key] || 0) + 1;
+              });
+              const c = await getCourses(mentorId).catch(() => []);
+              const courseMap = Array.isArray(c) ? Object.fromEntries(c.map(co => [co.title, (co.enrolledMentees || []).length])) : {};
+              setAssignments(d.map(a => ({
+                ...a,
+                submissions: subCounts[a.title] || subCounts[a.firestoreId || a.id] || a.submissions || 0,
+                spots: courseMap[a.course] || a.spots || 0
+              })));
+            }
           }
         } else {
           const d = await getAssignments();
