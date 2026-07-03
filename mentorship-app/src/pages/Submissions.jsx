@@ -402,7 +402,7 @@ export const Submissions = () => {
 
   const handleDownload = (sub) => {
     if (sub.fileUrl) {
-      downloadFromUrl(sub.fileUrl, sub.fileName || "submission", sub.filePath);
+      downloadFromUrl(sub.fileUrl, sub.fileName || sub.file || "submission", sub.filePath);
     } else {
       alert("No file available for this submission");
     }
