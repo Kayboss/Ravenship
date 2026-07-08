@@ -473,7 +473,7 @@ export const getAnalytics = async () => {
   const admins = users.filter(u => u.role === "admin").length;
   const verified = users.filter(u => u.verified).length;
   const submissions = await getSubmissions();
-  const graded = submissions.filter(s => s.score != null).length;
+  const graded = submissions.filter(s => s.grade != null).length;
   return {
     total: users.length,
     mentors,
