@@ -134,10 +134,7 @@ service cloud.firestore {
 
     // ── Gradebook ──
     match /gradebook/{entryId} {
-      allow read: if isAuthenticated()
-        && (resource.data.menteeId == request.auth.uid
-          || isAdmin()
-          || (isMentor() && get(/databases/$(database)/documents/users/$(resource.data.menteeId)).data.mentorId == request.auth.uid));
+      allow read: if isAuthenticated();
       allow create: if isMentor() || isAdmin();
       allow update: if isMentor() || isAdmin();
       allow delete: if isAdmin();
