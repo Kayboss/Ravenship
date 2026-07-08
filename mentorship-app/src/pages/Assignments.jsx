@@ -544,12 +544,20 @@ export const Assignments = () => {
   const [authReady, setAuthReady] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [openMenuId, setOpenMenuId] = useState(null);
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
   }, []);
+
+  useEffect(() => {
+    if (openMenuId === null) return;
+    const close = () => setOpenMenuId(null);
+    const timer = setTimeout(() => document.addEventListener("click", close), 0);
+    return () => { clearTimeout(timer); document.removeEventListener("click", close); };
+  }, [openMenuId]);
 
   useEffect(() => {
     if (!authReady) return;
@@ -732,6 +740,12 @@ export const Assignments = () => {
           .assignment-formatting em { font-style: italic; }
           .assignment-formatting u { text-decoration: underline; }
           .assignment-clamped { max-height: 120px; overflow: hidden; }
+          .assignment-actions-desktop { display: flex !important; }
+          .assignment-actions-mobile { display: none !important; }
+          @media (max-width: 640px) {
+            .assignment-actions-desktop { display: none !important; }
+            .assignment-actions-mobile { display: block !important; }
+          }
         `}</style>
         <PageTitle data-aos="fade-down">{isMentor ? "Manage Assignments" : "Task / Assignment"}</PageTitle>
 
@@ -920,15 +934,27 @@ export const Assignments = () => {
               {isMentor ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <MetaItem>👥 {a.submissions} submission{a.submissions !== 1 ? "s" : ""}</MetaItem>
-                  <ViewSubmissionsBtn onClick={() => navigate(`/dashboard/${role}/submissions?course=${encodeURIComponent(a.course)}`)}>
-                    View Submissions
-                  </ViewSubmissionsBtn>
-                  <ViewSubmissionsBtn style={{ borderColor: "#e67e22", color: "#e67e22" }} onClick={() => setEditingAssignment({ ...a })}>
-                    ✏️ Edit
-                  </ViewSubmissionsBtn>
-                  <ViewSubmissionsBtn style={{ borderColor: "#e53935", color: "#e53935", opacity: deletingId === a.id ? 0.6 : 1 }} onClick={() => handleDeleteAssignment(a.id)} disabled={deletingId === a.id}>
-                    {deletingId === a.id ? "⏳ Deleting..." : "🗑 Delete"}
-                  </ViewSubmissionsBtn>
+                  <div className="assignment-actions-desktop" style={{ display: "flex", gap: 12 }}>
+                    <ViewSubmissionsBtn onClick={() => navigate(`/dashboard/${role}/submissions?course=${encodeURIComponent(a.course)}`)}>
+                      View Submissions
+                    </ViewSubmissionsBtn>
+                    <ViewSubmissionsBtn style={{ borderColor: "#e67e22", color: "#e67e22" }} onClick={() => setEditingAssignment({ ...a })}>
+                      ✏️ Edit
+                    </ViewSubmissionsBtn>
+                    <ViewSubmissionsBtn style={{ borderColor: "#e53935", color: "#e53935", opacity: deletingId === a.id ? 0.6 : 1 }} onClick={() => handleDeleteAssignment(a.id)} disabled={deletingId === a.id}>
+                      {deletingId === a.id ? "⏳ Deleting..." : "🗑 Delete"}
+                    </ViewSubmissionsBtn>
+                  </div>
+                  <div className="assignment-actions-mobile" style={{ position: "relative" }}>
+                    <button onClick={() => setOpenMenuId(openMenuId === a.id ? null : a.id)} style={{ background: "none", border: "1px solid #e0e0e0", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: "1.1rem" }}>⋯</button>
+                    {openMenuId === a.id && (
+                      <div style={{ position: "absolute", top: "100%", right: 0, background: "#fff", border: "1px solid #e0e0e0", borderRadius: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", zIndex: 50, minWidth: 180, overflow: "hidden" }}>
+                        <button onClick={() => { setOpenMenuId(null); navigate(`/dashboard/${role}/submissions?course=${encodeURIComponent(a.course)}`); }} style={{ display: "block", width: "100%", padding: "12px 16px", border: "none", background: "none", textAlign: "left", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, borderBottom: "1px solid #f0f0f0" }}>👥 View Submissions</button>
+                        <button onClick={() => { setOpenMenuId(null); setEditingAssignment({ ...a }); }} style={{ display: "block", width: "100%", padding: "12px 16px", border: "none", background: "none", textAlign: "left", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, borderBottom: "1px solid #f0f0f0", color: "#e67e22" }}>✏️ Edit</button>
+                        <button onClick={() => { setOpenMenuId(null); handleDeleteAssignment(a.id); }} disabled={deletingId === a.id} style={{ display: "block", width: "100%", padding: "12px 16px", border: "none", background: "none", textAlign: "left", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, color: "#e53935", opacity: deletingId === a.id ? 0.6 : 1 }}>{deletingId === a.id ? "⏳ Deleting..." : "🗑 Delete"}</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (() => {
                 if (a.status === "graded") return <GradeDisplay><GradeNumber>{a.grade}%</GradeNumber><GradeLabel>Grade</GradeLabel></GradeDisplay>;
