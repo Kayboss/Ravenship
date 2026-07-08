@@ -291,12 +291,11 @@ export const updateGradebook = async (id, data) => {
 export const setGradebookEntry = async (menteeId, courseId, scores) => {
   const q = query(
     collection(db, "gradebook"),
-    where("menteeId", "==", menteeId),
-    where("courseId", "==", courseId)
+    where("menteeId", "==", menteeId)
   );
   const snap = await getDocs(q);
   if (snap.empty) {
-    await addDoc(collection(db, "gradebook"), { menteeId, courseId, scores: sanitizeWrite(scores), updatedAt: serverTimestamp() });
+    await addDoc(collection(db, "gradebook"), { menteeId, courseId: courseId || "General", scores: sanitizeWrite(scores), updatedAt: serverTimestamp() });
     logActivity("Gradebook entry created", { detail: `Gradebook entry for mentee ${menteeId} course ${courseId}` });
   } else {
     const existing = snap.docs[0].data().scores || {};

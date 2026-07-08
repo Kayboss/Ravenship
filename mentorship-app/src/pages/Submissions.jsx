@@ -289,7 +289,9 @@ export const Submissions = () => {
       }
       if (orig.menteeId) {
         const assignmentLabel = orig.assignmentTitle || orig.assignmentId || orig.title || "Assignment";
-        await setGradebookEntry(orig.menteeId, orig.courseId || "", { [assignmentLabel]: score });
+        console.log("submitGrade: writing to gradebook", { menteeId: orig.menteeId, course: orig.course, assignmentLabel, score });
+        await setGradebookEntry(orig.menteeId, orig.course || "General", { [assignmentLabel]: score });
+        console.log("submitGrade: gradebook write succeeded");
       }
     } catch (e) { console.error("submitGrade error:", e); }
     setSubmissions(prev => prev.map(s =>

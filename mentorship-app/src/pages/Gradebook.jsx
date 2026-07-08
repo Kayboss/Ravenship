@@ -257,6 +257,7 @@ export const Gradebook = () => {
     const load = async () => {
       try {
         const [allGradebooks, users, courses] = await Promise.all([getAllGradebook(), getUsers(), getCourses()]);
+        console.log("Gradebook loaded:", allGradebooks.length, "entries", role);
         let filteredGradebooks = allGradebooks;
         if (role === "mentor" && user?.id) {
           const mentees = await getMenteesByMentor(user.id).catch(() => []);
