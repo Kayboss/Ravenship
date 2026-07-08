@@ -925,25 +925,6 @@ export const Community = () => {
             ))}
           </div>
           <SideSection>
-            <SideCard $variant="online">
-              <SideTitle>👥 Members</SideTitle>
-              <FilterRow>
-                <FilterTab $active={memberFilter === "all"} onClick={() => setMemberFilter("all")}>All Members</FilterTab>
-                <FilterTab $active={memberFilter === "online"} onClick={() => setMemberFilter("online")}>Online Now</FilterTab>
-              </FilterRow>
-              {filteredMembers.map((m, i) => (
-                  <MemberRow key={i} onClick={() => setProfileView(m)}>
-                    <Avatar style={{ width: 32, height: 32, fontSize: "0.7rem" }}>
-                      {m.photoURL ? <img src={m.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : m.name?.split(" ").map(w => w[0]).join("")}
-                    </Avatar>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <MemberName>{m.name}</MemberName>
-                      <MemberRole>{m.role}</MemberRole>
-                    </div>
-                    <OnlineDot $online={m.online} />
-                  </MemberRow>
-                ))}
-            </SideCard>
               <SideCard $variant="chat">
               <SideTitle>💬 Messages</SideTitle>
               {!chatOpen ? (
@@ -991,6 +972,25 @@ export const Community = () => {
                   </ChatInputRow>
                 </ChatBox>
               )}
+            </SideCard>
+            <SideCard $variant="online">
+              <SideTitle>👥 Members</SideTitle>
+              <FilterRow>
+                <FilterTab $active={memberFilter === "all"} onClick={() => setMemberFilter("all")}>All Members</FilterTab>
+                <FilterTab $active={memberFilter === "online"} onClick={() => setMemberFilter("online")}>Online Now</FilterTab>
+              </FilterRow>
+              {filteredMembers.map((m, i) => (
+                  <MemberRow key={i} onClick={() => setProfileView(m)}>
+                    <Avatar style={{ width: 32, height: 32, fontSize: "0.7rem" }}>
+                      {m.photoURL ? <img src={m.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : m.name?.split(" ").map(w => w[0]).join("")}
+                    </Avatar>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <MemberName>{m.name}</MemberName>
+                      <MemberRole>{m.role}</MemberRole>
+                    </div>
+                    <OnlineDot $online={m.online} />
+                  </MemberRow>
+                ))}
             </SideCard>
             <SideCard $variant="events">
               <SideTitle>📅 Upcoming Events</SideTitle>
