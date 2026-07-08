@@ -197,7 +197,7 @@ export default function AdminOverview() {
                   </div>
                   <div style={{flex:1,padding:"12px 16px",background:"#f5f5f5",borderRadius:12,textAlign:"center"}}>
                     <div style={{fontSize:"0.72rem",fontWeight:600,color:"#594048",textTransform:"uppercase",letterSpacing:"0.03em",marginBottom:4}}>Week</div>
-                    <div style={{fontSize:"1.3rem",fontWeight:800,color:"#2c3e50"}}>{(() => { const now = new Date(); const w = `${now.getFullYear()}-W${String(Math.ceil((now.getDate() - now.getDay() + 1) / 7)).padStart(2,"0")}`; return visits?.weekly?.[w] ?? 0; })()}</div>
+                    <div style={{fontSize:"1.3rem",fontWeight:800,color:"#2c3e50"}}>{(() => { const now = new Date(); const startOfYear = new Date(now.getFullYear(), 0, 1); const daysSinceStart = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000)); const weekNum = Math.ceil((daysSinceStart + startOfYear.getDay() + 1) / 7); const w = `${now.getFullYear()}-W${String(weekNum).padStart(2,"0")}`; return visits?.weekly?.[w] ?? 0; })()}</div>
                   </div>
                 </div>
               </div>

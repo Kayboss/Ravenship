@@ -175,7 +175,7 @@ service cloud.firestore {
     // ── Site analytics ──
     match /analytics/{doc} {
       allow read: if isAdmin();
-      allow create, update: if isAuthenticated();
+      allow create, update: if true;
     }
 
     // ── Deny everything else ──
