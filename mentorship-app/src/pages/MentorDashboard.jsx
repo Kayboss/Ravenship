@@ -699,7 +699,7 @@ export const MentorDashboard = () => {
         gradebook = results.flat();
       }
       const pending = allSubs.filter(s => s.status === "pending" || s.grade === undefined);
-      const graded = allSubs.filter(s => s.score != null);
+      const graded = allSubs.filter(s => s.grade != null);
       const completion = allSubs.length ? Math.round((graded.length / allSubs.length) * 100) : 0;
       const allScores = gradebook.flatMap(g => Object.values(g.scores || {}).filter(v => typeof v === 'number'));
       const avg = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
