@@ -806,12 +806,20 @@ export const deleteBook = async (id) => {
 
 const VISIT_COOLDOWN = 30 * 60 * 1000;
 
+const detectDevice = () => {
+  if (typeof navigator === "undefined") return "desktop";
+  const ua = navigator.userAgent;
+  if (/tablet|ipad|playbook|silk|(android(?!.*mobi))/i.test(ua)) return "tablet";
+  if (/mobile|iphone|ipod|android.*mobi|blackberry|opera mini|iemobile/i.test(ua)) return "mobile";
+  return "desktop";
+};
+
 export const getSiteVisits = async () => {
   try {
     const snap = await getDoc(doc(db, "analytics", "siteVisits"));
-    if (!snap.exists()) return { total: 0, weekly: [], daily: [] };
+    if (!snap.exists()) return { total: 0, daily: {}, weekly: {}, devices: {} };
     return snap.data();
-  } catch { return { total: 0, weekly: [], daily: [] }; }
+  } catch { return { total: 0, daily: {}, weekly: {}, devices: {} }; }
 };
 
 export const trackSiteVisit = async () => {
@@ -826,11 +834,13 @@ export const trackSiteVisit = async () => {
     const daysSinceStart = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
     const weekNum = Math.ceil((daysSinceStart + startOfYear.getDay() + 1) / 7);
     const weekKey = `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+    const device = detectDevice();
     if (!snap.exists()) {
       await setDoc(ref, {
         total: 1,
         daily: { [dayKey]: 1 },
         weekly: { [weekKey]: 1 },
+        devices: { [device]: 1 },
         lastVisit: serverTimestamp(),
       });
     } else {
@@ -840,6 +850,7 @@ export const trackSiteVisit = async () => {
         lastVisit: serverTimestamp(),
         [`daily.${dayKey}`]: (data.daily?.[dayKey] || 0) + 1,
         [`weekly.${weekKey}`]: (data.weekly?.[weekKey] || 0) + 1,
+        [`devices.${device}`]: (data.devices?.[device] || 0) + 1,
       };
       await updateDoc(ref, updates);
     }

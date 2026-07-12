@@ -185,23 +185,37 @@ export default function AdminOverview() {
 
           <ChartGrid>
             <ChartCard>
-              <SectionTitle>Site Visits</SectionTitle>
-              <div style={{display:"flex",flexDirection:"column",gap:16}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"#f5f5f5",borderRadius:12}}>
-                  <span style={{fontSize:"0.85rem",fontWeight:600,color:"#594048"}}>All Time</span>
-                  <span style={{fontSize:"1.5rem",fontWeight:800,color:"#b50064"}}>{(visits?.total ?? 0).toLocaleString()}</span>
-                </div>
-                <div style={{display:"flex",gap:12}}>
-                  <div style={{flex:1,padding:"12px 16px",background:"#f5f5f5",borderRadius:12,textAlign:"center"}}>
-                    <div style={{fontSize:"0.72rem",fontWeight:600,color:"#594048",textTransform:"uppercase",letterSpacing:"0.03em",marginBottom:4}}>Today</div>
-                    <div style={{fontSize:"1.3rem",fontWeight:800,color:"#2c3e50"}}>{visits?.daily?.[new Date().toISOString().slice(0,10)] ?? 0}</div>
+              <SectionTitle>Device Usage</SectionTitle>
+              {(() => {
+                const devices = visits?.devices || {};
+                const desktop = devices.desktop || 0;
+                const mobile = devices.mobile || 0;
+                const tablet = devices.tablet || 0;
+                const total = desktop + mobile + tablet || 1;
+                const bars = [
+                  { label: "Desktop", value: desktop, pct: Math.round((desktop / total) * 100), color: "#b50064", icon: "🖥️" },
+                  { label: "Mobile", value: mobile, pct: Math.round((mobile / total) * 100), color: "#0298D7", icon: "📱" },
+                  { label: "Tablet", value: tablet, pct: Math.round((tablet / total) * 100), color: "#cca800", icon: "📟" },
+                ];
+                return (
+                  <div style={{display:"flex",flexDirection:"column",gap:20}}>
+                    {bars.map((b) => (
+                      <div key={b.label}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                          <span style={{fontSize:"0.82rem",fontWeight:600,color:"#2c3e50",display:"flex",alignItems:"center",gap:6}}>{b.icon} {b.label}</span>
+                          <span style={{fontSize:"0.78rem",fontWeight:700,color:"#594048"}}>{b.value} ({b.pct}%)</span>
+                        </div>
+                        <div style={{height:10,borderRadius:5,background:"#e4e2e1",overflow:"hidden"}}>
+                          <div style={{height:"100%",borderRadius:5,background:b.color,width:`${b.pct}%`,transition:"width 0.8s"}} />
+                        </div>
+                      </div>
+                    ))}
+                    {total === 1 && desktop + mobile + tablet === 0 && (
+                      <p style={{color:"#594048",fontSize:"0.82rem",textAlign:"center",padding:8}}>No visits yet.</p>
+                    )}
                   </div>
-                  <div style={{flex:1,padding:"12px 16px",background:"#f5f5f5",borderRadius:12,textAlign:"center"}}>
-                    <div style={{fontSize:"0.72rem",fontWeight:600,color:"#594048",textTransform:"uppercase",letterSpacing:"0.03em",marginBottom:4}}>Week</div>
-                    <div style={{fontSize:"1.3rem",fontWeight:800,color:"#2c3e50"}}>{(() => { const now = new Date(); const startOfYear = new Date(now.getFullYear(), 0, 1); const daysSinceStart = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000)); const weekNum = Math.ceil((daysSinceStart + startOfYear.getDay() + 1) / 7); const w = `${now.getFullYear()}-W${String(weekNum).padStart(2,"0")}`; return visits?.weekly?.[w] ?? 0; })()}</div>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </ChartCard>
             <ChartCard className="mobile-hidden">
               <SectionTitle>Enrollment Sources</SectionTitle>
