@@ -23,6 +23,7 @@ export default function AdminOverview() {
   const user = getStoredUser() || { name: "Admin" };
   const [visits, setVisits] = useState(null);
   const [sourceData, setSourceData] = useState([]);
+  const [showAllSources, setShowAllSources] = useState(false);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
     getAnalytics().then(d => setData(d)).catch(e => console.error("getAnalytics error:", e));
@@ -207,14 +208,22 @@ export default function AdminOverview() {
               <div style={{display:"flex",flexDirection:"column",gap:16}}>
                 {sourceData.length === 0 ? (
                   <p style={{color:"#594048",fontSize:"0.85rem",textAlign:"center",padding:24}}>No enrollment data yet.</p>
-                ) : sourceData.map((s, i) => (
-                  <div key={i}>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:"0.78rem",marginBottom:6}}><span style={{color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0,flex:1}}>{s.l}</span><span style={{fontWeight:700,flexShrink:0,marginLeft:8}}>{s.v}%</span></div>
-                    <div style={{height:8,borderRadius:4,background:"#e4e2e1",overflow:"hidden"}}>
-                      <div style={{height:"100%",borderRadius:4,background:["#b50064","#0298D7","#cca800","#27AE60","#e53935","#8e44ad"][i%6],width:`${s.v}%`}} />
-                    </div>
-                  </div>
-                ))}
+                ) : <>
+                    {(showAllSources ? sourceData : sourceData.slice(0, 5)).map((s, i) => (
+                      <div key={i}>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:"0.78rem",marginBottom:6}}><span style={{color:"#2c3e50",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0,flex:1}}>{s.l}</span><span style={{fontWeight:700,flexShrink:0,marginLeft:8}}>{s.v}%</span></div>
+                        <div style={{height:8,borderRadius:4,background:"#e4e2e1",overflow:"hidden"}}>
+                          <div style={{height:"100%",borderRadius:4,background:["#b50064","#0298D7","#cca800","#27AE60","#e53935","#8e44ad"][i%6],width:`${s.v}%`}} />
+                        </div>
+                      </div>
+                    ))}
+                    {sourceData.length > 5 && (
+                      <button onClick={() => setShowAllSources(!showAllSources)} style={{background:"none",border:"none",color:"#b50064",fontWeight:700,fontSize:"0.82rem",cursor:"pointer",padding:"4px 0",textAlign:"center"}}>
+                        {showAllSources ? "Show less" : `Show all ${sourceData.length} sources`}
+                      </button>
+                    )}
+                  </>
+                }
               </div>
             </ChartCard>
           </ChartGrid>
