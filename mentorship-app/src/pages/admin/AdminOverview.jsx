@@ -116,6 +116,33 @@ export default function AdminOverview() {
         </KpiCard>
       </KpiGrid>
 
+      <Card data-aos="fade-up" style={{marginBottom:"clamp(16px, 4vw, 24px)"}}>
+        <SectionTitle>📈 Site Visits Over Time (Last 7 Days)</SectionTitle>
+        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:120,padding:"0 8px"}}>
+          {(() => {
+            const daily = visits?.daily || {};
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+              const d = new Date();
+              d.setDate(d.getDate() - i);
+              const key = d.toISOString().slice(0, 10);
+              const label = d.toLocaleDateString("en-US", { weekday: "short" });
+              days.push({ key, label, count: daily[key] || 0 });
+            }
+            const max = Math.max(...days.map(d => d.count), 1);
+            return days.map((d, i) => (
+              <div key={d.key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                <span style={{fontSize:"0.68rem",fontWeight:700,color:"#b50064"}}>{d.count || ""}</span>
+                <div style={{width:"100%",borderRadius:6,background:"#b5006420",height:80,display:"flex",alignItems:"flex-end",overflow:"hidden"}}>
+                  <div style={{width:"100%",borderRadius:6,background:i === 6 ? "#b50064" : "#b5006490",height:`${(d.count / max) * 100}%`,minHeight:d.count > 0 ? 4 : 0,transition:"height 0.5s"}} />
+                </div>
+                <span style={{fontSize:"0.65rem",fontWeight:600,color:"#594048"}}>{d.label}</span>
+              </div>
+            ));
+          })()}
+        </div>
+      </Card>
+
       <DashboardGrid data-aos="fade-up">
         <div style={{display:"flex",flexDirection:"column",gap:24}}>
           <Card className="mobile-hidden" style={{padding:0,overflow:"hidden",marginBottom:0}}>
