@@ -648,6 +648,7 @@ export const Community = () => {
   const [chatPopupOpen, setChatPopupOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [expandedImage, setExpandedImage] = useState(null);
+  const [visibleMembers, setVisibleMembers] = useState(15);
   const user = getStoredUser() || { name: "You", role: "Mentee", avatarColor: "#b50064" };
   const isPostAuthor = (p) => user?.id && (p.authorId === user.id || p.authorId === user.uid);
 
@@ -980,7 +981,7 @@ export const Community = () => {
                 <FilterTab $active={memberFilter === "all"} onClick={() => setMemberFilter("all")}>All Members</FilterTab>
                 <FilterTab $active={memberFilter === "online"} onClick={() => setMemberFilter("online")}>Online Now</FilterTab>
               </FilterRow>
-              {filteredMembers.map((m, i) => (
+              {filteredMembers.slice(0, visibleMembers).map((m, i) => (
                   <MemberRow key={i} onClick={() => setProfileView(m)}>
                     <Avatar style={{ width: 32, height: 32, fontSize: "0.7rem" }}>
                       {m.photoURL ? <img src={m.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : m.name?.split(" ").map(w => w[0]).join("")}
@@ -992,6 +993,11 @@ export const Community = () => {
                     <OnlineDot $online={m.online} />
                   </MemberRow>
                 ))}
+                {filteredMembers.length > visibleMembers && (
+                  <button onClick={() => setVisibleMembers(prev => prev + 15)} style={{background:"none",border:"none",color:"#b50064",fontWeight:700,fontSize:"0.82rem",cursor:"pointer",padding:"8px 0",width:"100%",textAlign:"center"}}>
+                    Load more ({filteredMembers.length - visibleMembers} remaining)
+                  </button>
+                )}
             </SideCard>
             <SideCard $variant="events">
               <SideTitle>📅 Upcoming Events</SideTitle>
