@@ -647,6 +647,7 @@ export const Community = () => {
   const [otherTyping, setOtherTyping] = useState(false);
   const [chatPopupOpen, setChatPopupOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [expandedImage, setExpandedImage] = useState(null);
   const user = getStoredUser() || { name: "You", role: "Mentee", avatarColor: "#b50064" };
   const isPostAuthor = (p) => user?.id && (p.authorId === user.id || p.authorId === user.uid);
 
@@ -898,7 +899,7 @@ export const Community = () => {
                 ) : (
                   <PostText>{p.text}</PostText>
                 )}
-                {p.image && <PostImagePreview>{typeof p.image === "string" && p.image.startsWith("data:") ? <img src={p.image} alt="Post" /> : <span>📊 Chart Preview</span>}</PostImagePreview>}
+                {p.image && <PostImagePreview style={{cursor:"pointer"}} onClick={() => setExpandedImage(p.image)}>{typeof p.image === "string" && p.image.startsWith("data:") ? <img src={p.image} alt="Post" /> : <span>📊 Chart Preview</span>}</PostImagePreview>}
                 <PostActions>
                   <ActionBtn $active={p.liked ?? (user?.id && (p.likes || []).includes(user.id))} onClick={() => toggleLike(i)}>{(p.liked ?? (user?.id && (p.likes || []).includes(user.id))) ? "❤️" : "🤍"} {p.likes?.length ?? 0}</ActionBtn>
                   <ActionBtn $active={commentsOpen[i]} onClick={() => toggleComments(i)}>💬 {p.comments?.length ?? 0}</ActionBtn>
@@ -1060,6 +1061,12 @@ export const Community = () => {
             </ChatInputRow>
           </ChatPopupCard>
         </ChatPopupOverlay>
+      )}
+      {expandedImage && (
+        <div onClick={() => setExpandedImage(null)} style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"zoom-out",padding:20}}>
+          <img src={expandedImage} alt="Expanded" style={{maxWidth:"95%",maxHeight:"90vh",borderRadius:12,objectFit:"contain",boxShadow:"0 8px 32px rgba(0,0,0,0.4)"}} />
+          <button onClick={() => setExpandedImage(null)} style={{position:"absolute",top:16,right:16,background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",fontSize:"1.5rem",cursor:"pointer",borderRadius:"50%",width:40,height:40,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>✕</button>
+        </div>
       )}
     </Page>
   );
