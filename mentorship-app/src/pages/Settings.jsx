@@ -317,6 +317,31 @@ const SuccessMsg = styled.div`
   grid-column: 1 / -1;
 `;
 
+const Tabs = styled.div`
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 2px solid ${(props) => props.theme.colors.outline};
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+`;
+
+const Tab = styled.button`
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: ${(props) => props.$active ? 700 : 500};
+  color: ${(props) => props.$active ? props.theme.colors.primary : props.theme.colors.textSecondary};
+  cursor: pointer;
+  border-bottom: 3px solid ${(props) => props.$active ? props.theme.colors.primary : "transparent"};
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: all 0.2s;
+  &:hover { color: ${(props) => props.theme.colors.primary}; }
+`;
+
 const interestOptions = [
   "UI/UX Design", "Web Development", "Mobile Apps", "Data Science",
   "Product Management", "Brand Strategy", "Graphic Design", "Machine Learning",
@@ -362,6 +387,7 @@ export const Settings = () => {
   const [uploadStage, setUploadStage] = useState("");
   const [authReady, setAuthReady] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("profile");
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -544,144 +570,165 @@ export const Settings = () => {
           <PageTitle data-aos="fade-down">Settings</PageTitle>
         </div>
 
-        <form onSubmit={handleSave}>
-          <Grid>
-            {saved && <SuccessMsg data-aos="fade">✓ Settings saved successfully!</SuccessMsg>}
+        <Tabs>
+          <Tab $active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>👤 Profile</Tab>
+          <Tab $active={activeTab === "notification"} onClick={() => setActiveTab("notification")}>🔔 Notifications</Tab>
+          {(role === "admin" || roleDisplay === "admin") && (
+            <Tab $active={activeTab === "community"} onClick={() => setActiveTab("community")}>💬 Community</Tab>
+          )}
+          {(role === "admin" || roleDisplay === "admin") && (
+            <Tab $active={activeTab === "billing"} onClick={() => setActiveTab("billing")}>💳 Billing</Tab>
+          )}
+        </Tabs>
 
-            <Card data-aos="fade-up">
-              <CardTitle>📸 Profile Photo</CardTitle>
-              <PhotoWrap>
-                <PhotoPreview>
-                  {photo ? <img src={photo} alt="Preview" /> : (initials || "U")}
-                </PhotoPreview>
-                <div style={{flex:1,minWidth:0}}>
-                  <PhotoBtn htmlFor="photo-input">📷 Choose Photo</PhotoBtn>
-                  <input ref={fileRef} id="photo-input" type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhoto} />
-                  {photoFile && !saving && <FileName>{photoFile.name}</FileName>}
-                  {(uploadProgress > 0 || saving) && (
-                    <ProgressWrap>
-                      <ProgressBar>
-                        <ProgressFill $pct={uploadProgress} />
-                      </ProgressBar>
-                      {uploadStage && <ProgressLabel>{uploadStage} {uploadProgress}%</ProgressLabel>}
-                    </ProgressWrap>
-                  )}
-                  <PhotoHint>JPG, PNG or GIF. Max 5MB.</PhotoHint>
-                </div>
-              </PhotoWrap>
-            </Card>
+        {activeTab === "profile" && (
+          <form onSubmit={handleSave}>
+            <Grid>
+              {saved && <SuccessMsg data-aos="fade">✓ Settings saved successfully!</SuccessMsg>}
 
-            <Card data-aos="fade-up">
-              <CardTitle>🎭 Role</CardTitle>
-              <RoleBadge>{roleDisplay === "mentee" ? "Mentee" : roleDisplay === "mentor" ? "Mentor" : "Admin"}</RoleBadge>
-              <p style={{ marginTop: 8, fontSize: "0.8rem", color: "var(--color-text-secondary, #594048)" }}>
-                Your role is assigned during registration and cannot be changed here.
-              </p>
-            </Card>
+              <Card data-aos="fade-up">
+                <CardTitle>📸 Profile Photo</CardTitle>
+                <PhotoWrap>
+                  <PhotoPreview>
+                    {photo ? <img src={photo} alt="Preview" /> : (initials || "U")}
+                  </PhotoPreview>
+                  <div style={{flex:1,minWidth:0}}>
+                    <PhotoBtn htmlFor="photo-input">📷 Choose Photo</PhotoBtn>
+                    <input ref={fileRef} id="photo-input" type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhoto} />
+                    {photoFile && !saving && <FileName>{photoFile.name}</FileName>}
+                    {(uploadProgress > 0 || saving) && (
+                      <ProgressWrap>
+                        <ProgressBar>
+                          <ProgressFill $pct={uploadProgress} />
+                        </ProgressBar>
+                        {uploadStage && <ProgressLabel>{uploadStage} {uploadProgress}%</ProgressLabel>}
+                      </ProgressWrap>
+                    )}
+                    <PhotoHint>JPG, PNG or GIF. Max 5MB.</PhotoHint>
+                  </div>
+                </PhotoWrap>
+              </Card>
 
-            <Card $span2 data-aos="fade-up">
-              <CardTitle>👤 Personal Information</CardTitle>
-              <FieldRow>
-                <FieldGroup>
-                  <FieldLabel>Full Name</FieldLabel>
-                  <Input id="settings-fullName" name="fullName" value={name} onChange={(e) => setName(e.target.value)} />
-                </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>Email</FieldLabel>
-                  <Input id="settings-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                </FieldGroup>
-              </FieldRow>
-              <FieldRow>
-                <FieldGroup>
-                  <FieldLabel>Phone</FieldLabel>
-                  <Input id="settings-phone" name="tel" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>City</FieldLabel>
-                  <Input id="settings-city" name="city" value={city} onChange={(e) => setCity(e.target.value)} />
-                </FieldGroup>
-              </FieldRow>
-              <FieldGroup>
-                <FieldLabel>Date of Birth</FieldLabel>
+              <Card data-aos="fade-up">
+                <CardTitle>🎭 Role</CardTitle>
+                <RoleBadge>{roleDisplay === "mentee" ? "Mentee" : roleDisplay === "mentor" ? "Mentor" : "Admin"}</RoleBadge>
+                <p style={{ marginTop: 8, fontSize: "0.8rem", color: "var(--color-text-secondary, #594048)" }}>
+                  Your role is assigned during registration and cannot be changed here.
+                </p>
+              </Card>
+
+              <Card $span2 data-aos="fade-up">
+                <CardTitle>👤 Personal Information</CardTitle>
                 <FieldRow>
-                  <Select id="settings-dobMonth" name="dobMonth" value={dobMonth} onChange={(e) => setDobMonth(e.target.value)}>
-                    <option value="">Month</option>
-                    {MONTHS.map((m, i) => <option key={i} value={m}>{m}</option>)}
-                  </Select>
-                  <Select id="settings-dobDay" name="dobDay" value={dobDay} onChange={(e) => setDobDay(e.target.value)}>
-                    <option value="">Day</option>
-                    {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </Select>
-                  <Select id="settings-dobYear" name="dobYear" value={dobYear} onChange={(e) => setDobYear(e.target.value)}>
-                    <option value="">Year</option>
-                    {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-                  </Select>
+                  <FieldGroup>
+                    <FieldLabel>Full Name</FieldLabel>
+                    <Input id="settings-fullName" name="fullName" value={name} onChange={(e) => setName(e.target.value)} />
+                  </FieldGroup>
+                  <FieldGroup>
+                    <FieldLabel>Email</FieldLabel>
+                    <Input id="settings-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </FieldGroup>
                 </FieldRow>
-              </FieldGroup>
-              <FieldGroup>
-                <FieldLabel>Brief Description</FieldLabel>
-                <Textarea id="settings-bio" name="bio" placeholder="Tell us a bit about yourself..." value={bio} onChange={(e) => setBio(e.target.value)} />
-              </FieldGroup>
-            </Card>
-
-            <Card $span2 data-aos="fade-up">
-              <CardTitle>🔒 Change Password</CardTitle>
-              <FieldRow>
+                <FieldRow>
+                  <FieldGroup>
+                    <FieldLabel>Phone</FieldLabel>
+                    <Input id="settings-phone" name="tel" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  </FieldGroup>
+                  <FieldGroup>
+                    <FieldLabel>City</FieldLabel>
+                    <Input id="settings-city" name="city" value={city} onChange={(e) => setCity(e.target.value)} />
+                  </FieldGroup>
+                </FieldRow>
                 <FieldGroup>
-                  <FieldLabel>Current Password</FieldLabel>
-                  <Input id="settings-currentPassword" name="currentPassword" type="password" placeholder="Enter current password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
+                  <FieldLabel>Date of Birth</FieldLabel>
+                  <FieldRow>
+                    <Select id="settings-dobMonth" name="dobMonth" value={dobMonth} onChange={(e) => setDobMonth(e.target.value)}>
+                      <option value="">Month</option>
+                      {MONTHS.map((m, i) => <option key={i} value={m}>{m}</option>)}
+                    </Select>
+                    <Select id="settings-dobDay" name="dobDay" value={dobDay} onChange={(e) => setDobDay(e.target.value)}>
+                      <option value="">Day</option>
+                      {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
+                    </Select>
+                    <Select id="settings-dobYear" name="dobYear" value={dobYear} onChange={(e) => setDobYear(e.target.value)}>
+                      <option value="">Year</option>
+                      {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                    </Select>
+                  </FieldRow>
                 </FieldGroup>
                 <FieldGroup>
-                  <FieldLabel>New Password</FieldLabel>
-                  <Input id="settings-newPassword" name="newPassword" type="password" placeholder="Min 8 characters" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+                  <FieldLabel>Brief Description</FieldLabel>
+                  <Textarea id="settings-bio" name="bio" placeholder="Tell us a bit about yourself..." value={bio} onChange={(e) => setBio(e.target.value)} />
                 </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>Confirm New Password</FieldLabel>
-                  <Input id="settings-confirmPassword" name="confirmPassword" type="password" placeholder="Re-enter new password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
-                </FieldGroup>
-              </FieldRow>
-            </Card>
+              </Card>
 
-            <Card $span2 data-aos="fade-up">
-              <CardTitle>🎯 Interests</CardTitle>
-              <AddRow>
-                <Input id="settings-customInterest" name="customInterest" placeholder="Type a custom interest..." value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomInterest())} />
-                <AddBtn type="button" onClick={addCustomInterest}>Add</AddBtn>
-              </AddRow>
-              <TagGrid>
-                {interests.map((item) => (
-                  <Tag key={item} type="button" $active={true} onClick={() => toggleInterest(item)}>
-                    {item}<RemoveTag onClick={(e) => { e.stopPropagation(); toggleInterest(item); }}>✕</RemoveTag>
-                  </Tag>
-                ))}
-                {interestOptions.filter((o) => !interests.includes(o)).map((item) => (
-                  <Tag key={item} type="button" $active={false} onClick={() => toggleInterest(item)}>
-                    + {item}
-                  </Tag>
-                ))}
-              </TagGrid>
-            </Card>
+              <Card $span2 data-aos="fade-up">
+                <CardTitle>🔒 Change Password</CardTitle>
+                <FieldRow>
+                  <FieldGroup>
+                    <FieldLabel>Current Password</FieldLabel>
+                    <Input id="settings-currentPassword" name="currentPassword" type="password" placeholder="Enter current password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
+                  </FieldGroup>
+                  <FieldGroup>
+                    <FieldLabel>New Password</FieldLabel>
+                    <Input id="settings-newPassword" name="newPassword" type="password" placeholder="Min 8 characters" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+                  </FieldGroup>
+                  <FieldGroup>
+                    <FieldLabel>Confirm New Password</FieldLabel>
+                    <Input id="settings-confirmPassword" name="confirmPassword" type="password" placeholder="Re-enter new password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
+                  </FieldGroup>
+                </FieldRow>
+              </Card>
 
-            <Card $span2 data-aos="fade-up">
-              <CardTitle>🛠️ Skills</CardTitle>
-              <AddRow>
-                <Input id="settings-customSkill" name="customSkill" placeholder="Type a custom skill..." value={customSkill} onChange={(e) => setCustomSkill(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())} />
-                <AddBtn type="button" onClick={addCustomSkill}>Add</AddBtn>
-              </AddRow>
-              <TagGrid>
-                {skills.map((item) => (
-                  <Tag key={item} type="button" $active={true} onClick={() => toggleSkill(item)}>
-                    {item}<RemoveTag onClick={(e) => { e.stopPropagation(); toggleSkill(item); }}>✕</RemoveTag>
-                  </Tag>
-                ))}
-                {skillOptions.filter((o) => !skills.includes(o)).map((item) => (
-                  <Tag key={item} type="button" $active={false} onClick={() => toggleSkill(item)}>
-                    + {item}
-                  </Tag>
-                ))}
-              </TagGrid>
-            </Card>
+              <Card $span2 data-aos="fade-up">
+                <CardTitle>🎯 Interests</CardTitle>
+                <AddRow>
+                  <Input id="settings-customInterest" name="customInterest" placeholder="Type a custom interest..." value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomInterest())} />
+                  <AddBtn type="button" onClick={addCustomInterest}>Add</AddBtn>
+                </AddRow>
+                <TagGrid>
+                  {interests.map((item) => (
+                    <Tag key={item} type="button" $active={true} onClick={() => toggleInterest(item)}>
+                      {item}<RemoveTag onClick={(e) => { e.stopPropagation(); toggleInterest(item); }}>✕</RemoveTag>
+                    </Tag>
+                  ))}
+                  {interestOptions.filter((o) => !interests.includes(o)).map((item) => (
+                    <Tag key={item} type="button" $active={false} onClick={() => toggleInterest(item)}>
+                      + {item}
+                    </Tag>
+                  ))}
+                </TagGrid>
+              </Card>
 
+              <Card $span2 data-aos="fade-up">
+                <CardTitle>🛠️ Skills</CardTitle>
+                <AddRow>
+                  <Input id="settings-customSkill" name="customSkill" placeholder="Type a custom skill..." value={customSkill} onChange={(e) => setCustomSkill(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())} />
+                  <AddBtn type="button" onClick={addCustomSkill}>Add</AddBtn>
+                </AddRow>
+                <TagGrid>
+                  {skills.map((item) => (
+                    <Tag key={item} type="button" $active={true} onClick={() => toggleSkill(item)}>
+                      {item}<RemoveTag onClick={(e) => { e.stopPropagation(); toggleSkill(item); }}>✕</RemoveTag>
+                    </Tag>
+                  ))}
+                  {skillOptions.filter((o) => !skills.includes(o)).map((item) => (
+                    <Tag key={item} type="button" $active={false} onClick={() => toggleSkill(item)}>
+                      + {item}
+                    </Tag>
+                  ))}
+                </TagGrid>
+              </Card>
+            </Grid>
+
+            <BtnRow>
+              <SaveBtn type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</SaveBtn>
+            </BtnRow>
+          </form>
+        )}
+
+        {activeTab === "notification" && (
+          <Grid>
             <Card $span2 data-aos="fade-up">
               <CardTitle>🔔 Notification Preferences</CardTitle>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -709,14 +756,30 @@ export const Settings = () => {
                 ))}
               </div>
             </Card>
-
-            {(role === "admin" || roleDisplay === "admin") && <CommunitySettingsCard />}
           </Grid>
+        )}
 
-          <BtnRow>
-            <SaveBtn type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</SaveBtn>
-          </BtnRow>
-        </form>
+        {activeTab === "community" && (role === "admin" || roleDisplay === "admin") && (
+          <Grid>
+            <CommunitySettingsCard />
+          </Grid>
+        )}
+
+        {activeTab === "billing" && (role === "admin" || roleDisplay === "admin") && (
+          <Grid>
+            <Card $span2 data-aos="fade-up">
+              <CardTitle>💳 Billing & Subscription</CardTitle>
+              <p style={{ color: "#594048", fontSize: "0.9rem", marginBottom: 16 }}>
+                Manage your subscription and payment history.
+              </p>
+              <div style={{ padding: "40px 20px", textAlign: "center", background: "#f8f9fa", borderRadius: 16, border: "1px dashed #ddd" }}>
+                <p style={{ fontSize: "2rem", marginBottom: 8 }}>🚧</p>
+                <p style={{ fontWeight: 600, color: "#2c3e50", marginBottom: 4 }}>Coming Soon</p>
+                <p style={{ fontSize: "0.85rem", color: "#594048" }}>Billing features will be available here.</p>
+              </div>
+            </Card>
+          </Grid>
+        )}
       </Main>
     </Page>
   );
