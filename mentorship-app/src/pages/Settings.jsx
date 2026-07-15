@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
@@ -337,6 +337,7 @@ const YEARS = Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i
 
 export const Settings = () => {
   const { role } = useParams();
+  const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
   const fileRef = useRef(null);
 
@@ -537,8 +538,9 @@ export const Settings = () => {
     <Page>
       <SidebarByRole />
       <Main>
-        <TopBar searchPlaceholder="Search settings..." />
+        <TopBar hideSearch />
         <div>
+          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", color: "#b50064", marginRight: 8, verticalAlign: "middle" }}>← </button>
           <PageTitle data-aos="fade-down">Settings</PageTitle>
         </div>
 

@@ -268,7 +268,7 @@ const RelativeWrap = styled.div`
   position: relative;
 `;
 
-export const TopBar = ({ searchPlaceholder = "Search...", onSearch }) => {
+export const TopBar = ({ searchPlaceholder = "Search...", onSearch, hideSearch }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [openDropdown, setOpenDropdown] = useState(null);
 
@@ -343,10 +343,12 @@ export const TopBar = ({ searchPlaceholder = "Search...", onSearch }) => {
   return (
     <Bar>
       <style>{`@media(max-width:480px){.desktop-only{display:none!important}}`}</style>
-      <SearchWrapper>
-        <span>🔍</span>
-        <input id="topbar-search" name="search" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); onSearch?.(e.target.value); }} placeholder={searchPlaceholder} />
-      </SearchWrapper>
+      {!hideSearch && (
+        <SearchWrapper>
+          <span>🔍</span>
+          <input id="topbar-search" name="search" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); onSearch?.(e.target.value); }} placeholder={searchPlaceholder} />
+        </SearchWrapper>
+      )}
       <HeaderActions ref={ref}>
         <RelativeWrap>
           <IconBtn $active={openDropdown === "notifications"} onClick={() => setOpenDropdown(openDropdown === "notifications" ? null : "notifications")}>
