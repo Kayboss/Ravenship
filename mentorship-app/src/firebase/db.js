@@ -1,6 +1,6 @@
 import { db } from "./config";
 import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
+  collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, startAfter, serverTimestamp, arrayUnion, arrayRemove, Timestamp, onSnapshot, writeBatch
 } from "firebase/firestore";
 import { getStoredUser } from "./auth";
