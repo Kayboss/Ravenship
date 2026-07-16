@@ -115,7 +115,7 @@ export default function AdminBilling() {
   const [success, setSuccess] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("momo");
   const [reference, setReference] = useState("");
-  const [amount, setAmount] = useState("135");
+  const [amount, setAmount] = useState("1485");
 
   useEffect(() => { AOS.init({ once: true }); }, []);
 
@@ -175,7 +175,7 @@ export default function AdminBilling() {
         <Card data-aos="fade-up">
           <CardTitle>📋 Current Plan</CardTitle>
           <div style={{ padding: "20px 0" }}>
-            <div style={{ fontSize: "2rem", fontWeight: 700, color: "#b50064", marginBottom: 8 }}>$135<span style={{ fontSize: "0.9rem", fontWeight: 500, color: "#594048" }}>/year</span></div>
+            <div style={{ fontSize: "2rem", fontWeight: 700, color: "#b50064", marginBottom: 8 }}><span style={{ fontSize: "1.2rem" }}>₵</span>1,485<span style={{ fontSize: "0.9rem", fontWeight: 500, color: "#594048" }}>/year</span></div>
             <p style={{ color: "#594048", fontSize: "0.85rem", marginBottom: 16 }}>Yearly billing plan for your organization.</p>
 
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>

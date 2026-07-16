@@ -181,7 +181,7 @@ export default function AdminBillingVerify() {
               <PaymentRow>
                 <div>
                   <PaymentLabel>Amount</PaymentLabel>
-                  <PaymentValue style={{ fontSize: "1.1rem", fontWeight: 700, color: "#b50064" }}>${p.amount}</PaymentValue>
+                  <PaymentValue style={{ fontSize: "1.1rem", fontWeight: 700, color: "#b50064" }}>₵{p.amount}</PaymentValue>
                 </div>
                 <div>
                   <PaymentLabel>Method</PaymentLabel>

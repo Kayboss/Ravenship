@@ -872,7 +872,7 @@ export const submitPayment = async ({ userId, userName, userEmail, paymentMethod
     status: "pending",
     createdAt: serverTimestamp(),
   }, { merge: true });
-  logActivity("Payment submitted", { detail: `${userName} submitted payment ($${amount}) via ${paymentMethod} — Ref: ${reference}` });
+  logActivity("Payment submitted", { detail: `${userName} submitted payment (₵${amount}) via ${paymentMethod} — Ref: ${reference}` });
 };
 
 export const getBillingStatus = async (userId) => {
