@@ -35,14 +35,10 @@ const PaymentCard = styled.div`
 
 const PaymentRow = styled.div`
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
   margin-bottom: 8px;
-  @media (max-width: 640px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
+  font-size: 0.85rem;
 `;
 
 const PaymentLabel = styled.span`
@@ -172,34 +168,24 @@ export default function AdminBillingVerify() {
           payments.map((p, i) => (
             <PaymentCard key={p.id || i} data-aos="fade-up">
               <PaymentRow>
-                <div>
-                  <PaymentLabel>Admin</PaymentLabel>
-                  <PaymentValue>{p.userName}</PaymentValue>
-                </div>
-                <div>
-                  <PaymentLabel>Email</PaymentLabel>
-                  <PaymentValue>{p.userEmail}</PaymentValue>
-                </div>
+                <PaymentLabel>Admin:</PaymentLabel>
+                <PaymentValue>{p.userName}</PaymentValue>
               </PaymentRow>
               <PaymentRow>
-                <div>
-                  <PaymentLabel>Amount</PaymentLabel>
-                  <PaymentValue style={{ fontSize: "1.1rem", fontWeight: 700, color: "#b50064" }}>₵{p.amount}</PaymentValue>
-                </div>
-                <div>
-                  <PaymentLabel>Method</PaymentLabel>
-                  <PaymentValue style={{ textTransform: "capitalize" }}>{p.paymentMethod}</PaymentValue>
-                </div>
+                <PaymentLabel>Amount:</PaymentLabel>
+                <PaymentValue style={{ fontWeight: 700, color: "#b50064" }}>₵{p.amount}</PaymentValue>
               </PaymentRow>
               <PaymentRow>
-                <div>
-                  <PaymentLabel>Reference</PaymentLabel>
-                  <PaymentValue style={{ fontFamily: "monospace", background: "#f5f5f5", padding: "4px 8px", borderRadius: 4 }}>{p.reference}</PaymentValue>
-                </div>
-                <div>
-                  <PaymentLabel>Submitted</PaymentLabel>
-                  <PaymentValue>{formatDate(p.createdAt)}</PaymentValue>
-                </div>
+                <PaymentLabel>Method:</PaymentLabel>
+                <PaymentValue style={{ textTransform: "capitalize" }}>{p.paymentMethod}</PaymentValue>
+              </PaymentRow>
+              <PaymentRow>
+                <PaymentLabel>Reference:</PaymentLabel>
+                <PaymentValue style={{ fontFamily: "monospace", background: "#f5f5f5", padding: "2px 6px", borderRadius: 4 }}>{p.reference}</PaymentValue>
+              </PaymentRow>
+              <PaymentRow>
+                <PaymentLabel>Submitted:</PaymentLabel>
+                <PaymentValue>{formatDate(p.createdAt)}</PaymentValue>
               </PaymentRow>
               <BtnRow>
                 <VerifyBtn onClick={() => handleVerify(p.userId)} disabled={processing === p.userId}>
