@@ -577,13 +577,13 @@ export const Settings = () => {
             <Tab $active={activeTab === "community"} onClick={() => setActiveTab("community")}>💬 Community</Tab>
           )}
           {(role === "admin" || roleDisplay === "admin") && (
-            <Tab $active={activeTab === "billing"} onClick={() => setActiveTab("billing")}>💳 Billing</Tab>
-          )}
-          {(role === "admin" || roleDisplay === "admin") && (
             <Tab $active={activeTab === "activity"} onClick={() => setActiveTab("activity")}>📊 Activity Log</Tab>
           )}
           {(role === "admin" || roleDisplay === "admin") && (
             <Tab $active={activeTab === "errors"} onClick={() => setActiveTab("errors")}>⚠️ Error Log</Tab>
+          )}
+          {(role === "admin" || roleDisplay === "admin") && (
+            <Tab $active={activeTab === "billing"} onClick={() => setActiveTab("billing")}>💳 Billing</Tab>
           )}
         </Tabs>
 
