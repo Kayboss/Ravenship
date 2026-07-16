@@ -6,7 +6,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { updateUser, logActivity, getUser } from "../firebase/db";
+import { updateUser, logActivity, getUser, getActivitiesPaginated, pruneOldActivity, getErrorsPaginated, markErrorResolved, pruneOldErrors, batchResolveErrors } from "../firebase/db";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
@@ -566,7 +566,7 @@ export const Settings = () => {
       <Main>
         <TopBar hideSearch />
         <div>
-          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", color: "#b50064", marginRight: 8, verticalAlign: "middle" }}>← </button>
+          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", color: "#b50064", marginRight: 8, verticalAlign: "middle", fontWeight: 600 }}>← Back</button>
           <PageTitle data-aos="fade-down">Settings</PageTitle>
         </div>
 
@@ -578,6 +578,12 @@ export const Settings = () => {
           )}
           {(role === "admin" || roleDisplay === "admin") && (
             <Tab $active={activeTab === "billing"} onClick={() => setActiveTab("billing")}>💳 Billing</Tab>
+          )}
+          {(role === "admin" || roleDisplay === "admin") && (
+            <Tab $active={activeTab === "activity"} onClick={() => setActiveTab("activity")}>📊 Activity Log</Tab>
+          )}
+          {(role === "admin" || roleDisplay === "admin") && (
+            <Tab $active={activeTab === "errors"} onClick={() => setActiveTab("errors")}>⚠️ Error Log</Tab>
           )}
         </Tabs>
 
@@ -780,6 +786,14 @@ export const Settings = () => {
             </Card>
           </Grid>
         )}
+
+        {activeTab === "activity" && (role === "admin" || roleDisplay === "admin") && (
+          <ActivityLogTab />
+        )}
+
+        {activeTab === "errors" && (role === "admin" || roleDisplay === "admin") && (
+          <ErrorLogTab />
+        )}
       </Main>
     </Page>
   );
@@ -846,5 +860,156 @@ function CommunitySettingsCard() {
         <SaveSmallBtn onClick={save}>{saved ? "✅ Saved" : "Save Settings"}</SaveSmallBtn>
       </div>
     </Card>
+  );
+}
+
+function ActivityLogTab() {
+  const [activities, setActivities] = useState([]);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    pruneOldActivity(3);
+    setLoading(true);
+    getActivitiesPaginated(50, null).then(({ items, lastDoc: ld, hasMore: hm }) => {
+      setActivities(items);
+      setLastDoc(ld);
+      setHasMore(hm);
+      setLoading(false);
+    }).catch(e => { console.error("getActivities error:", e); setLoading(false); });
+  }, []);
+  const loadMore = () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    getActivitiesPaginated(50, lastDoc).then(({ items, lastDoc: ld, hasMore: hm }) => {
+      setActivities(prev => [...prev, ...items]);
+      setLastDoc(ld);
+      setHasMore(hm);
+      setLoading(false);
+    }).catch(e => { console.error("loadMore error:", e); setLoading(false); });
+  };
+  return (
+    <Grid>
+      <Card $span2 data-aos="fade-up">
+        <CardTitle>📊 Recent Activity Log</CardTitle>
+        <p style={{ fontSize: "0.85rem", color: "#594048", marginBottom: 16 }}>Track all user actions across the platform.</p>
+        {activities.length === 0 && !loading ? <p style={{ color: "#594048" }}>No activity recorded yet.</p> : (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 600, overflowY: "auto" }}>
+              {activities.map((a, i) => {
+                const time = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
+                return (
+                  <div key={a.id || i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 18px", borderRadius: 10, fontSize: "0.85rem", background: i % 2 === 0 ? "#fafafa" : "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#b50064", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, color: "#fff", flexShrink: 0 }}>{a.userName?.split(" ").map(w => w[0]).join("").slice(0, 2)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ color: "#2c3e50", fontWeight: 600 }}>{a.action}</span>
+                      <span style={{ color: "#594048", marginLeft: 6, fontSize: "0.8rem" }}>{a.detail || ""}</span>
+                      <div style={{ fontSize: "0.73rem", color: "#999", marginTop: 3 }}>{a.userName} · {a.userRole}</div>
+                    </div>
+                    <span style={{ fontSize: "0.7rem", color: "#999", flexShrink: 0, whiteSpace: "nowrap" }}>{time.toLocaleDateString()} {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {hasMore && (
+              <button onClick={loadMore} disabled={loading} style={{ marginTop: 16, padding: "10px 20px", borderRadius: 8, border: "1px solid #b50064", background: "transparent", color: "#b50064", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%", minHeight: 40 }}>
+                {loading ? "Loading..." : `Load More (${activities.length}+)`}
+              </button>
+            )}
+          </>
+        )}
+      </Card>
+    </Grid>
+  );
+}
+
+function ErrorLogTab() {
+  const [errors, setErrors] = useState([]);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [resolving, setResolving] = useState(null);
+  useEffect(() => {
+    pruneOldErrors(1);
+    setLoading(true);
+    getErrorsPaginated(50, null).then(async ({ items, lastDoc: ld, hasMore: hm }) => {
+      const now = Date.now();
+      const cutoff = 14 * 86400000;
+      const oldUnresolved = items.filter(e => {
+        if (e.resolved) return false;
+        const t = e.timestamp?.toDate ? e.timestamp.toDate().getTime() : new Date(e.timestamp).getTime();
+        return (now - t) > cutoff;
+      });
+      if (oldUnresolved.length > 0) {
+        await batchResolveErrors(oldUnresolved.map(e => e.id));
+        items.forEach(e => { if (oldUnresolved.find(r => r.id === e.id)) e.resolved = true; });
+      }
+      setErrors(items);
+      setLastDoc(ld);
+      setHasMore(hm);
+      setLoading(false);
+    }).catch(e => { console.error("getErrors error:", e); setLoading(false); });
+  }, []);
+  const loadMore = () => {
+    if (loading || !hasMore) return;
+    setLoading(true);
+    getErrorsPaginated(50, lastDoc).then(({ items, lastDoc: ld, hasMore: hm }) => {
+      setErrors(prev => [...prev, ...items]);
+      setLastDoc(ld);
+      setHasMore(hm);
+      setLoading(false);
+    }).catch(e => { console.error("loadMore error:", e); setLoading(false); });
+  };
+  const doResolve = (id) => {
+    setResolving(id);
+    markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? { ...e, resolved: true } : e)); }).catch(e => console.error("markErrorResolved error:", e)).finally(() => setResolving(null));
+  };
+  return (
+    <Grid>
+      <Card $span2 data-aos="fade-up">
+        <CardTitle>⚠️ Error Log</CardTitle>
+        <p style={{ fontSize: "0.85rem", color: "#594048", marginBottom: 16 }}>Unhandled errors and exceptions reported from the client.</p>
+        {errors.length === 0 && !loading ? <p style={{ color: "#594048" }}>No errors recorded.</p> : (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 600, overflowY: "auto" }}>
+              {errors.map((e, i) => {
+                const time = e.timestamp?.toDate ? e.timestamp.toDate() : new Date(e.timestamp);
+                return (
+                  <div key={e.id || i} style={{ padding: "20px 24px", borderRadius: 12, borderLeft: `5px solid ${e.resolved ? "#2e7d32" : "#e53935"}`, background: e.resolved ? "#f9f9f9" : "#fff7f7", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#2c3e50", marginBottom: 6, lineHeight: 1.5, overflowWrap: "anywhere", wordBreak: "break-word" }}>{e.message || "Unknown error"}</div>
+                        {e.url && <div style={{ fontSize: "0.75rem", color: "#666", marginBottom: 3, wordBreak: "break-all" }}>URL: {e.url}</div>}
+                        {e.userName && <div style={{ fontSize: "0.75rem", color: "#666", marginBottom: 3 }}>User: {e.userName} ({e.userRole})</div>}
+                        {e.stack && (
+                          <details style={{ marginTop: 4 }}>
+                            <summary style={{ fontSize: "0.78rem", color: "#b50064", cursor: "pointer", fontWeight: 600, padding: "4px 0" }}>Stack Trace</summary>
+                            <pre style={{ fontSize: "0.68rem", color: "#444", background: "#f5f5f5", padding: 12, borderRadius: 8, marginTop: 8, maxHeight: 180, overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all", border: "1px solid #e0e0e0" }}>{e.stack}</pre>
+                          </details>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, marginLeft: 12 }}>
+                        <span style={{ display: "inline-block", padding: "4px 12px", borderRadius: 50, fontSize: "0.75rem", fontWeight: 700, background: e.resolved ? "#2e7d32" + "20" : "#e53935" + "20", color: e.resolved ? "#2e7d32" : "#e53935" }}>{e.resolved ? "Resolved" : "Open"}</span>
+                        <span style={{ fontSize: "0.7rem", color: "#999" }}>{time.toLocaleDateString()} {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      </div>
+                    </div>
+                    {!e.resolved && (
+                      <button onClick={() => doResolve(e.id)} disabled={resolving === e.id} style={{ marginTop: 12, padding: "8px 20px", borderRadius: 6, border: "1px solid #2e7d32", background: "transparent", color: "#2e7d32", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", minHeight: 36, transition: "all 0.15s" }}>
+                        {resolving === e.id ? "Resolving..." : "Mark Resolved"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {hasMore && (
+              <button onClick={loadMore} disabled={loading} style={{ marginTop: 16, padding: "10px 20px", borderRadius: 8, border: "1px solid #b50064", background: "transparent", color: "#b50064", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%", minHeight: 40 }}>
+                {loading ? "Loading..." : `Load More (${errors.length}+)`}
+              </button>
+            )}
+          </>
+        )}
+      </Card>
+    </Grid>
   );
 }
