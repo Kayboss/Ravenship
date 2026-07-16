@@ -538,7 +538,7 @@ export const Settings = () => {
     <Page>
       <SidebarByRole />
       <Main>
-        <TopBar hideSearch />
+        <TopBar />
         <div>
           <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", color: "#b50064", marginRight: 8, verticalAlign: "middle", fontWeight: 600 }}>← Back</button>
           <PageTitle data-aos="fade-down">Settings</PageTitle>
