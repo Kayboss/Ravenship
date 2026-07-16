@@ -49,19 +49,69 @@ export const logout = async () => {
 };
 
 let presenceUnsub = null;
+let heartbeatInterval = null;
+
+const HEARTBEAT_INTERVAL = 30000;
+const ONLINE_THRESHOLD = 120000;
+
+export const isUserOnline = (lastSeen) => {
+  if (!lastSeen) return false;
+  const ts = lastSeen?.toDate ? lastSeen.toDate() : new Date(lastSeen);
+  return (Date.now() - ts.getTime()) < ONLINE_THRESHOLD;
+};
+
 export const watchPresence = () => {
   if (presenceUnsub) presenceUnsub();
+  if (heartbeatInterval) clearInterval(heartbeatInterval);
+
   const unsub = onAuthStateChanged(auth, async (fbUser) => {
     if (fbUser) {
-      try { await updateDoc(doc(db, "users", fbUser.uid), { online: true }); } catch {}
+      try {
+        await updateDoc(doc(db, "users", fbUser.uid), {
+          online: true,
+          lastSeen: serverTimestamp(),
+        });
+      } catch {}
+
+      heartbeatInterval = setInterval(async () => {
+        try {
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            await updateDoc(doc(db, "users", currentUser.uid), {
+              lastSeen: serverTimestamp(),
+            });
+          }
+        } catch {}
+      }, HEARTBEAT_INTERVAL);
+    } else {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+        heartbeatInterval = null;
+      }
     }
   });
+
   const handleBeforeUnload = () => {
     const user = getStoredUser();
-    if (user?.id) updateDoc(doc(db, "users", user.id), { online: false }).catch(() => {});
+    if (user?.id) {
+      updateDoc(doc(db, "users", user.id), {
+        online: false,
+        lastSeen: serverTimestamp(),
+      }).catch(() => {});
+    }
   };
+
   window.addEventListener("beforeunload", handleBeforeUnload);
-  presenceUnsub = () => { unsub(); window.removeEventListener("beforeunload", handleBeforeUnload); };
+
+  presenceUnsub = () => {
+    unsub();
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+    }
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  };
+
   return presenceUnsub;
 };
 

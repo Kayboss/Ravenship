@@ -5,8 +5,10 @@ import "aos/dist/aos.css";
 import { useLocation, useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
-import { getStoredUser, onAuthReady } from "../firebase/auth";
+import { getStoredUser, onAuthReady, isUserOnline } from "../firebase/auth";
 import { getPosts, addPost, updatePost, deletePost, togglePostLike, addComment as fbAddComment, getEvents, getUsers, getOrCreateConversation, sendMessage, subscribeMessages, subscribeConversations, markMessagesRead, subscribeConversation, setTyping } from "../firebase/db";
+import { db } from "../firebase/config";
+import { collection, onSnapshot } from "firebase/firestore";
 
 const Page = styled.div`
   display: flex;
@@ -658,7 +660,13 @@ export const Community = () => {
     if (!authReady) return;
     AOS.init({ duration: 800, once: true });
     getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(e => console.error("getPosts error:", e));
-    getUsers().then(d => setMemberList(Array.isArray(d) ? d : [])).catch(e => console.error("getUsers error:", e));
+    getUsers().then(d => {
+      const members = Array.isArray(d) ? d : [];
+      setMemberList(members.map(m => ({
+        ...m,
+        online: isUserOnline(m.lastSeen),
+      })));
+    }).catch(e => console.error("getUsers error:", e));
     getEvents().then(d => setEventList(Array.isArray(d) ? d : [])).catch(e => console.error("getEvents error:", e));
     const stateTarget = location.state?.chatTarget;
     if (stateTarget?.id && stateTarget?.name) {
@@ -666,6 +674,22 @@ export const Community = () => {
       window.history.replaceState({}, "");
     }
   }, [authReady, location.state]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    const unsub = onSnapshot(collection(db, "users"), (snap) => {
+      snap.docChanges().forEach((change) => {
+        if (change.type === "modified" || change.type === "added") {
+          const data = change.doc.data();
+          const isOnline = isUserOnline(data.lastSeen);
+          setMemberList(prev => prev.map(m =>
+            m.id === change.doc.id ? { ...m, online: isOnline } : m
+          ));
+        }
+      });
+    });
+    return () => unsub();
+  }, [authReady]);
 
   useEffect(() => {
     if (!authReady || !user?.id) return;
