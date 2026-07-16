@@ -6,7 +6,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { updateUser, logActivity, getUser, getActivitiesPaginated, pruneOldActivity, getErrorsPaginated, markErrorResolved, pruneOldErrors, batchResolveErrors } from "../firebase/db";
+import { updateUser, logActivity, getUser } from "../firebase/db";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
@@ -37,9 +37,6 @@ const PageTitle = styled.h2`
   font-family: ${(props) => props.theme.typography.fontFamilyHeading};
   color: ${(props) => props.theme.colors.textPrimary};
   font-weight: 700;
-  @media (max-width: 640px) {
-    font-size: 1.3rem;
-  }
 `;
 
 const Grid = styled.div`
@@ -48,7 +45,6 @@ const Grid = styled.div`
   gap: 24px;
   margin-top: 24px;
   @media (max-width: 900px) { grid-template-columns: 1fr; }
-  @media (max-width: 640px) { gap: 16px; margin-top: 16px; }
 `;
 
 const Card = styled.div`
@@ -57,10 +53,6 @@ const Card = styled.div`
   padding: 28px 32px;
   border: 1px solid ${(props) => props.theme.colors.outline};
   ${(props) => props.$span2 && "grid-column: 1 / -1;"}
-  @media (max-width: 640px) {
-    padding: 20px 16px;
-    border-radius: 16px;
-  }
 `;
 
 const CardTitle = styled.h3`
@@ -306,19 +298,12 @@ const SaveBtn = styled.button`
   transition: opacity 0.2s;
   &:hover { opacity: 0.9; }
   &:disabled { opacity: 0.6; cursor: not-allowed; }
-  @media (max-width: 640px) {
-    width: 100%;
-    padding: 14px 24px;
-  }
 `;
 
 const BtnRow = styled.div`
   display: flex;
   justify-content: flex-end;
   margin-top: 24px;
-  @media (max-width: 640px) {
-    margin-top: 16px;
-  }
 `;
 
 const SuccessMsg = styled.div`
@@ -330,42 +315,6 @@ const SuccessMsg = styled.div`
   font-size: 0.85rem;
   margin-bottom: 16px;
   grid-column: 1 / -1;
-`;
-
-const Tabs = styled.div`
-  display: flex;
-  gap: 0;
-  margin-bottom: 24px;
-  border-bottom: 2px solid ${(props) => props.theme.colors.outline};
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
-  @media (max-width: 640px) {
-    gap: 0;
-    margin-bottom: 16px;
-  }
-`;
-
-const Tab = styled.button`
-  padding: 12px 24px;
-  border: none;
-  background: none;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: ${(props) => props.$active ? 700 : 500};
-  color: ${(props) => props.$active ? props.theme.colors.primary : props.theme.colors.textSecondary};
-  cursor: pointer;
-  border-bottom: 3px solid ${(props) => props.$active ? props.theme.colors.primary : "transparent"};
-  margin-bottom: -2px;
-  white-space: nowrap;
-  transition: all 0.2s;
-  flex-shrink: 0;
-  &:hover { color: ${(props) => props.theme.colors.primary}; }
-  @media (max-width: 640px) {
-    padding: 10px 16px;
-    font-size: 0.82rem;
-  }
 `;
 
 const interestOptions = [
@@ -413,7 +362,6 @@ export const Settings = () => {
   const [uploadStage, setUploadStage] = useState("");
   const [authReady, setAuthReady] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("profile");
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -592,175 +540,148 @@ export const Settings = () => {
       <Main>
         <TopBar hideSearch />
         <div>
-          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", color: "#b50064", marginRight: 8, verticalAlign: "middle", fontWeight: 600 }}>← Back</button>
+          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", color: "#b50064", marginRight: 8, verticalAlign: "middle" }}>← </button>
           <PageTitle data-aos="fade-down">Settings</PageTitle>
         </div>
 
-        <Tabs>
-          <Tab $active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>👤 Profile</Tab>
-          <Tab $active={activeTab === "notification"} onClick={() => setActiveTab("notification")}>🔔 Notifications</Tab>
-          {(role === "admin" || roleDisplay === "admin") && (
-            <Tab $active={activeTab === "community"} onClick={() => setActiveTab("community")}>💬 Community</Tab>
-          )}
-          {(role === "admin" || roleDisplay === "admin") && (
-            <Tab $active={activeTab === "activity"} onClick={() => setActiveTab("activity")}>📊 Activity Log</Tab>
-          )}
-          {(role === "admin" || roleDisplay === "admin") && (
-            <Tab $active={activeTab === "errors"} onClick={() => setActiveTab("errors")}>⚠️ Error Log</Tab>
-          )}
-          {(role === "admin" || roleDisplay === "admin") && (
-            <Tab $active={activeTab === "billing"} onClick={() => setActiveTab("billing")}>💳 Billing</Tab>
-          )}
-        </Tabs>
-
-        {activeTab === "profile" && (
-          <form onSubmit={handleSave}>
-            <Grid>
-              {saved && <SuccessMsg data-aos="fade">✓ Settings saved successfully!</SuccessMsg>}
-
-              <Card data-aos="fade-up">
-                <CardTitle>📸 Profile Photo</CardTitle>
-                <PhotoWrap>
-                  <PhotoPreview>
-                    {photo ? <img src={photo} alt="Preview" /> : (initials || "U")}
-                  </PhotoPreview>
-                  <div style={{flex:1,minWidth:0}}>
-                    <PhotoBtn htmlFor="photo-input">📷 Choose Photo</PhotoBtn>
-                    <input ref={fileRef} id="photo-input" type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhoto} />
-                    {photoFile && !saving && <FileName>{photoFile.name}</FileName>}
-                    {(uploadProgress > 0 || saving) && (
-                      <ProgressWrap>
-                        <ProgressBar>
-                          <ProgressFill $pct={uploadProgress} />
-                        </ProgressBar>
-                        {uploadStage && <ProgressLabel>{uploadStage} {uploadProgress}%</ProgressLabel>}
-                      </ProgressWrap>
-                    )}
-                    <PhotoHint>JPG, PNG or GIF. Max 5MB.</PhotoHint>
-                  </div>
-                </PhotoWrap>
-              </Card>
-
-              <Card data-aos="fade-up">
-                <CardTitle>🎭 Role</CardTitle>
-                <RoleBadge>{roleDisplay === "mentee" ? "Mentee" : roleDisplay === "mentor" ? "Mentor" : "Admin"}</RoleBadge>
-                <p style={{ marginTop: 8, fontSize: "0.8rem", color: "var(--color-text-secondary, #594048)" }}>
-                  Your role is assigned during registration and cannot be changed here.
-                </p>
-              </Card>
-
-              <Card $span2 data-aos="fade-up">
-                <CardTitle>👤 Personal Information</CardTitle>
-                <FieldRow>
-                  <FieldGroup>
-                    <FieldLabel>Full Name</FieldLabel>
-                    <Input id="settings-fullName" name="fullName" value={name} onChange={(e) => setName(e.target.value)} />
-                  </FieldGroup>
-                  <FieldGroup>
-                    <FieldLabel>Email</FieldLabel>
-                    <Input id="settings-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                  </FieldGroup>
-                </FieldRow>
-                <FieldRow>
-                  <FieldGroup>
-                    <FieldLabel>Phone</FieldLabel>
-                    <Input id="settings-phone" name="tel" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                  </FieldGroup>
-                  <FieldGroup>
-                    <FieldLabel>City</FieldLabel>
-                    <Input id="settings-city" name="city" value={city} onChange={(e) => setCity(e.target.value)} />
-                  </FieldGroup>
-                </FieldRow>
-                <FieldGroup>
-                  <FieldLabel>Date of Birth</FieldLabel>
-                  <FieldRow>
-                    <Select id="settings-dobMonth" name="dobMonth" value={dobMonth} onChange={(e) => setDobMonth(e.target.value)}>
-                      <option value="">Month</option>
-                      {MONTHS.map((m, i) => <option key={i} value={m}>{m}</option>)}
-                    </Select>
-                    <Select id="settings-dobDay" name="dobDay" value={dobDay} onChange={(e) => setDobDay(e.target.value)}>
-                      <option value="">Day</option>
-                      {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
-                    </Select>
-                    <Select id="settings-dobYear" name="dobYear" value={dobYear} onChange={(e) => setDobYear(e.target.value)}>
-                      <option value="">Year</option>
-                      {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-                    </Select>
-                  </FieldRow>
-                </FieldGroup>
-                <FieldGroup>
-                  <FieldLabel>Brief Description</FieldLabel>
-                  <Textarea id="settings-bio" name="bio" placeholder="Tell us a bit about yourself..." value={bio} onChange={(e) => setBio(e.target.value)} />
-                </FieldGroup>
-              </Card>
-
-              <Card $span2 data-aos="fade-up">
-                <CardTitle>🔒 Change Password</CardTitle>
-                <FieldRow>
-                  <FieldGroup>
-                    <FieldLabel>Current Password</FieldLabel>
-                    <Input id="settings-currentPassword" name="currentPassword" type="password" placeholder="Enter current password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
-                  </FieldGroup>
-                  <FieldGroup>
-                    <FieldLabel>New Password</FieldLabel>
-                    <Input id="settings-newPassword" name="newPassword" type="password" placeholder="Min 8 characters" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-                  </FieldGroup>
-                  <FieldGroup>
-                    <FieldLabel>Confirm New Password</FieldLabel>
-                    <Input id="settings-confirmPassword" name="confirmPassword" type="password" placeholder="Re-enter new password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
-                  </FieldGroup>
-                </FieldRow>
-              </Card>
-
-              <Card $span2 data-aos="fade-up">
-                <CardTitle>🎯 Interests</CardTitle>
-                <AddRow>
-                  <Input id="settings-customInterest" name="customInterest" placeholder="Type a custom interest..." value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomInterest())} />
-                  <AddBtn type="button" onClick={addCustomInterest}>Add</AddBtn>
-                </AddRow>
-                <TagGrid>
-                  {interests.map((item) => (
-                    <Tag key={item} type="button" $active={true} onClick={() => toggleInterest(item)}>
-                      {item}<RemoveTag onClick={(e) => { e.stopPropagation(); toggleInterest(item); }}>✕</RemoveTag>
-                    </Tag>
-                  ))}
-                  {interestOptions.filter((o) => !interests.includes(o)).map((item) => (
-                    <Tag key={item} type="button" $active={false} onClick={() => toggleInterest(item)}>
-                      + {item}
-                    </Tag>
-                  ))}
-                </TagGrid>
-              </Card>
-
-              <Card $span2 data-aos="fade-up">
-                <CardTitle>🛠️ Skills</CardTitle>
-                <AddRow>
-                  <Input id="settings-customSkill" name="customSkill" placeholder="Type a custom skill..." value={customSkill} onChange={(e) => setCustomSkill(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())} />
-                  <AddBtn type="button" onClick={addCustomSkill}>Add</AddBtn>
-                </AddRow>
-                <TagGrid>
-                  {skills.map((item) => (
-                    <Tag key={item} type="button" $active={true} onClick={() => toggleSkill(item)}>
-                      {item}<RemoveTag onClick={(e) => { e.stopPropagation(); toggleSkill(item); }}>✕</RemoveTag>
-                    </Tag>
-                  ))}
-                  {skillOptions.filter((o) => !skills.includes(o)).map((item) => (
-                    <Tag key={item} type="button" $active={false} onClick={() => toggleSkill(item)}>
-                      + {item}
-                    </Tag>
-                  ))}
-                </TagGrid>
-              </Card>
-            </Grid>
-
-            <BtnRow>
-              <SaveBtn type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</SaveBtn>
-            </BtnRow>
-          </form>
-        )}
-
-        {activeTab === "notification" && (
+        <form onSubmit={handleSave}>
           <Grid>
+            {saved && <SuccessMsg data-aos="fade">✓ Settings saved successfully!</SuccessMsg>}
+
+            <Card data-aos="fade-up">
+              <CardTitle>📸 Profile Photo</CardTitle>
+              <PhotoWrap>
+                <PhotoPreview>
+                  {photo ? <img src={photo} alt="Preview" /> : (initials || "U")}
+                </PhotoPreview>
+                <div style={{flex:1,minWidth:0}}>
+                  <PhotoBtn htmlFor="photo-input">📷 Choose Photo</PhotoBtn>
+                  <input ref={fileRef} id="photo-input" type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhoto} />
+                  {photoFile && !saving && <FileName>{photoFile.name}</FileName>}
+                  {(uploadProgress > 0 || saving) && (
+                    <ProgressWrap>
+                      <ProgressBar>
+                        <ProgressFill $pct={uploadProgress} />
+                      </ProgressBar>
+                      {uploadStage && <ProgressLabel>{uploadStage} {uploadProgress}%</ProgressLabel>}
+                    </ProgressWrap>
+                  )}
+                  <PhotoHint>JPG, PNG or GIF. Max 5MB.</PhotoHint>
+                </div>
+              </PhotoWrap>
+            </Card>
+
+            <Card data-aos="fade-up">
+              <CardTitle>🎭 Role</CardTitle>
+              <RoleBadge>{roleDisplay === "mentee" ? "Mentee" : roleDisplay === "mentor" ? "Mentor" : "Admin"}</RoleBadge>
+              <p style={{ marginTop: 8, fontSize: "0.8rem", color: "var(--color-text-secondary, #594048)" }}>
+                Your role is assigned during registration and cannot be changed here.
+              </p>
+            </Card>
+
+            <Card $span2 data-aos="fade-up">
+              <CardTitle>👤 Personal Information</CardTitle>
+              <FieldRow>
+                <FieldGroup>
+                  <FieldLabel>Full Name</FieldLabel>
+                  <Input id="settings-fullName" name="fullName" value={name} onChange={(e) => setName(e.target.value)} />
+                </FieldGroup>
+                <FieldGroup>
+                  <FieldLabel>Email</FieldLabel>
+                  <Input id="settings-email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </FieldGroup>
+              </FieldRow>
+              <FieldRow>
+                <FieldGroup>
+                  <FieldLabel>Phone</FieldLabel>
+                  <Input id="settings-phone" name="tel" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                </FieldGroup>
+                <FieldGroup>
+                  <FieldLabel>City</FieldLabel>
+                  <Input id="settings-city" name="city" value={city} onChange={(e) => setCity(e.target.value)} />
+                </FieldGroup>
+              </FieldRow>
+              <FieldGroup>
+                <FieldLabel>Date of Birth</FieldLabel>
+                <FieldRow>
+                  <Select id="settings-dobMonth" name="dobMonth" value={dobMonth} onChange={(e) => setDobMonth(e.target.value)}>
+                    <option value="">Month</option>
+                    {MONTHS.map((m, i) => <option key={i} value={m}>{m}</option>)}
+                  </Select>
+                  <Select id="settings-dobDay" name="dobDay" value={dobDay} onChange={(e) => setDobDay(e.target.value)}>
+                    <option value="">Day</option>
+                    {DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </Select>
+                  <Select id="settings-dobYear" name="dobYear" value={dobYear} onChange={(e) => setDobYear(e.target.value)}>
+                    <option value="">Year</option>
+                    {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                  </Select>
+                </FieldRow>
+              </FieldGroup>
+              <FieldGroup>
+                <FieldLabel>Brief Description</FieldLabel>
+                <Textarea id="settings-bio" name="bio" placeholder="Tell us a bit about yourself..." value={bio} onChange={(e) => setBio(e.target.value)} />
+              </FieldGroup>
+            </Card>
+
+            <Card $span2 data-aos="fade-up">
+              <CardTitle>🔒 Change Password</CardTitle>
+              <FieldRow>
+                <FieldGroup>
+                  <FieldLabel>Current Password</FieldLabel>
+                  <Input id="settings-currentPassword" name="currentPassword" type="password" placeholder="Enter current password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
+                </FieldGroup>
+                <FieldGroup>
+                  <FieldLabel>New Password</FieldLabel>
+                  <Input id="settings-newPassword" name="newPassword" type="password" placeholder="Min 8 characters" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+                </FieldGroup>
+                <FieldGroup>
+                  <FieldLabel>Confirm New Password</FieldLabel>
+                  <Input id="settings-confirmPassword" name="confirmPassword" type="password" placeholder="Re-enter new password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
+                </FieldGroup>
+              </FieldRow>
+            </Card>
+
+            <Card $span2 data-aos="fade-up">
+              <CardTitle>🎯 Interests</CardTitle>
+              <AddRow>
+                <Input id="settings-customInterest" name="customInterest" placeholder="Type a custom interest..." value={customInterest} onChange={(e) => setCustomInterest(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomInterest())} />
+                <AddBtn type="button" onClick={addCustomInterest}>Add</AddBtn>
+              </AddRow>
+              <TagGrid>
+                {interests.map((item) => (
+                  <Tag key={item} type="button" $active={true} onClick={() => toggleInterest(item)}>
+                    {item}<RemoveTag onClick={(e) => { e.stopPropagation(); toggleInterest(item); }}>✕</RemoveTag>
+                  </Tag>
+                ))}
+                {interestOptions.filter((o) => !interests.includes(o)).map((item) => (
+                  <Tag key={item} type="button" $active={false} onClick={() => toggleInterest(item)}>
+                    + {item}
+                  </Tag>
+                ))}
+              </TagGrid>
+            </Card>
+
+            <Card $span2 data-aos="fade-up">
+              <CardTitle>🛠️ Skills</CardTitle>
+              <AddRow>
+                <Input id="settings-customSkill" name="customSkill" placeholder="Type a custom skill..." value={customSkill} onChange={(e) => setCustomSkill(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())} />
+                <AddBtn type="button" onClick={addCustomSkill}>Add</AddBtn>
+              </AddRow>
+              <TagGrid>
+                {skills.map((item) => (
+                  <Tag key={item} type="button" $active={true} onClick={() => toggleSkill(item)}>
+                    {item}<RemoveTag onClick={(e) => { e.stopPropagation(); toggleSkill(item); }}>✕</RemoveTag>
+                  </Tag>
+                ))}
+                {skillOptions.filter((o) => !skills.includes(o)).map((item) => (
+                  <Tag key={item} type="button" $active={false} onClick={() => toggleSkill(item)}>
+                    + {item}
+                  </Tag>
+                ))}
+              </TagGrid>
+            </Card>
+
             <Card $span2 data-aos="fade-up">
               <CardTitle>🔔 Notification Preferences</CardTitle>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -788,38 +709,14 @@ export const Settings = () => {
                 ))}
               </div>
             </Card>
+
+            {(role === "admin" || roleDisplay === "admin") && <CommunitySettingsCard />}
           </Grid>
-        )}
 
-        {activeTab === "community" && (role === "admin" || roleDisplay === "admin") && (
-          <Grid>
-            <CommunitySettingsCard />
-          </Grid>
-        )}
-
-        {activeTab === "billing" && (role === "admin" || roleDisplay === "admin") && (
-          <Grid>
-            <Card $span2 data-aos="fade-up">
-              <CardTitle>💳 Billing & Subscription</CardTitle>
-              <p style={{ color: "#594048", fontSize: "0.9rem", marginBottom: 16 }}>
-                Manage your subscription and payment history.
-              </p>
-              <div style={{ padding: "40px 20px", textAlign: "center", background: "#f8f9fa", borderRadius: 16, border: "1px dashed #ddd" }}>
-                <p style={{ fontSize: "2rem", marginBottom: 8 }}>🚧</p>
-                <p style={{ fontWeight: 600, color: "#2c3e50", marginBottom: 4 }}>Coming Soon</p>
-                <p style={{ fontSize: "0.85rem", color: "#594048" }}>Billing features will be available here.</p>
-              </div>
-            </Card>
-          </Grid>
-        )}
-
-        {activeTab === "activity" && (role === "admin" || roleDisplay === "admin") && (
-          <ActivityLogTab />
-        )}
-
-        {activeTab === "errors" && (role === "admin" || roleDisplay === "admin") && (
-          <ErrorLogTab />
-        )}
+          <BtnRow>
+            <SaveBtn type="submit" disabled={saving}>{saving ? "Saving..." : "Save Changes"}</SaveBtn>
+          </BtnRow>
+        </form>
       </Main>
     </Page>
   );
@@ -849,10 +746,6 @@ const SaveSmallBtn = styled.button`
   cursor: pointer;
   font-family: inherit;
   &:hover { opacity: 0.9; }
-  @media (max-width: 640px) {
-    width: 100%;
-    padding: 12px 24px;
-  }
 `;
 
 function CommunitySettingsCard() {
@@ -890,156 +783,5 @@ function CommunitySettingsCard() {
         <SaveSmallBtn onClick={save}>{saved ? "✅ Saved" : "Save Settings"}</SaveSmallBtn>
       </div>
     </Card>
-  );
-}
-
-function ActivityLogTab() {
-  const [activities, setActivities] = useState([]);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
-  useEffect(() => {
-    pruneOldActivity(3);
-    setLoading(true);
-    getActivitiesPaginated(50, null).then(({ items, lastDoc: ld, hasMore: hm }) => {
-      setActivities(items);
-      setLastDoc(ld);
-      setHasMore(hm);
-      setLoading(false);
-    }).catch(e => { console.error("getActivities error:", e); setLoading(false); });
-  }, []);
-  const loadMore = () => {
-    if (loading || !hasMore) return;
-    setLoading(true);
-    getActivitiesPaginated(50, lastDoc).then(({ items, lastDoc: ld, hasMore: hm }) => {
-      setActivities(prev => [...prev, ...items]);
-      setLastDoc(ld);
-      setHasMore(hm);
-      setLoading(false);
-    }).catch(e => { console.error("loadMore error:", e); setLoading(false); });
-  };
-  return (
-    <Grid>
-      <Card $span2 data-aos="fade-up">
-        <CardTitle>📊 Recent Activity Log</CardTitle>
-        <p style={{ fontSize: "0.85rem", color: "#594048", marginBottom: 16 }}>Track all user actions across the platform.</p>
-        {activities.length === 0 && !loading ? <p style={{ color: "#594048" }}>No activity recorded yet.</p> : (
-          <>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 600, overflowY: "auto" }}>
-              {activities.map((a, i) => {
-                const time = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp);
-                return (
-                  <div key={a.id || i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 18px", borderRadius: 10, fontSize: "0.85rem", background: i % 2 === 0 ? "#fafafa" : "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#b50064", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 700, color: "#fff", flexShrink: 0 }}>{a.userName?.split(" ").map(w => w[0]).join("").slice(0, 2)}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ color: "#2c3e50", fontWeight: 600 }}>{a.action}</span>
-                      <span style={{ color: "#594048", marginLeft: 6, fontSize: "0.8rem" }}>{a.detail || ""}</span>
-                      <div style={{ fontSize: "0.73rem", color: "#999", marginTop: 3 }}>{a.userName} · {a.userRole}</div>
-                    </div>
-                    <span style={{ fontSize: "0.7rem", color: "#999", flexShrink: 0, whiteSpace: "nowrap" }}>{time.toLocaleDateString()} {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                  </div>
-                );
-              })}
-            </div>
-            {hasMore && (
-              <button onClick={loadMore} disabled={loading} style={{ marginTop: 16, padding: "10px 20px", borderRadius: 8, border: "1px solid #b50064", background: "transparent", color: "#b50064", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%", minHeight: 40 }}>
-                {loading ? "Loading..." : `Load More (${activities.length}+)`}
-              </button>
-            )}
-          </>
-        )}
-      </Card>
-    </Grid>
-  );
-}
-
-function ErrorLogTab() {
-  const [errors, setErrors] = useState([]);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [resolving, setResolving] = useState(null);
-  useEffect(() => {
-    pruneOldErrors(1);
-    setLoading(true);
-    getErrorsPaginated(50, null).then(async ({ items, lastDoc: ld, hasMore: hm }) => {
-      const now = Date.now();
-      const cutoff = 14 * 86400000;
-      const oldUnresolved = items.filter(e => {
-        if (e.resolved) return false;
-        const t = e.timestamp?.toDate ? e.timestamp.toDate().getTime() : new Date(e.timestamp).getTime();
-        return (now - t) > cutoff;
-      });
-      if (oldUnresolved.length > 0) {
-        await batchResolveErrors(oldUnresolved.map(e => e.id));
-        items.forEach(e => { if (oldUnresolved.find(r => r.id === e.id)) e.resolved = true; });
-      }
-      setErrors(items);
-      setLastDoc(ld);
-      setHasMore(hm);
-      setLoading(false);
-    }).catch(e => { console.error("getErrors error:", e); setLoading(false); });
-  }, []);
-  const loadMore = () => {
-    if (loading || !hasMore) return;
-    setLoading(true);
-    getErrorsPaginated(50, lastDoc).then(({ items, lastDoc: ld, hasMore: hm }) => {
-      setErrors(prev => [...prev, ...items]);
-      setLastDoc(ld);
-      setHasMore(hm);
-      setLoading(false);
-    }).catch(e => { console.error("loadMore error:", e); setLoading(false); });
-  };
-  const doResolve = (id) => {
-    setResolving(id);
-    markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? { ...e, resolved: true } : e)); }).catch(e => console.error("markErrorResolved error:", e)).finally(() => setResolving(null));
-  };
-  return (
-    <Grid>
-      <Card $span2 data-aos="fade-up">
-        <CardTitle>⚠️ Error Log</CardTitle>
-        <p style={{ fontSize: "0.85rem", color: "#594048", marginBottom: 16 }}>Unhandled errors and exceptions reported from the client.</p>
-        {errors.length === 0 && !loading ? <p style={{ color: "#594048" }}>No errors recorded.</p> : (
-          <>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 600, overflowY: "auto" }}>
-              {errors.map((e, i) => {
-                const time = e.timestamp?.toDate ? e.timestamp.toDate() : new Date(e.timestamp);
-                return (
-                  <div key={e.id || i} style={{ padding: "20px 24px", borderRadius: 12, borderLeft: `5px solid ${e.resolved ? "#2e7d32" : "#e53935"}`, background: e.resolved ? "#f9f9f9" : "#fff7f7", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#2c3e50", marginBottom: 6, lineHeight: 1.5, overflowWrap: "anywhere", wordBreak: "break-word" }}>{e.message || "Unknown error"}</div>
-                        {e.url && <div style={{ fontSize: "0.75rem", color: "#666", marginBottom: 3, wordBreak: "break-all" }}>URL: {e.url}</div>}
-                        {e.userName && <div style={{ fontSize: "0.75rem", color: "#666", marginBottom: 3 }}>User: {e.userName} ({e.userRole})</div>}
-                        {e.stack && (
-                          <details style={{ marginTop: 4 }}>
-                            <summary style={{ fontSize: "0.78rem", color: "#b50064", cursor: "pointer", fontWeight: 600, padding: "4px 0" }}>Stack Trace</summary>
-                            <pre style={{ fontSize: "0.68rem", color: "#444", background: "#f5f5f5", padding: 12, borderRadius: 8, marginTop: 8, maxHeight: 180, overflow: "auto", whiteSpace: "pre-wrap", wordBreak: "break-all", border: "1px solid #e0e0e0" }}>{e.stack}</pre>
-                          </details>
-                        )}
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, marginLeft: 12 }}>
-                        <span style={{ display: "inline-block", padding: "4px 12px", borderRadius: 50, fontSize: "0.75rem", fontWeight: 700, background: e.resolved ? "#2e7d32" + "20" : "#e53935" + "20", color: e.resolved ? "#2e7d32" : "#e53935" }}>{e.resolved ? "Resolved" : "Open"}</span>
-                        <span style={{ fontSize: "0.7rem", color: "#999" }}>{time.toLocaleDateString()} {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                      </div>
-                    </div>
-                    {!e.resolved && (
-                      <button onClick={() => doResolve(e.id)} disabled={resolving === e.id} style={{ marginTop: 12, padding: "8px 20px", borderRadius: 6, border: "1px solid #2e7d32", background: "transparent", color: "#2e7d32", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", minHeight: 36, transition: "all 0.15s" }}>
-                        {resolving === e.id ? "Resolving..." : "Mark Resolved"}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {hasMore && (
-              <button onClick={loadMore} disabled={loading} style={{ marginTop: 16, padding: "10px 20px", borderRadius: 8, border: "1px solid #b50064", background: "transparent", color: "#b50064", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%", minHeight: 40 }}>
-                {loading ? "Loading..." : `Load More (${errors.length}+)`}
-              </button>
-            )}
-          </>
-        )}
-      </Card>
-    </Grid>
   );
 }
