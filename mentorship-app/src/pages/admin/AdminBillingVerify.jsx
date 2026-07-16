@@ -16,12 +16,20 @@ const PageTitle = styled.h2`
   }
 `;
 
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+  @media (max-width: 1100px) { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 700px) { grid-template-columns: 1fr; }
+`;
+
 const PaymentCard = styled.div`
   background: ${(props) => props.theme.colors.surface};
   border-radius: 16px;
   padding: 24px;
   border: 1px solid ${(props) => props.theme.colors.outline};
-  margin-bottom: 16px;
   border-left: 5px solid ${(props) => props.theme.colors.primary};
 `;
 
@@ -151,11 +159,11 @@ export default function AdminBillingVerify() {
         <p style={{ color: "#594048", fontSize: "0.9rem", marginTop: 4 }}>Review and verify pending payment submissions.</p>
       </div>
 
-      <div style={{ marginTop: 24 }}>
+      <Grid>
         {loading ? (
-          <p style={{ color: "#594048", textAlign: "center", padding: 40 }}>Loading payments...</p>
+          <p style={{ color: "#594048", textAlign: "center", padding: 40, gridColumn: "1/-1" }}>Loading payments...</p>
         ) : payments.length === 0 ? (
-          <EmptyState data-aos="fade-up">
+          <EmptyState data-aos="fade-up" style={{ gridColumn: "1/-1" }}>
             <p style={{ fontSize: "2rem", marginBottom: 8 }}>✅</p>
             <p style={{ fontWeight: 600, color: "#2c3e50", marginBottom: 4 }}>No pending payments</p>
             <p style={{ fontSize: "0.85rem", color: "#594048" }}>All payment submissions have been reviewed.</p>
@@ -204,7 +212,7 @@ export default function AdminBillingVerify() {
             </PaymentCard>
           ))
         )}
-      </div>
+      </Grid>
     </div>
   );
 }
