@@ -51,41 +51,36 @@ const PaymentValue = styled.span`
 
 const BtnRow = styled.div`
   display: flex;
-  gap: 12px;
+  gap: 10px;
   margin-top: 16px;
-  @media (max-width: 480px) {
-    flex-direction: column;
-  }
 `;
 
 const VerifyBtn = styled.button`
-  padding: 10px 24px;
+  padding: 8px 18px;
   border-radius: 8px;
   border: none;
   background: #2e7d32;
   color: #fff;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
   font-family: inherit;
   transition: opacity 0.2s;
-  flex: 1;
   &:hover { opacity: 0.9; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
 
 const RejectBtn = styled.button`
-  padding: 10px 24px;
+  padding: 8px 18px;
   border-radius: 8px;
   border: 1px solid #e53935;
   background: transparent;
   color: #e53935;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
   font-family: inherit;
   transition: all 0.2s;
-  flex: 1;
   &:hover { background: #e53935; color: #fff; }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 `;
