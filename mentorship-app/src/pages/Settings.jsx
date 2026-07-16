@@ -37,6 +37,9 @@ const PageTitle = styled.h2`
   font-family: ${(props) => props.theme.typography.fontFamilyHeading};
   color: ${(props) => props.theme.colors.textPrimary};
   font-weight: 700;
+  @media (max-width: 640px) {
+    font-size: 1.3rem;
+  }
 `;
 
 const Grid = styled.div`
@@ -45,6 +48,7 @@ const Grid = styled.div`
   gap: 24px;
   margin-top: 24px;
   @media (max-width: 900px) { grid-template-columns: 1fr; }
+  @media (max-width: 640px) { gap: 16px; margin-top: 16px; }
 `;
 
 const Card = styled.div`
@@ -53,6 +57,10 @@ const Card = styled.div`
   padding: 28px 32px;
   border: 1px solid ${(props) => props.theme.colors.outline};
   ${(props) => props.$span2 && "grid-column: 1 / -1;"}
+  @media (max-width: 640px) {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
 `;
 
 const CardTitle = styled.h3`
@@ -298,12 +306,19 @@ const SaveBtn = styled.button`
   transition: opacity 0.2s;
   &:hover { opacity: 0.9; }
   &:disabled { opacity: 0.6; cursor: not-allowed; }
+  @media (max-width: 640px) {
+    width: 100%;
+    padding: 14px 24px;
+  }
 `;
 
 const BtnRow = styled.div`
   display: flex;
   justify-content: flex-end;
   margin-top: 24px;
+  @media (max-width: 640px) {
+    margin-top: 16px;
+  }
 `;
 
 const SuccessMsg = styled.div`
@@ -324,6 +339,12 @@ const Tabs = styled.div`
   border-bottom: 2px solid ${(props) => props.theme.colors.outline};
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+  @media (max-width: 640px) {
+    gap: 0;
+    margin-bottom: 16px;
+  }
 `;
 
 const Tab = styled.button`
@@ -339,7 +360,12 @@ const Tab = styled.button`
   margin-bottom: -2px;
   white-space: nowrap;
   transition: all 0.2s;
+  flex-shrink: 0;
   &:hover { color: ${(props) => props.theme.colors.primary}; }
+  @media (max-width: 640px) {
+    padding: 10px 16px;
+    font-size: 0.82rem;
+  }
 `;
 
 const interestOptions = [
@@ -823,6 +849,10 @@ const SaveSmallBtn = styled.button`
   cursor: pointer;
   font-family: inherit;
   &:hover { opacity: 0.9; }
+  @media (max-width: 640px) {
+    width: 100%;
+    padding: 12px 24px;
+  }
 `;
 
 function CommunitySettingsCard() {
