@@ -7,26 +7,6 @@ import { getStoredUser } from "../../firebase/auth";
 import { submitPayment, getBillingStatus } from "../../firebase/db";
 import { Card, CardTitle } from "./adminStyles";
 
-const Page = styled.div`
-  display: flex;
-  min-height: 100vh;
-  background-color: ${(props) => props.theme.colors.background};
-`;
-
-const Main = styled.main`
-  flex: 1;
-  margin-left: 280px;
-  padding: 0 ${(props) => props.theme.spacing.xl} ${(props) => props.theme.spacing.xl};
-  @media (max-width: ${(props) => props.theme.breakpoints.tablet}) {
-    margin-left: 0;
-    padding: ${(props) => props.theme.spacing.lg};
-  }
-  @media (max-width: ${(props) => props.theme.breakpoints.mobile}) {
-    margin-left: 0;
-    padding: ${(props) => props.theme.spacing.sm};
-  }
-`;
-
 const PageTitle = styled.h2`
   font-size: ${(props) => props.theme.typography.heading2};
   font-family: ${(props) => props.theme.typography.fontFamilyHeading};
@@ -126,21 +106,6 @@ const SuccessMsg = styled.div`
   margin-bottom: 16px;
 `;
 
-const HistoryRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-radius: 10px;
-  background: ${(props) => props.$i % 2 === 0 ? "#fafafa" : "#fff"};
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  @media (max-width: 640px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-`;
-
 export default function AdminBilling() {
   const navigate = useNavigate();
   const user = getStoredUser() || { name: "Admin" };
@@ -198,118 +163,113 @@ export default function AdminBilling() {
   const isExpired = billing?.expiryDate && new Date(billing.expiryDate?.toDate ? billing.expiryDate.toDate() : billing.expiryDate) < new Date();
 
   return (
-    <Page>
-      <Main>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", color: "#b50064", fontWeight: 600 }}>← Back</button>
-        </div>
-        <div>
-          <PageTitle data-aos="fade-down">💳 Billing & Subscription</PageTitle>
-          <p style={{ color: "#594048", fontSize: "0.9rem", marginTop: 4 }}>Manage your organization's subscription and payment.</p>
-        </div>
+    <div>
+      <div>
+        <PageTitle data-aos="fade-down">💳 Billing & Subscription</PageTitle>
+        <p style={{ color: "#594048", fontSize: "0.9rem", marginTop: 4 }}>Manage your organization's subscription and payment.</p>
+      </div>
 
-        {success && <SuccessMsg data-aos="fade">✓ Payment submitted successfully! Awaiting verification.</SuccessMsg>}
+      {success && <SuccessMsg data-aos="fade">✓ Payment submitted successfully! Awaiting verification.</SuccessMsg>}
 
-        <Grid>
-          <Card data-aos="fade-up">
-            <CardTitle>📋 Current Plan</CardTitle>
-            <div style={{ padding: "20px 0" }}>
-              <div style={{ fontSize: "2rem", fontWeight: 700, color: "#b50064", marginBottom: 8 }}>$135<span style={{ fontSize: "0.9rem", fontWeight: 500, color: "#594048" }}>/year</span></div>
-              <p style={{ color: "#594048", fontSize: "0.85rem", marginBottom: 16 }}>Yearly billing plan for your organization.</p>
+      <Grid>
+        <Card data-aos="fade-up">
+          <CardTitle>📋 Current Plan</CardTitle>
+          <div style={{ padding: "20px 0" }}>
+            <div style={{ fontSize: "2rem", fontWeight: 700, color: "#b50064", marginBottom: 8 }}>$135<span style={{ fontSize: "0.9rem", fontWeight: 500, color: "#594048" }}>/year</span></div>
+            <p style={{ color: "#594048", fontSize: "0.85rem", marginBottom: 16 }}>Yearly billing plan for your organization.</p>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                <span style={{ fontSize: "0.85rem", color: "#594048" }}>Status:</span>
-                {loading ? (
-                  <span style={{ fontSize: "0.85rem", color: "#999" }}>Loading...</span>
-                ) : billing ? (
-                  <StatusBadge $status={isExpired ? "expired" : billing.status}>
-                    {isExpired ? "Expired" : billing.status === "verified" ? "Active" : "Pending Review"}
-                  </StatusBadge>
-                ) : (
-                  <StatusBadge $status="expired">No Subscription</StatusBadge>
-                )}
-              </div>
-
-              {billing?.expiryDate && !isExpired && (
-                <p style={{ fontSize: "0.8rem", color: "#594048" }}>
-                  Expires: {new Date(billing.expiryDate?.toDate ? billing.expiryDate.toDate() : billing.expiryDate).toLocaleDateString()}
-                </p>
-              )}
-
-              {isExpired && (
-                <div style={{ padding: "12px 16px", background: "#ffebee", borderRadius: 8, border: "1px solid #e53935", marginTop: 8 }}>
-                  <p style={{ color: "#c62828", fontSize: "0.85rem", fontWeight: 600 }}>⚠️ Subscription Expired</p>
-                  <p style={{ color: "#c62828", fontSize: "0.8rem", marginTop: 4 }}>Please renew to continue full access.</p>
-                </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <span style={{ fontSize: "0.85rem", color: "#594048" }}>Status:</span>
+              {loading ? (
+                <span style={{ fontSize: "0.85rem", color: "#999" }}>Loading...</span>
+              ) : billing ? (
+                <StatusBadge $status={isExpired ? "expired" : billing.status}>
+                  {isExpired ? "Expired" : billing.status === "verified" ? "Active" : "Pending Review"}
+                </StatusBadge>
+              ) : (
+                <StatusBadge $status="expired">No Subscription</StatusBadge>
               )}
             </div>
-          </Card>
 
-          <Card data-aos="fade-up">
-            <CardTitle>💰 Submit Payment</CardTitle>
-            {isPending ? (
-              <div style={{ padding: "20px 0" }}>
-                <div style={{ padding: "16px", background: "#fff3cd", borderRadius: 8, border: "1px solid #ffc107", marginBottom: 16 }}>
-                  <p style={{ color: "#856404", fontSize: "0.85rem", fontWeight: 600 }}>⏳ Payment Under Review</p>
-                  <p style={{ color: "#856404", fontSize: "0.8rem", marginTop: 4 }}>Your payment is being verified. This usually takes 1-2 business days.</p>
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "#594048" }}>
-                  <p><strong>Reference:</strong> {billing.reference}</p>
-                  <p><strong>Method:</strong> {billing.paymentMethod}</p>
-                  <p><strong>Submitted:</strong> {formatDate(billing.createdAt)}</p>
-                </div>
-              </div>
-            ) : isVerified && !isExpired ? (
-              <div style={{ padding: "20px 0" }}>
-                <div style={{ padding: "16px", background: "#e8f5e9", borderRadius: 8, border: "1px solid #2e7d32" }}>
-                  <p style={{ color: "#2e7d32", fontSize: "0.85rem", fontWeight: 600 }}>✅ Subscription Active</p>
-                  <p style={{ color: "#2e7d32", fontSize: "0.8rem", marginTop: 4 }}>Your subscription is active until {new Date(billing.expiryDate?.toDate ? billing.expiryDate.toDate() : billing.expiryDate).toLocaleDateString()}.</p>
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} style={{ padding: "20px 0" }}>
-                <p style={{ fontSize: "0.85rem", color: "#594048", marginBottom: 16 }}>Make payment and submit your reference number for verification.</p>
-
-                <div style={{ marginBottom: 16 }}>
-                  <FieldLabel>Payment Amount</FieldLabel>
-                  <Input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="135"
-                    min="1"
-                  />
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
-                  <FieldLabel>Payment Method</FieldLabel>
-                  <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                    <option value="momo">Mobile Money (MoMo)</option>
-                    <option value="bank">Bank Transfer</option>
-                    <option value="other">Other</option>
-                  </Select>
-                </div>
-
-                <div style={{ marginBottom: 20 }}>
-                  <FieldLabel>Reference Number</FieldLabel>
-                  <Input
-                    type="text"
-                    value={reference}
-                    onChange={(e) => setReference(e.target.value)}
-                    placeholder="Enter transaction/reference number"
-                    required
-                  />
-                  <p style={{ fontSize: "0.75rem", color: "#999", marginTop: 4 }}>Enter the reference or transaction ID from your payment.</p>
-                </div>
-
-                <SubmitBtn type="submit" disabled={submitting || !reference.trim()}>
-                  {submitting ? "Submitting..." : "Submit Payment"}
-                </SubmitBtn>
-              </form>
+            {billing?.expiryDate && !isExpired && (
+              <p style={{ fontSize: "0.8rem", color: "#594048" }}>
+                Expires: {new Date(billing.expiryDate?.toDate ? billing.expiryDate.toDate() : billing.expiryDate).toLocaleDateString()}
+              </p>
             )}
-          </Card>
-        </Grid>
-      </Main>
-    </Page>
+
+            {isExpired && (
+              <div style={{ padding: "12px 16px", background: "#ffebee", borderRadius: 8, border: "1px solid #e53935", marginTop: 8 }}>
+                <p style={{ color: "#c62828", fontSize: "0.85rem", fontWeight: 600 }}>⚠️ Subscription Expired</p>
+                <p style={{ color: "#c62828", fontSize: "0.8rem", marginTop: 4 }}>Please renew to continue full access.</p>
+              </div>
+            )}
+          </div>
+        </Card>
+
+        <Card data-aos="fade-up">
+          <CardTitle>💰 Submit Payment</CardTitle>
+          {isPending ? (
+            <div style={{ padding: "20px 0" }}>
+              <div style={{ padding: "16px", background: "#fff3cd", borderRadius: 8, border: "1px solid #ffc107", marginBottom: 16 }}>
+                <p style={{ color: "#856404", fontSize: "0.85rem", fontWeight: 600 }}>⏳ Payment Under Review</p>
+                <p style={{ color: "#856404", fontSize: "0.8rem", marginTop: 4 }}>Your payment is being verified. This usually takes 1-2 business days.</p>
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "#594048" }}>
+                <p><strong>Reference:</strong> {billing.reference}</p>
+                <p><strong>Method:</strong> {billing.paymentMethod}</p>
+                <p><strong>Submitted:</strong> {formatDate(billing.createdAt)}</p>
+              </div>
+            </div>
+          ) : isVerified && !isExpired ? (
+            <div style={{ padding: "20px 0" }}>
+              <div style={{ padding: "16px", background: "#e8f5e9", borderRadius: 8, border: "1px solid #2e7d32" }}>
+                <p style={{ color: "#2e7d32", fontSize: "0.85rem", fontWeight: 600 }}>✅ Subscription Active</p>
+                <p style={{ color: "#2e7d32", fontSize: "0.8rem", marginTop: 4 }}>Your subscription is active until {new Date(billing.expiryDate?.toDate ? billing.expiryDate.toDate() : billing.expiryDate).toLocaleDateString()}.</p>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={{ padding: "20px 0" }}>
+              <p style={{ fontSize: "0.85rem", color: "#594048", marginBottom: 16 }}>Make payment and submit your reference number for verification.</p>
+
+              <div style={{ marginBottom: 16 }}>
+                <FieldLabel>Payment Amount</FieldLabel>
+                <Input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="135"
+                  min="1"
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <FieldLabel>Payment Method</FieldLabel>
+                <Select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                  <option value="momo">Mobile Money (MoMo)</option>
+                  <option value="bank">Bank Transfer</option>
+                  <option value="other">Other</option>
+                </Select>
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <FieldLabel>Reference Number</FieldLabel>
+                <Input
+                  type="text"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="Enter transaction/reference number"
+                  required
+                />
+                <p style={{ fontSize: "0.75rem", color: "#999", marginTop: 4 }}>Enter the reference or transaction ID from your payment.</p>
+              </div>
+
+              <SubmitBtn type="submit" disabled={submitting || !reference.trim()}>
+                {submitting ? "Submitting..." : "Submit Payment"}
+              </SubmitBtn>
+            </form>
+          )}
+        </Card>
+      </Grid>
+    </div>
   );
 }

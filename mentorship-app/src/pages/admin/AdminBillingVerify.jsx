@@ -2,30 +2,9 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { useNavigate } from "react-router-dom";
 import { getStoredUser } from "../../firebase/auth";
 import { getAllPendingPayments, verifyPayment, rejectPayment } from "../../firebase/db";
 import { Card, CardTitle } from "./adminStyles";
-
-const Page = styled.div`
-  display: flex;
-  min-height: 100vh;
-  background-color: ${(props) => props.theme.colors.background};
-`;
-
-const Main = styled.main`
-  flex: 1;
-  margin-left: 280px;
-  padding: 0 ${(props) => props.theme.spacing.xl} ${(props) => props.theme.spacing.xl};
-  @media (max-width: ${(props) => props.theme.breakpoints.tablet}) {
-    margin-left: 0;
-    padding: ${(props) => props.theme.spacing.lg};
-  }
-  @media (max-width: ${(props) => props.theme.breakpoints.mobile}) {
-    margin-left: 0;
-    padding: ${(props) => props.theme.spacing.sm};
-  }
-`;
 
 const PageTitle = styled.h2`
   font-size: ${(props) => props.theme.typography.heading2};
@@ -120,7 +99,6 @@ const EmptyState = styled.div`
 `;
 
 export default function AdminBillingVerify() {
-  const navigate = useNavigate();
   const user = getStoredUser() || { name: "Admin" };
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -172,71 +150,66 @@ export default function AdminBillingVerify() {
   };
 
   return (
-    <Page>
-      <Main>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-          <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1rem", color: "#b50064", fontWeight: 600 }}>← Back</button>
-        </div>
-        <div>
-          <PageTitle data-aos="fade-down">🔍 Verify Payments</PageTitle>
-          <p style={{ color: "#594048", fontSize: "0.9rem", marginTop: 4 }}>Review and verify pending payment submissions.</p>
-        </div>
+    <div>
+      <div>
+        <PageTitle data-aos="fade-down">🔍 Verify Payments</PageTitle>
+        <p style={{ color: "#594048", fontSize: "0.9rem", marginTop: 4 }}>Review and verify pending payment submissions.</p>
+      </div>
 
-        <div style={{ marginTop: 24 }}>
-          {loading ? (
-            <p style={{ color: "#594048", textAlign: "center", padding: 40 }}>Loading payments...</p>
-          ) : payments.length === 0 ? (
-            <EmptyState data-aos="fade-up">
-              <p style={{ fontSize: "2rem", marginBottom: 8 }}>✅</p>
-              <p style={{ fontWeight: 600, color: "#2c3e50", marginBottom: 4 }}>No pending payments</p>
-              <p style={{ fontSize: "0.85rem", color: "#594048" }}>All payment submissions have been reviewed.</p>
-            </EmptyState>
-          ) : (
-            payments.map((p, i) => (
-              <PaymentCard key={p.id || i} data-aos="fade-up">
-                <PaymentRow>
-                  <div>
-                    <PaymentLabel>Admin</PaymentLabel>
-                    <PaymentValue>{p.userName}</PaymentValue>
-                  </div>
-                  <div>
-                    <PaymentLabel>Email</PaymentLabel>
-                    <PaymentValue>{p.userEmail}</PaymentValue>
-                  </div>
-                </PaymentRow>
-                <PaymentRow>
-                  <div>
-                    <PaymentLabel>Amount</PaymentLabel>
-                    <PaymentValue style={{ fontSize: "1.1rem", fontWeight: 700, color: "#b50064" }}>${p.amount}</PaymentValue>
-                  </div>
-                  <div>
-                    <PaymentLabel>Method</PaymentLabel>
-                    <PaymentValue style={{ textTransform: "capitalize" }}>{p.paymentMethod}</PaymentValue>
-                  </div>
-                </PaymentRow>
-                <PaymentRow>
-                  <div>
-                    <PaymentLabel>Reference</PaymentLabel>
-                    <PaymentValue style={{ fontFamily: "monospace", background: "#f5f5f5", padding: "4px 8px", borderRadius: 4 }}>{p.reference}</PaymentValue>
-                  </div>
-                  <div>
-                    <PaymentLabel>Submitted</PaymentLabel>
-                    <PaymentValue>{formatDate(p.createdAt)}</PaymentValue>
-                  </div>
-                </PaymentRow>
-                <BtnRow>
-                  <VerifyBtn onClick={() => handleVerify(p.userId)} disabled={processing === p.userId}>
-                    {processing === p.userId ? "Processing..." : "✓ Verify Payment"}
-                  </VerifyBtn>
-                  <RejectBtn onClick={() => handleReject(p.userId)} disabled={processing === p.userId}>
-                    ✕ Reject
-                  </RejectBtn>
-                </BtnRow>
-              </PaymentCard>
-            ))
-          )}
-        </div>
-      </Main>
-    </Page>
+      <div style={{ marginTop: 24 }}>
+        {loading ? (
+          <p style={{ color: "#594048", textAlign: "center", padding: 40 }}>Loading payments...</p>
+        ) : payments.length === 0 ? (
+          <EmptyState data-aos="fade-up">
+            <p style={{ fontSize: "2rem", marginBottom: 8 }}>✅</p>
+            <p style={{ fontWeight: 600, color: "#2c3e50", marginBottom: 4 }}>No pending payments</p>
+            <p style={{ fontSize: "0.85rem", color: "#594048" }}>All payment submissions have been reviewed.</p>
+          </EmptyState>
+        ) : (
+          payments.map((p, i) => (
+            <PaymentCard key={p.id || i} data-aos="fade-up">
+              <PaymentRow>
+                <div>
+                  <PaymentLabel>Admin</PaymentLabel>
+                  <PaymentValue>{p.userName}</PaymentValue>
+                </div>
+                <div>
+                  <PaymentLabel>Email</PaymentLabel>
+                  <PaymentValue>{p.userEmail}</PaymentValue>
+                </div>
+              </PaymentRow>
+              <PaymentRow>
+                <div>
+                  <PaymentLabel>Amount</PaymentLabel>
+                  <PaymentValue style={{ fontSize: "1.1rem", fontWeight: 700, color: "#b50064" }}>${p.amount}</PaymentValue>
+                </div>
+                <div>
+                  <PaymentLabel>Method</PaymentLabel>
+                  <PaymentValue style={{ textTransform: "capitalize" }}>{p.paymentMethod}</PaymentValue>
+                </div>
+              </PaymentRow>
+              <PaymentRow>
+                <div>
+                  <PaymentLabel>Reference</PaymentLabel>
+                  <PaymentValue style={{ fontFamily: "monospace", background: "#f5f5f5", padding: "4px 8px", borderRadius: 4 }}>{p.reference}</PaymentValue>
+                </div>
+                <div>
+                  <PaymentLabel>Submitted</PaymentLabel>
+                  <PaymentValue>{formatDate(p.createdAt)}</PaymentValue>
+                </div>
+              </PaymentRow>
+              <BtnRow>
+                <VerifyBtn onClick={() => handleVerify(p.userId)} disabled={processing === p.userId}>
+                  {processing === p.userId ? "Processing..." : "✓ Verify Payment"}
+                </VerifyBtn>
+                <RejectBtn onClick={() => handleReject(p.userId)} disabled={processing === p.userId}>
+                  ✕ Reject
+                </RejectBtn>
+              </BtnRow>
+            </PaymentCard>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
