@@ -857,3 +857,63 @@ export const trackSiteVisit = async () => {
     sessionStorage.setItem("lastVisitTracked", String(Date.now()));
   } catch {} // silent
 };
+
+// ── Billing ──
+
+export const submitPayment = async ({ userId, userName, userEmail, paymentMethod, reference, amount }) => {
+  const ref = doc(db, "billing", userId);
+  await setDoc(ref, {
+    userId,
+    userName: sanitizeInput(userName),
+    userEmail,
+    paymentMethod,
+    reference: sanitizeInput(reference),
+    amount,
+    status: "pending",
+    createdAt: serverTimestamp(),
+  }, { merge: true });
+  logActivity("Payment submitted", { detail: `${userName} submitted payment ($${amount}) via ${paymentMethod} — Ref: ${reference}` });
+};
+
+export const getBillingStatus = async (userId) => {
+  try {
+    const snap = await getDoc(doc(db, "billing", userId));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() };
+  } catch { return null; }
+};
+
+export const getAllPendingPayments = async () => {
+  try {
+    const q = query(collection(db, "billing"), where("status", "==", "pending"));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch { return []; }
+};
+
+export const verifyPayment = async (userId, adminId, adminName) => {
+  const ref = doc(db, "billing", userId);
+  const now = new Date();
+  const expiry = new Date(now);
+  expiry.setFullYear(expiry.getFullYear() + 1);
+  await updateDoc(ref, {
+    status: "verified",
+    verifiedBy: adminId,
+    verifiedByName: sanitizeInput(adminName),
+    verifiedAt: serverTimestamp(),
+    startDate: serverTimestamp(),
+    expiryDate: expiry,
+  });
+  logActivity("Payment verified", { detail: `Payment for user ${userId} verified by ${adminName}` });
+};
+
+export const rejectPayment = async (userId, adminId, adminName) => {
+  const ref = doc(db, "billing", userId);
+  await updateDoc(ref, {
+    status: "rejected",
+    verifiedBy: adminId,
+    verifiedByName: sanitizeInput(adminName),
+    verifiedAt: serverTimestamp(),
+  });
+  logActivity("Payment rejected", { detail: `Payment for user ${userId} rejected by ${adminName}` });
+};

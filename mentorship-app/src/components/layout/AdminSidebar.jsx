@@ -156,6 +156,7 @@ const navItems = [
   { label: "Activity Log",  path: "/dashboard/admin/activity",     icon: "📊" },
   { label: "Error Log",     path: "/dashboard/admin/errors",       icon: "⚠️" },
   { label: "Billing",       path: "/dashboard/admin/billing",      icon: "💳" },
+  { label: "Verify Payments", path: "/dashboard/admin/billing-verify", icon: "🔍" },
 ];
 
 export const AdminSidebar = () => {

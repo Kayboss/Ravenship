@@ -26,6 +26,7 @@ import AdminActivity from "./pages/admin/AdminActivity.jsx";
 import AdminErrors from "./pages/admin/AdminErrors.jsx";
 import AdminAnalytics from "./pages/admin/AdminAnalytics.jsx";
 import AdminBilling from "./pages/admin/AdminBilling.jsx";
+import AdminBillingVerify from "./pages/admin/AdminBillingVerify.jsx";
 import { HelpCenter } from "./pages/HelpCenter.jsx";
 import { CounsellingRequest } from "./pages/CounsellingRequest.jsx";
 import { SponsorshipRequest } from "./pages/SponsorshipRequest.jsx";
@@ -141,6 +142,7 @@ export const App = () => (
             <Route path="errors" element={<AdminErrors />} />
             <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="billing" element={<AdminBilling />} />
+            <Route path="billing-verify" element={<AdminBillingVerify />} />
           </Route>
           <Route path="/dashboard/:role/library" element={<AuthGuardedRoute><Library /></AuthGuardedRoute>} />
           <Route path="/dashboard/:role/help" element={<AuthGuardedRoute><HelpCenter /></AuthGuardedRoute>} />

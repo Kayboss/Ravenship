@@ -178,6 +178,13 @@ service cloud.firestore {
       allow create, update: if true;
     }
 
+    // ── Billing ──
+    match /billing/{userId} {
+      allow read: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+    }
+
     // ── Deny everything else ──
     match /{document=**} {
       allow read, write: if false;
