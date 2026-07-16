@@ -32,11 +32,13 @@ import { CounsellingRequest } from "./pages/CounsellingRequest.jsx";
 import { SponsorshipRequest } from "./pages/SponsorshipRequest.jsx";
 import { logError, trackSiteVisit } from "./firebase/db";
 import { watchPresence, onAuthReady, getStoredUser } from "./firebase/auth";
-import { getUser } from "./firebase/db";
+import { getUser, checkOrganizationBilling } from "./firebase/db";
 
 const AuthGuard = ({ children, expectedRole }) => {
   const [ready, setReady] = useState(false);
   const [allowed, setAllowed] = useState(false);
+  const [billingExpired, setBillingExpired] = useState(false);
+  const [billingExpiry, setBillingExpiry] = useState(null);
 
   useEffect(() => {
     onAuthReady(async () => {
@@ -47,14 +49,44 @@ const AuthGuard = ({ children, expectedRole }) => {
         if (!fbUser || fbUser.deleted) { setAllowed(false); }
         else if (expectedRole && fbUser.role !== expectedRole) { setAllowed(false); }
         else if (!expectedRole && stored.role !== fbUser.role) { setAllowed(false); }
-        else { setAllowed(true); }
+        else {
+          if (fbUser.role === "mentor" || fbUser.role === "mentee") {
+            const billing = await checkOrganizationBilling();
+            if (!billing.active) {
+              setBillingExpired(true);
+              setBillingExpiry(billing.expiryDate);
+              setAllowed(false);
+              setReady(true);
+              return;
+            }
+          }
+          setAllowed(true);
+        }
       } catch { setAllowed(false); }
       setReady(true);
     });
   }, [expectedRole]);
 
   if (!ready) return null;
-  if (!allowed) return <Navigate to="/" replace />;
+  if (!allowed) {
+    if (billingExpired) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", fontFamily: "sans-serif", padding: 40, textAlign: "center", background: "#f5f5f5" }}>
+          <div style={{ maxWidth: 420, background: "#fff", borderRadius: 16, padding: 40, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+            <p style={{ fontSize: "3rem", marginBottom: 16 }}>⚠️</p>
+            <h2 style={{ color: "#c62828", margin: "0 0 12px" }}>Subscription Expired</h2>
+            <p style={{ color: "#594048", fontSize: "0.95rem", lineHeight: 1.6 }}>
+              Your organization's subscription has expired. Please contact the administrator to renew.
+            </p>
+            <button onClick={() => { localStorage.removeItem("user"); window.location.href = "/"; }} style={{ marginTop: 24, padding: "12px 32px", borderRadius: 10, border: "none", background: "#b50064", color: "#fff", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", fontSize: "0.9rem" }}>
+              Back to Login
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return <Navigate to="/" replace />;
+  }
   return children;
 };
 

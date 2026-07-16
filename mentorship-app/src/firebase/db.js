@@ -917,3 +917,23 @@ export const rejectPayment = async (userId, adminId, adminName) => {
   });
   logActivity("Payment rejected", { detail: `Payment for user ${userId} rejected by ${adminName}` });
 };
+
+export const checkOrganizationBilling = async () => {
+  try {
+    const usersSnap = await getDocs(query(collection(db, "users"), where("role", "==", "admin")));
+    if (usersSnap.empty) return { active: true };
+    for (const adminDoc of usersSnap.docs) {
+      const billingSnap = await getDoc(doc(db, "billing", adminDoc.id));
+      if (billingSnap.exists()) {
+        const billing = billingSnap.data();
+        if (billing.status === "verified" && billing.expiryDate) {
+          const expiry = billing.expiryDate?.toDate ? billing.expiryDate.toDate() : new Date(billing.expiryDate);
+          if (expiry > new Date()) {
+            return { active: true, expiryDate: expiry, adminName: adminDoc.data().name };
+          }
+        }
+      }
+    }
+    return { active: false };
+  } catch { return { active: true }; }
+};
