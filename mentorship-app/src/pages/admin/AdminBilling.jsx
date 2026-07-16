@@ -191,9 +191,15 @@ export default function AdminBilling() {
               )}
             </div>
 
-            {billing?.expiryDate && !isExpired && (
-              <p style={{ fontSize: "0.8rem", color: "#594048" }}>
+            {billing?.expiryDate && (
+              <p style={{ fontSize: "0.8rem", color: isExpired ? "#c62828" : "#594048", fontWeight: isExpired ? 600 : 400 }}>
                 Expires: {new Date(billing.expiryDate?.toDate ? billing.expiryDate.toDate() : billing.expiryDate).toLocaleDateString()}
+              </p>
+            )}
+
+            {billing?.startDate && (
+              <p style={{ fontSize: "0.8rem", color: "#594048", marginTop: 4 }}>
+                Started: {new Date(billing.startDate?.toDate ? billing.startDate.toDate() : billing.startDate).toLocaleDateString()}
               </p>
             )}
 
