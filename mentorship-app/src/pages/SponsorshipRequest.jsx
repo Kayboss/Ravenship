@@ -8,6 +8,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { addSponsorshipRequest, getUser } from "../firebase/db";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 
 const Page = styled.div`
   display: flex;
@@ -234,6 +235,7 @@ export const SponsorshipRequest = () => {
   const [formMsg, setFormMsg] = useState("");
   const [groupName, setGroupName] = useState("");
   const [authReady, setAuthReady] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -244,7 +246,9 @@ export const SponsorshipRequest = () => {
         if (u?.mentorId) {
           getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(e => console.error("getUser/mentor groupName error:", e));
         }
-      }).catch(e => console.error("getUser/mentee error:", e));
+      }).catch(e => console.error("getUser/mentee error:", e)).finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
   }, [authReady, user?.id, role]);
 
@@ -271,6 +275,7 @@ export const SponsorshipRequest = () => {
     setSending(false);
   };
 
+  if (loading) return <Page><SidebarByRole /><Main><LoadingSpinner label="Loading..." fullHeight /></Main></Page>;
   return (
     <Page>
       <SidebarByRole />

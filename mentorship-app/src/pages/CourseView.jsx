@@ -8,6 +8,7 @@ import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getCourses, updateCourse, deleteCourse as deleteCourseFromDb, getUser } from "../firebase/db";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 
 const Page = styled.div`
   display: flex;
@@ -220,9 +221,13 @@ const ProgressText = styled.span`
 
 const getVideoEmbedUrl = (url) => {
   if (!url) return null;
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  const trimmed = url.trim();
+  // Already an embed URL
+  if (/youtube\.com\/embed\//.test(trimmed)) return trimmed;
+  // Standard YouTube watch URLs
+  const ytMatch = trimmed.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]+)/);
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
-  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  const vimeoMatch = trimmed.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
   return null;
 };
@@ -505,6 +510,15 @@ export const CourseView = () => {
       </Page>
     );
   }
+
+  if (loading) return (
+    <Page>
+      <SidebarByRole />
+      <Main>
+        <LoadingSpinner label="Loading course..." fullHeight />
+      </Main>
+    </Page>
+  );
 
   return (
     <Page>

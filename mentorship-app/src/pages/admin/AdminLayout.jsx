@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { AdminSidebar } from "../../components/layout/AdminSidebar.jsx";
 import { TopBar } from "../../components/layout/TopBar.jsx";
 import { AdminPageLayout, AdminPageMain } from "./adminStyles";
@@ -12,6 +12,8 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const user = getStoredUser();
 
+  const location = useLocation();
+
   useEffect(() => {
     if (!user?.id) return;
     getBillingStatus(user.id)
@@ -22,11 +24,17 @@ export default function AdminLayout() {
         }
         if (billing.expiryDate) {
           const expiry = billing.expiryDate?.toDate ? billing.expiryDate.toDate() : new Date(billing.expiryDate);
-          if (expiry < new Date()) setBillingExpired(true);
+          if (expiry < new Date()) {
+            setBillingExpired(true);
+          } else {
+            setBillingExpired(false);
+          }
+        } else {
+          setBillingExpired(false);
         }
       })
       .catch(() => {});
-  }, [user?.id]);
+  }, [user?.id, location.pathname]);
 
   return (
     <AdminPageLayout>

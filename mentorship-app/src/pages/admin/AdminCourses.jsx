@@ -7,6 +7,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { getCourses, getUsers, getAssignments, addCourse, updateCourse, deleteCourse, logActivity } from "../../firebase/db";
 import { Badge, SectionBox, ModalOverlay, ModalBox, ModalTitle, Input, Textarea, Select, Btn } from "./adminStyles";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
 // ── Styled components matching MyCourses.jsx mentor card layout ──
 
@@ -392,6 +393,7 @@ export default function AdminCourses() {
   const [enrollmentMap, setEnrollmentMap] = useState([]);
   const [assignmentCounts, setAssignmentCounts] = useState({});
   const [form, setForm] = useState({ title:"", desc:"", badge:"Design", emoji:"🎨", duration:"", level:"Beginner", featuredImage:"", mentorId:"" });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
 
@@ -419,7 +421,7 @@ export default function AdminCourses() {
         (d || []).forEach(a => { if (a.course) counts[a.course] = (counts[a.course] || 0) + 1; });
         setAssignmentCounts(counts);
       })
-    ]).catch(e => console.error("load error:", e));
+    ]).then(() => setLoading(false)).catch(e => { console.error("load error:", e); setLoading(false); });
   };
 
   useEffect(() => { loadData(); }, []);
@@ -514,6 +516,7 @@ export default function AdminCourses() {
 
   const resetForm = () => setForm({ title:"", desc:"", badge:"Design", emoji:"🎨", duration:"", level:"Beginner", featuredImage:"", mentorId:"" });
 
+  if (loading) return <LoadingSpinner label="Loading courses..." fullHeight />;
   return (
     <>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>

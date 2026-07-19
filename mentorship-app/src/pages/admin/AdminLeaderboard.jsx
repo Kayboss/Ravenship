@@ -2,21 +2,26 @@ import React, { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import { getUsers, getCourses } from "../../firebase/db";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 import { Badge, SectionBox, SectionBoxTitle, RankRow, RankNum } from "./adminStyles";
 
 export default function AdminLeaderboard() {
+  const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [courses, setCourses] = useState([]);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getUsers().then(d => setUsers(Array.isArray(d) ? d : [])).catch(e => console.error("getUsers error:", e));
-    getCourses().then(d => setCourses(Array.isArray(d) ? d : [])).catch(e => console.error("getCourses error:", e));
+    Promise.allSettled([
+      getUsers().then(d => setUsers(Array.isArray(d) ? d : [])),
+      getCourses().then(d => setCourses(Array.isArray(d) ? d : []))
+    ]).finally(() => setLoading(false));
   }, []);
   const mentors = users.filter(u => u.role === "mentor");
   const mentees = users.filter(u => u.role === "mentee");
   const topMentors = [...mentors].sort((a, b) => (b.courseCount || courses.filter(c => c.createdBy === b.id).length) - (a.courseCount || courses.filter(c => c.createdBy === a.id).length)).slice(0, 5);
   const topMentees = [...mentees].sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0)).slice(0, 5);
   const topCourses = [...courses].sort((a, b) => ((b.enrolledMentees || b.enrolled || []).length) - ((a.enrolledMentees || a.enrolled || []).length)).slice(0, 5);
+  if (loading) return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}><LoadingSpinner label="Loading..." fullHeight /></div>;
   return (
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
       <SectionBox data-aos="fade-up">

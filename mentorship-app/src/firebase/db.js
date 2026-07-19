@@ -8,17 +8,17 @@ import { sanitizeInput } from "../lib/sanitize";
 
 // Fields that intentionally store HTML/structured data — rendered safely via DOMPurify or React JSX (auto-escaped)
 const RICH_FIELDS = new Set(["content", "lessonContent", "syllabus", "stack", "description", "featuredImage", "fileUrl", "filePath", "file"]);
-const sanitizeWrite = (data) => {
+const sanitizeWrite = (data, skipSanitize = false) => {
   const out = {};
   for (const [key, value] of Object.entries(data)) {
     if (typeof value === "string") {
-      if (RICH_FIELDS.has(key) || value.startsWith("data:")) {
+      if (skipSanitize || RICH_FIELDS.has(key) || value.startsWith("data:")) {
         out[key] = value.length > 900000 ? value.slice(0, 900000) : value;
       } else {
         out[key] = sanitizeInput(value.length > 900000 ? value.slice(0, 900000) : value);
       }
     } else if (value !== null && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)) {
-      out[key] = sanitizeWrite(value);
+      out[key] = sanitizeWrite(value, skipSanitize || RICH_FIELDS.has(key));
     } else {
       out[key] = value;
     }

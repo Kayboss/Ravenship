@@ -8,6 +8,7 @@ import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady, isUserOnline } from "../firebase/auth";
 import { getPosts, addPost, updatePost, deletePost, togglePostLike, addComment as fbAddComment, getEvents, getUsers, getOrCreateConversation, sendMessage, subscribeMessages, subscribeConversations, markMessagesRead, subscribeConversation, setTyping } from "../firebase/db";
 import { db } from "../firebase/config";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 import { collection, onSnapshot } from "firebase/firestore";
 
 const Page = styled.div`
@@ -648,9 +649,11 @@ export const Community = () => {
   const typingTimeoutRef = useRef(null);
   const [otherTyping, setOtherTyping] = useState(false);
   const [chatPopupOpen, setChatPopupOpen] = useState(false);
+  const [posting, setPosting] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [expandedImage, setExpandedImage] = useState(null);
   const [visibleMembers, setVisibleMembers] = useState(15);
+  const [loading, setLoading] = useState(true);
   const user = getStoredUser() || { name: "You", role: "Mentee", avatarColor: "#b50064" };
   const isPostAuthor = (p) => user?.id && (p.authorId === user.id || p.authorId === user.uid);
 
@@ -659,15 +662,17 @@ export const Community = () => {
   useEffect(() => {
     if (!authReady) return;
     AOS.init({ duration: 800, once: true });
-    getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(e => console.error("getPosts error:", e));
-    getUsers().then(d => {
-      const members = Array.isArray(d) ? d : [];
-      setMemberList(members.map(m => ({
-        ...m,
-        online: isUserOnline(m.lastSeen),
-      })));
-    }).catch(e => console.error("getUsers error:", e));
-    getEvents().then(d => setEventList(Array.isArray(d) ? d : [])).catch(e => console.error("getEvents error:", e));
+    Promise.all([
+      getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(e => console.error("getPosts error:", e)),
+      getUsers().then(d => {
+        const members = Array.isArray(d) ? d : [];
+        setMemberList(members.map(m => ({
+          ...m,
+          online: isUserOnline(m.lastSeen),
+        })));
+      }).catch(e => console.error("getUsers error:", e)),
+      getEvents().then(d => setEventList(Array.isArray(d) ? d : [])).catch(e => console.error("getEvents error:", e)),
+    ]).finally(() => setLoading(false));
     const stateTarget = location.state?.chatTarget;
     if (stateTarget?.id && stateTarget?.name) {
       openChat(stateTarget).then(() => setChatPopupOpen(true));
@@ -801,6 +806,7 @@ export const Community = () => {
 
   const submitPost = () => {
     if (!newPostText.trim()) return;
+    setPosting(true);
     addPost({ text: newPostText, image: newPostImage })
       .then(postId => {
         const newPost = {
@@ -818,8 +824,9 @@ export const Community = () => {
         setPostList(prev => [newPost, ...prev]);
         setNewPostText("");
         setNewPostImage(null);
+        setPosting(false);
       })
-      .catch(e => console.error("submitPost error:", e));
+      .catch(e => { console.error("submitPost error:", e); setPosting(false); });
   };
 
   const filteredMembers = memberFilter === "online" ? memberList.filter(m => m.online) : memberList;
@@ -897,7 +904,7 @@ export const Community = () => {
                     </PostMediaBtn>
                     <input id="post-image-input" type="file" accept="image/*" style={{ display: "none" }} onChange={handleNewPostImage} />
                     {newPostImage && <PostMediaBtn as="button" type="button" style={{ border: "none", background: "none", fontFamily: "inherit" }} onClick={() => setNewPostImage(null)}>✕ Remove</PostMediaBtn>}
-                    <PostSubmitBtn disabled={!newPostText.trim()} onClick={submitPost}>Post</PostSubmitBtn>
+                    <PostSubmitBtn disabled={!newPostText.trim() || posting} onClick={submitPost}>{posting ? "Posting..." : "Post"}</PostSubmitBtn>
                   </PostActionsRow>
                 </div>
               </div>
@@ -957,7 +964,16 @@ export const Community = () => {
                 conversations.length > 0 ? conversations.map((c, i) => {
                   const otherId = c.participants?.find(id => id !== user.id);
                   const info = otherId ? c.participantInfo?.[otherId] : null;
-                  return (
+  if (loading) return (
+    <Page>
+      <SidebarByRole />
+      <Main>
+        <LoadingSpinner label="Loading community..." fullHeight />
+      </Main>
+    </Page>
+  );
+
+  return (
                     <ContactRow key={c.id} onClick={() => openChat({ id: otherId, name: info?.name || "Unknown", photoURL: info?.photoURL || "" })}>
                       <Avatar style={{ width: 32, height: 32, fontSize: "0.7rem" }}>{info?.photoURL ? <img src={info.photoURL} alt="" style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover"}} /> : (info?.name || "?").split(" ").map(w => w[0]).join("")}</Avatar>
                       <ContactName>{info?.name || "Unknown"}</ContactName>

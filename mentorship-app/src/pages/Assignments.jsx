@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
+import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { getUser, getCourses, getAssignments, getSubmissions, addAssignment, updateAssignment, deleteAssignment, addSubmission, logActivity, getMenteesByMentor } from "../firebase/db";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
-import { getUser, getCourses, getAssignments, addAssignment, updateAssignment, deleteAssignment, addSubmission, getSubmissions } from "../firebase/db";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 import { uploadSubmissionFile } from "../lib/upload";
 import DOMPurify from "dompurify";
 
@@ -538,6 +540,7 @@ export const Assignments = () => {
   const [courses, setCourses] = useState([]);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [newAssignment, setNewAssignment] = useState({
     title: "", course: "", desc: "", content: "", marks: "", due: "",
   });
@@ -627,6 +630,7 @@ export const Assignments = () => {
           if (Array.isArray(d)) setAssignments(d);
         }
       } catch (e) { console.error("load assignments error:", e); }
+      setLoading(false);
     };
     load();
   }, [authReady]);
@@ -724,6 +728,15 @@ export const Assignments = () => {
   };
 
   const tabs = ["all", "available", "accepted", "submitted", "graded"];
+
+  if (loading) return (
+    <Page>
+      <SidebarByRole />
+      <Main>
+        <LoadingSpinner label="Loading assignments..." fullHeight />
+      </Main>
+    </Page>
+  );
 
   return (
     <Page>

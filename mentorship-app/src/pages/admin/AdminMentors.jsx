@@ -6,6 +6,7 @@ import { db } from "../../firebase/config";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, Table, Th, Td, BioModal } from "./adminStyles";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
 export default function AdminMentors() {
   const [users, setUsers] = useState([]);
@@ -17,6 +18,8 @@ export default function AdminMentors() {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => { AOS.init({ once: true }); }, []);
   const loadData = useCallback(() => {
     Promise.all([
@@ -29,7 +32,7 @@ export default function AdminMentors() {
       getDocs(collection(db, "enrollments")).then(snap => {
         setEnrollmentMap(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       })
-    ]).catch(e => console.error("loadData error:", e));
+    ]).then(() => setLoading(false)).catch(e => { console.error("loadData error:", e); setLoading(false); });
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
   const resolveMentees = (ids) => ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);
@@ -62,13 +65,16 @@ export default function AdminMentors() {
     const target = users.find(u => u.id === id);
     if (!target || !window.confirm(`⚠️ Remove ${target.name} from the platform? They will be marked as deleted and won't be able to log in.`)) return;
     setVerifyMsg(null);
+    setDeletingId(id);
     updateUser(id, { deleted: true, name: "Deleted User", email: "", phone: "", city: "", bio: "", photoURL: "", verified: false })
       .then(() => {
         setUsers(prev => prev.filter(u => u.id !== id));
         logActivity("User deleted (soft)", { detail: `${target.name} (${target.role}) was removed from the platform` });
       })
-      .catch(e => setVerifyMsg(e.message));
+      .catch(e => setVerifyMsg(e.message))
+      .finally(() => setDeletingId(null));
   };
+  if (loading) return <LoadingSpinner label="Loading mentors..." fullHeight />;
   return (
     <>
     <style>{`

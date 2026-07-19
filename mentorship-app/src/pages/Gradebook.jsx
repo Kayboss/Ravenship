@@ -7,6 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getUsers, getCourses, getAllGradebook, updateGradebook, getSubmissions, getMenteesByMentor } from "../firebase/db";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 
 const Page = styled.div`
   display: flex;
@@ -247,6 +248,7 @@ export const Gradebook = () => {
   const [mentees, setMentees] = useState([]);
   const [authReady, setAuthReady] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -294,6 +296,7 @@ export const Gradebook = () => {
         });
         setMentees(result);
       } catch (e) { console.error("getGradebook error:", e); }
+      setLoading(false);
     };
     load();
   }, [authReady]);
@@ -309,6 +312,15 @@ export const Gradebook = () => {
   const passing = filteredMentees.filter(m => m.avg >= 60).length;
   const avgGrade = Math.round(filteredMentees.reduce((s, m) => s + m.avg, 0) / (filteredMentees.length || 1));
   const failing = filteredMentees.filter(m => m.avg < 60).length;
+
+  if (loading) return (
+    <Page>
+      <SidebarByRole />
+      <Main>
+        <LoadingSpinner label="Loading gradebook..." fullHeight />
+      </Main>
+    </Page>
+  );
 
   return (
     <Page>

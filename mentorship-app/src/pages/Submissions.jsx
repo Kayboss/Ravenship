@@ -9,6 +9,7 @@ import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getSubmissions, addSubmission, updateSubmission, getAssignments, getCourses, getMenteesByMentor, setGradebookEntry } from "../firebase/db";
 import { uploadSubmissionFile, downloadFromUrl } from "../lib/upload";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 
 const Page = styled.div`
   display: flex;
@@ -270,6 +271,7 @@ export const Submissions = () => {
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [grading, setGrading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const handleGrade = (sub) => {
     setGradeTarget(sub);
@@ -325,10 +327,10 @@ export const Submissions = () => {
         getSubmissions().then(d => {
           if (Array.isArray(d)) setSubmissions(d.filter(s => menteeIds.has(s.menteeId)));
         }).catch(e => console.error("getSubmissions error:", e));
-      }).catch(e => console.error("getMenteesByMentor error:", e));
+      }).catch(e => console.error("getMenteesByMentor error:", e)).finally(() => setLoading(false));
     } else {
       const filter = isMentee ? { menteeId: currentUser.id } : {};
-      getSubmissions(filter).then(d => { if (Array.isArray(d)) setSubmissions(d); }).catch(e => console.error("getSubmissions error:", e));
+      getSubmissions(filter).then(d => { if (Array.isArray(d)) setSubmissions(d); }).catch(e => console.error("getSubmissions error:", e)).finally(() => setLoading(false));
     }
   }, [authReady]);
 
@@ -428,6 +430,15 @@ export const Submissions = () => {
     };
     loadCourses();
   }, [authReady]);
+
+  if (loading) return (
+    <Page>
+      <SidebarByRole />
+      <Main>
+        <LoadingSpinner label="Loading submissions..." fullHeight />
+      </Main>
+    </Page>
+  );
 
   return (
     <Page>

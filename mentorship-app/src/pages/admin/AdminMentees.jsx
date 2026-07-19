@@ -6,6 +6,7 @@ import { db } from "../../firebase/config";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser, unenrollMentee } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
 import { Card, Badge, BioModal } from "./adminStyles";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
 export default function AdminMentees() {
   const [users, setUsers] = useState([]);
@@ -16,6 +17,9 @@ export default function AdminMentees() {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [verifying, setVerifying] = useState(null);
   const [verifyMsg, setVerifyMsg] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [unenrollingId, setUnenrollingId] = useState(null);
+  const [loading, setLoading] = useState(true);
   useEffect(() => { AOS.init({ once: true }); }, []);
   const loadData = useCallback(() => {
     Promise.all([
@@ -25,7 +29,7 @@ export default function AdminMentees() {
         const enrollments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setEnrollmentMap(enrollments);
       })
-    ]).catch(e => console.error("loadData error:", e));
+    ]).then(() => setLoading(false)).catch(e => { console.error("loadData error:", e); setLoading(false); });
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
   const doVerify = (id, v) => {
@@ -57,13 +61,16 @@ export default function AdminMentees() {
     const target = users.find(u => u.id === id);
     if (!target || !window.confirm(`⚠️ Remove ${target.name} from the platform? They will be marked as deleted and won't be able to log in.`)) return;
     setVerifyMsg(null);
+    setDeletingId(id);
     updateUser(id, { deleted: true, name: "Deleted User", email: "", phone: "", city: "", bio: "", photoURL: "", verified: false })
       .then(() => {
         setUsers(prev => prev.filter(u => u.id !== id));
         logActivity("User deleted (soft)", { detail: `${target.name} (${target.role}) was removed from the platform` });
       })
-      .catch(e => setVerifyMsg(e.message));
+      .catch(e => setVerifyMsg(e.message))
+      .finally(() => setDeletingId(null));
   };
+  if (loading) return <LoadingSpinner label="Loading mentees..." fullHeight />;
   return (
     <>
     <style>{`
@@ -139,7 +146,7 @@ export default function AdminMentees() {
                           <div style={{padding:"12px 16px",borderTop:"1px solid #e0e0e0"}}>
                             <p style={{fontSize:"0.8rem",fontWeight:600,color:"#2c3e50",marginBottom:6}}>Course Details</p>
                             <p style={{fontSize:"0.78rem",color:"#594048"}}>Instructor: {c.instructor} · Level: {c.level} · Duration: {c.duration}</p>
-                            <button onClick={async () => { if (confirm(`Remove ${u.name} from "${c.title}"?`)) { try { await unenrollMentee(c.id, u.id); setExpandedCourse(null); } catch (e) { alert(e.message); } } }} style={{marginTop:8,padding:"6px 14px",borderRadius:8,border:"1px solid #e53935",background:"transparent",color:"#e53935",fontFamily:"inherit",fontWeight:600,fontSize:"0.78rem",cursor:"pointer"}}>Unenroll</button>
+                            <button disabled={unenrollingId === c.id} onClick={async () => { if (confirm(`Remove ${u.name} from "${c.title}"?`)) { setUnenrollingId(c.id); try { await unenrollMentee(c.id, u.id); setExpandedCourse(null); } catch (e) { alert(e.message); } finally { setUnenrollingId(null); } } }} style={{marginTop:8,padding:"6px 14px",borderRadius:8,border:"1px solid #e53935",background:"transparent",color:"#e53935",fontFamily:"inherit",fontWeight:600,fontSize:"0.78rem",cursor:"pointer",opacity:unenrollingId===c.id?0.6:1}}>{unenrollingId===c.id?"Removing...":"Unenroll"}</button>
                           </div>
                         )}
                       </div>

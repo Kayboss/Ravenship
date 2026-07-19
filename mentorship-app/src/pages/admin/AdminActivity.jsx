@@ -3,6 +3,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { getActivitiesPaginated, pruneOldActivity } from "../../firebase/db";
 import { Card, CardTitle } from "./adminStyles";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
 export default function AdminActivity() {
   const [activities, setActivities] = useState([]);
@@ -30,6 +31,7 @@ export default function AdminActivity() {
       setLoading(false);
     }).catch(e => { console.error("loadMore error:", e); setLoading(false); });
   };
+  if (loading && activities.length === 0) return <Card data-aos="fade-up"><LoadingSpinner label="Loading activity..." fullHeight /></Card>;
   return (
     <Card data-aos="fade-up">
       <style>{`

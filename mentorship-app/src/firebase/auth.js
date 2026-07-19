@@ -1,6 +1,6 @@
 import { auth, db } from "./config";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 
 export const loginWithEmail = async (email, password) => {
   const credential = await signInWithEmailAndPassword(auth, email, password);

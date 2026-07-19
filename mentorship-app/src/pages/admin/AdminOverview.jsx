@@ -12,6 +12,7 @@ import {
   DashboardGrid, UserTable, UTh, UTd, URow, RoleBadge, StatusDot,
   ChartCard, ChartGrid, SectionTitle, AnnTag
 } from "./adminStyles";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
 export default function AdminOverview() {
   const [data, setData] = useState(null);
@@ -24,9 +25,10 @@ export default function AdminOverview() {
   const [visits, setVisits] = useState(null);
   const [sourceData, setSourceData] = useState([]);
   const [showAllSources, setShowAllSources] = useState(false);
+  const [loading, setLoading] = useState(true);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getAnalytics().then(d => setData(d)).catch(e => console.error("getAnalytics error:", e));
+    getAnalytics().then(d => { setData(d); setLoading(false); }).catch(e => { console.error("getAnalytics error:", e); setLoading(false); });
     getSiteVisits().then(d => setVisits(d)).catch(e => console.error("getSiteVisits error:", e));
     Promise.all([
       getAnnouncements(),
@@ -224,7 +226,8 @@ export default function AdminOverview() {
                   { label: "Mobile", value: mobile, pct: Math.round((mobile / total) * 100), color: "#0298D7", icon: "📱" },
                   { label: "Tablet", value: tablet, pct: Math.round((tablet / total) * 100), color: "#cca800", icon: "📟" },
                 ];
-                return (
+  if (loading) return <LoadingSpinner label="Loading dashboard..." fullHeight />;
+  return (
                   <div style={{display:"flex",flexDirection:"column",gap:20}}>
                     {bars.map((b) => (
                       <div key={b.label}>

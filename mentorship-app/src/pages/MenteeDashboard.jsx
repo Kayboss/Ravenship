@@ -8,6 +8,7 @@ import { TopBar } from "../components/layout/TopBar.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getCourses, getSubmissions, updateSubmission, getGradebook, getUser, getEnrollments } from "../firebase/db";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 
 const truncateWords = (text, max = 25) => text?.split(" ").slice(0, max).join(" ") + (text?.split(" ").length > max ? "..." : "");
 
@@ -559,6 +560,7 @@ export const MenteeDashboard = () => {
   const [dueAssignments, setDueAssignments] = useState([]);
   const [coursesList, setCoursesList] = useState([]);
   const [menteeName, setMenteeName] = useState("Mentee");
+  const [loading, setLoading] = useState(true);
   const [groupName, setGroupName] = useState("");
   const [menteeStats, setMenteeStats] = useState({ hours: "0h", skills: "0", submissionsCount: 0, weekData: [0,0,0,0,0,0,0] });
   const [authReady, setAuthReady] = useState(false);
@@ -609,6 +611,7 @@ export const MenteeDashboard = () => {
         const enrollments = await getEnrollments(menteeId).catch(() => ({}));
         setDirectEnrollments(enrollments);
       }
+      setLoading(false);
     })();
   }, [authReady]);
 
@@ -621,6 +624,15 @@ export const MenteeDashboard = () => {
 
   const q = searchTerm.toLowerCase();
   const filteredEnrolled = enrolledList.filter(c => c.title?.toLowerCase().includes(q) || c.badge?.toLowerCase().includes(q));
+
+  if (loading) return (
+    <DashboardContainer>
+      <MenteeSidebar />
+      <MainContent>
+        <LoadingSpinner label="Loading dashboard..." fullHeight />
+      </MainContent>
+    </DashboardContainer>
+  );
 
   return (
     <DashboardContainer>

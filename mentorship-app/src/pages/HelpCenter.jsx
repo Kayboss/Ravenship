@@ -7,6 +7,7 @@ import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getCounsellingRequests, deleteCounsellingRequest, getSponsorshipRequests, deleteSponsorshipRequest } from "../firebase/db";
 import { onAuthReady } from "../firebase/auth";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 
 const Page = styled.div`
   display: flex;
@@ -228,6 +229,7 @@ export const HelpCenter = () => {
   const isMentee = role === "mentee";
   const isAdmin = role === "admin";
 
+  const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState([]);
   const [loadingReqs, setLoadingReqs] = useState(true);
   const [sponsorReqs, setSponsorReqs] = useState([]);
@@ -235,7 +237,7 @@ export const HelpCenter = () => {
   const [pdfModal, setPdfModal] = useState(null);
   const [authReady, setAuthReady] = useState(false);
 
-  useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
+  useEffect(() => { onAuthReady(() => { setAuthReady(true); if (!isAdmin) setLoading(false); }); }, []);
 
   const fetchRequests = async () => {
     try {
@@ -248,6 +250,7 @@ export const HelpCenter = () => {
     } catch { /* ignore */ }
     setLoadingReqs(false);
     setLoadingSponsors(false);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -272,6 +275,7 @@ export const HelpCenter = () => {
     });
   };
 
+  if (loading) return <Page><SidebarByRole /><Main><LoadingSpinner label="Loading..." fullHeight /></Main></Page>;
   return (
     <Page>
       <SidebarByRole />

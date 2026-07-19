@@ -4,9 +4,11 @@ import "aos/dist/aos.css";
 import { getHelpGuides, addHelpGuide, getCounsellingRequests, deleteCounsellingRequest, getSponsorshipRequests, deleteSponsorshipRequest } from "../../firebase/db";
 import { db } from "../../firebase/config";
 import { collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 import { Card, CardTitle, SubTab, Badge, Btn, Input, Textarea, Select, ViewBtn, PdfOverlay, PdfModalInner, PdfCloseBtn } from "./adminStyles";
 
 export default function AdminHelpCenter() {
+  const [loading, setLoading] = useState(true);
   const [msgs, setMsgs] = useState([]);
   const [guides, setGuides] = useState([]);
   const [title, setTitle] = useState("");
@@ -22,15 +24,14 @@ export default function AdminHelpCenter() {
   const [pdfModal, setPdfModal] = useState(null);
   const [activeTab, setActiveTab] = useState("messages");
   useEffect(() => { AOS.init({ once: true }); }, []);
-  const load = () => {
-    getDocs(collection(db, "helpMessages"))
-      .then(snap => setMsgs(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-      .catch(e => console.error("getHelpMessages error:", e));
-    getHelpGuides().then(d => setGuides(Array.isArray(d) ? d : [])).catch(e => console.error("getHelpGuides error:", e));
-    getCounsellingRequests().then(d => setCounselReqs(Array.isArray(d) ? d : [])).catch(e => console.error("getCounsellingRequests error:", e));
-    getSponsorshipRequests().then(d => setSponsorReqs(Array.isArray(d) ? d : [])).catch(e => console.error("getSponsorshipRequests error:", e));
-  };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    Promise.allSettled([
+      getDocs(collection(db, "helpMessages")).then(snap => setMsgs(snap.docs.map(d => ({ id: d.id, ...d.data() })))),
+      getHelpGuides().then(d => setGuides(Array.isArray(d) ? d : [])),
+      getCounsellingRequests().then(d => setCounselReqs(Array.isArray(d) ? d : [])),
+      getSponsorshipRequests().then(d => setSponsorReqs(Array.isArray(d) ? d : []))
+    ]).finally(() => setLoading(false));
+  }, []);
 
   const fmtDate = (ts) => {
     if (!ts?.toDate) return "";
@@ -71,7 +72,7 @@ export default function AdminHelpCenter() {
       .catch(e => setHelpError(e.message))
       .finally(() => setToggling(null));
   };
-
+  if (loading) return <Card data-aos="fade-up"><LoadingSpinner label="Loading..." fullHeight /></Card>;
   return (
     <Card data-aos="fade-up">
       <style>{`

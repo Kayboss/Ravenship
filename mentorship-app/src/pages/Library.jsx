@@ -8,6 +8,7 @@ import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase/config";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 import { getBooks, addBook, deleteBook } from "../firebase/db";
 import { uploadBookFile, uploadBookCover, downloadFromUrl } from "../lib/upload";
 
@@ -313,6 +314,7 @@ export const Library = () => {
   const [msg, setMsg] = useState(null);
   const [form, setForm] = useState({ title: "", author: "", description: "", file: null, coverFile: null });
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -325,6 +327,7 @@ export const Library = () => {
   const loadBooks = async () => {
     const data = await getBooks().catch(() => []);
     setBooks(data);
+    setLoading(false);
   };
 
   const handleUpload = async () => {
@@ -378,6 +381,15 @@ export const Library = () => {
   const filtered = books.filter(b =>
     (b.title || "").toLowerCase().includes(q) ||
     (b.author || "").toLowerCase().includes(q)
+  );
+
+  if (loading) return (
+    <Page>
+      <SidebarByRole />
+      <Main>
+        <LoadingSpinner label="Loading library..." fullHeight />
+      </Main>
+    </Page>
   );
 
   return (

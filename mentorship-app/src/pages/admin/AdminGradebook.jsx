@@ -3,6 +3,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { getAllGradebook, getUsers, getCourses, getSubmissions, setGradebookEntry } from "../../firebase/db";
 import { Card, CardTitle, Badge, Table, Th, Td } from "./adminStyles";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
 export default function AdminGradebook() {
   const [mentees, setMentees] = useState([]);
@@ -76,6 +77,8 @@ export default function AdminGradebook() {
     }).catch(() => setAssignments(["Assignment 1", "Assignment 2", "Assignment 3", "Assignment 4", "Assignment 5"]));
   }, []);
   const total = mentees.length;
+  if (loading) return <Card data-aos="fade-up"><LoadingSpinner label="Loading gradebook..." fullHeight /></Card>;
+
   const passing = mentees.filter(m => m.avg >= 60).length;
   const avg = Math.round(mentees.reduce((s, m) => s + m.avg, 0) / (total || 1));
   return (

@@ -7,6 +7,7 @@ import { MentorSidebar } from "../components/layout/MentorSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getUsers } from "../firebase/db";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 
 const Page = styled.div`
   display: flex;
@@ -303,6 +304,7 @@ const InfoLabel = styled.span`
 export const MyMentees = () => {
   const { role } = useParams();
   const [mentees, setMentees] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -332,12 +334,13 @@ export const MyMentees = () => {
           skills: u.skills || [],
         })));
       }
-    }).catch(e => console.error("getMentees error:", e));
+    }).catch(e => console.error("getMentees error:", e)).finally(() => setLoading(false));
   }, [authReady]);
 
   const q = searchTerm.toLowerCase();
   const filteredMentees = mentees.filter(m => m.name?.toLowerCase().includes(q) || m.email?.toLowerCase().includes(q));
 
+  if (loading) return <Page><MentorSidebar /><Main><LoadingSpinner label="Loading..." fullHeight /></Main></Page>;
   return (
     <Page>
       <MentorSidebar />

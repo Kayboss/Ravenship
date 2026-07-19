@@ -10,6 +10,7 @@ import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getCourses, addCourse, updateCourse, deleteCourse, getUser, getUsers, enrollMentee, getAssignments } from "../firebase/db";
+import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
 
 const truncateWords = (text, max = 25) => text?.split(" ").slice(0, max).join(" ") + (text?.split(" ").length > max ? "..." : "");
 
@@ -723,6 +724,7 @@ export const MyCourses = () => {
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => { onAuthReady(() => setAuthReady(true)); }, []);
 
@@ -775,6 +777,7 @@ export const MyCourses = () => {
       } catch {
         setCoursesList([]);
       }
+      setLoading(false);
     };
     load();
   }, [authReady]);
@@ -871,6 +874,15 @@ export const MyCourses = () => {
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
   const q = searchTerm.toLowerCase();
   const filteredCourses = coursesList.filter(c => c.title?.toLowerCase().includes(q) || c.badge?.toLowerCase().includes(q));
+
+  if (loading) return (
+    <Page>
+      <SidebarByRole />
+      <Main>
+        <LoadingSpinner label="Loading courses..." fullHeight />
+      </Main>
+    </Page>
+  );
 
   return (
     <Page>

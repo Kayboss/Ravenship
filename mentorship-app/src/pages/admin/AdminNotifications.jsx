@@ -4,9 +4,11 @@ import "aos/dist/aos.css";
 import { addNotification } from "../../firebase/db";
 import { db } from "../../firebase/config";
 import { collection, getDocs, deleteDoc, doc, query, orderBy } from "firebase/firestore";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 import { Card, CardTitle, Input, Textarea, Select, Btn } from "./adminStyles";
 
 export default function AdminNotifications() {
+  const [loading, setLoading] = useState(true);
   const [list, setList] = useState([]);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -18,7 +20,8 @@ export default function AdminNotifications() {
   useEffect(() => {
     getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
       .then(snap => setList(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-      .catch(e => console.error("getNotifications error:", e));
+      .catch(e => console.error("getNotifications error:", e))
+      .finally(() => setLoading(false));
   }, []);
   const send = () => {
     if (!title.trim() || !message.trim()) { setNotifMsg("Title and message are required"); return; }
@@ -36,6 +39,7 @@ export default function AdminNotifications() {
       .catch(e => setNotifMsg(e.message))
       .finally(() => setDeleting(null));
   };
+  if (loading) return <Card data-aos="fade-up"><LoadingSpinner label="Loading..." fullHeight /></Card>;
   return (
     <Card data-aos="fade-up">
       <CardTitle>🔔 Send Notifications</CardTitle>

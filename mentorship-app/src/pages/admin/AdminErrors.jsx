@@ -3,6 +3,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { getErrorsPaginated, markErrorResolved, pruneOldErrors, batchResolveErrors } from "../../firebase/db";
 import { Card, CardTitle, Badge } from "./adminStyles";
+import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
 export default function AdminErrors() {
   const [errors, setErrors] = useState([]);
@@ -46,6 +47,7 @@ export default function AdminErrors() {
     setResolving(id);
     markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? {...e, resolved: true} : e)); }).catch(e => console.error("markErrorResolved error:", e)).finally(() => setResolving(null));
   };
+  if (loading && errors.length === 0) return <Card data-aos="fade-up"><LoadingSpinner label="Loading errors..." fullHeight /></Card>;
   return (
     <Card data-aos="fade-up">
       <style>{`
