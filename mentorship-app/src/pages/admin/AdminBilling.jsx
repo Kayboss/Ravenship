@@ -4,7 +4,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { useNavigate } from "react-router-dom";
 import { getStoredUser } from "../../firebase/auth";
-import { submitPayment, getBillingStatus } from "../../firebase/db";
+import { submitPayment, getBillingStatus, checkOrganizationBilling } from "../../firebase/db";
 import { Card, CardTitle } from "./adminStyles";
 
 const PageTitle = styled.h2`
@@ -110,6 +110,7 @@ export default function AdminBilling() {
   const navigate = useNavigate();
   const user = getStoredUser() || { name: "Admin" };
   const [billing, setBilling] = useState(null);
+  const [orgBilling, setOrgBilling] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -121,10 +122,13 @@ export default function AdminBilling() {
 
   useEffect(() => {
     if (!user?.id) return;
-    getBillingStatus(user.id)
-      .then(data => setBilling(data))
-      .catch(e => console.error("getBillingStatus error:", e))
-      .finally(() => setLoading(false));
+    Promise.all([
+      getBillingStatus(user.id).catch(() => null),
+      checkOrganizationBilling().catch(() => ({ active: false })),
+    ]).then(([myBilling, org]) => {
+      setBilling(myBilling);
+      setOrgBilling(org);
+    }).finally(() => setLoading(false));
   }, [user?.id]);
 
   const handleSubmit = async (e) => {
@@ -161,6 +165,9 @@ export default function AdminBilling() {
   const isVerified = billing?.status === "verified";
   const isPending = billing?.status === "pending";
   const isExpired = billing?.expiryDate && new Date(billing.expiryDate?.toDate ? billing.expiryDate.toDate() : billing.expiryDate) < new Date();
+  const orgActive = orgBilling?.active;
+  const orgExpiry = orgBilling?.expiryDate;
+  const orgAdminName = orgBilling?.adminName;
 
   return (
     <div>
@@ -182,6 +189,8 @@ export default function AdminBilling() {
               <span style={{ fontSize: "0.85rem", color: "#594048" }}>Status:</span>
               {loading ? (
                 <span style={{ fontSize: "0.85rem", color: "#999" }}>Loading...</span>
+              ) : orgActive ? (
+                <StatusBadge $status="verified">Active</StatusBadge>
               ) : billing ? (
                 <StatusBadge $status={isExpired ? "expired" : billing.status}>
                   {isExpired ? "Expired" : billing.status === "verified" ? "Active" : "Pending Review"}
@@ -191,19 +200,25 @@ export default function AdminBilling() {
               )}
             </div>
 
-            {billing?.expiryDate && (
+            {orgActive && orgExpiry && (
+              <p style={{ fontSize: "0.8rem", color: "#2e7d32", fontWeight: 600 }}>
+                Subscription active until {new Date(orgExpiry).toLocaleDateString()}{orgAdminName ? ` (paid by ${orgAdminName})` : ""}.
+              </p>
+            )}
+
+            {!orgActive && billing?.expiryDate && (
               <p style={{ fontSize: "0.8rem", color: isExpired ? "#c62828" : "#594048", fontWeight: isExpired ? 600 : 400 }}>
                 Expires: {new Date(billing.expiryDate?.toDate ? billing.expiryDate.toDate() : billing.expiryDate).toLocaleDateString()}
               </p>
             )}
 
-            {billing?.startDate && (
+            {!orgActive && billing?.startDate && (
               <p style={{ fontSize: "0.8rem", color: "#594048", marginTop: 4 }}>
                 Started: {new Date(billing.startDate?.toDate ? billing.startDate.toDate() : billing.startDate).toLocaleDateString()}
               </p>
             )}
 
-            {isExpired && (
+            {!orgActive && isExpired && (
               <div style={{ padding: "12px 16px", background: "#ffebee", borderRadius: 8, border: "1px solid #e53935", marginTop: 8 }}>
                 <p style={{ color: "#c62828", fontSize: "0.85rem", fontWeight: 600 }}>⚠️ Subscription Expired</p>
                 <p style={{ color: "#c62828", fontSize: "0.8rem", marginTop: 4 }}>Please renew to continue full access.</p>
@@ -214,7 +229,14 @@ export default function AdminBilling() {
 
         <Card data-aos="fade-up">
           <CardTitle>💰 Submit Payment</CardTitle>
-          {isPending ? (
+          {orgActive ? (
+            <div style={{ padding: "20px 0" }}>
+              <div style={{ padding: "16px", background: "#e8f5e9", borderRadius: 8, border: "1px solid #2e7d32", marginBottom: 16 }}>
+                <p style={{ color: "#2e7d32", fontSize: "0.85rem", fontWeight: 600 }}>✅ Organization Subscription Active</p>
+                <p style={{ color: "#2e7d32", fontSize: "0.8rem", marginTop: 4 }}>Another admin has already paid for the organization subscription. No payment needed from you.</p>
+              </div>
+            </div>
+          ) : isPending ? (
             <div style={{ padding: "20px 0" }}>
               <div style={{ padding: "16px", background: "#fff3cd", borderRadius: 8, border: "1px solid #ffc107", marginBottom: 16 }}>
                 <p style={{ color: "#856404", fontSize: "0.85rem", fontWeight: 600 }}>⏳ Payment Under Review</p>

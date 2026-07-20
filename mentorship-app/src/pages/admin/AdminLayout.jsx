@@ -4,7 +4,7 @@ import { AdminSidebar } from "../../components/layout/AdminSidebar.jsx";
 import { TopBar } from "../../components/layout/TopBar.jsx";
 import { AdminPageLayout, AdminPageMain } from "./adminStyles";
 import { getStoredUser } from "../../firebase/auth";
-import { getBillingStatus } from "../../firebase/db";
+import { checkOrganizationBilling } from "../../firebase/db";
 
 export default function AdminLayout() {
   const [theme, setTheme] = useState("dark");
@@ -16,22 +16,9 @@ export default function AdminLayout() {
 
   useEffect(() => {
     if (!user?.id) return;
-    getBillingStatus(user.id)
-      .then(billing => {
-        if (!billing || billing.status !== "verified") {
-          setBillingExpired(true);
-          return;
-        }
-        if (billing.expiryDate) {
-          const expiry = billing.expiryDate?.toDate ? billing.expiryDate.toDate() : new Date(billing.expiryDate);
-          if (expiry < new Date()) {
-            setBillingExpired(true);
-          } else {
-            setBillingExpired(false);
-          }
-        } else {
-          setBillingExpired(false);
-        }
+    checkOrganizationBilling()
+      .then(result => {
+        setBillingExpired(!result.active);
       })
       .catch(() => {});
   }, [user?.id, location.pathname]);
