@@ -5,6 +5,8 @@ import "aos/dist/aos.css";
 import { getStoredUser } from "../../firebase/auth";
 import { getAllPendingPayments, verifyPayment, rejectPayment } from "../../firebase/db";
 import { Card, CardTitle } from "./adminStyles";
+import { logger } from "../../lib/logger";
+import { toast } from "../../lib/notify";
 
 const PageTitle = styled.h2`
   font-size: ${(props) => props.theme.typography.heading2};
@@ -113,7 +115,7 @@ export default function AdminBillingVerify() {
     setLoading(true);
     getAllPendingPayments()
       .then(data => setPayments(data))
-      .catch(e => console.error("getAllPendingPayments error:", e))
+      .catch(e => logger.error("getAllPendingPayments error:", e))
       .finally(() => setLoading(false));
   };
 
@@ -123,8 +125,8 @@ export default function AdminBillingVerify() {
       await verifyPayment(userId, user.id, user.name);
       setPayments(prev => prev.filter(p => p.userId !== userId));
     } catch (err) {
-      console.error("verifyPayment error:", err);
-      alert("Failed to verify payment.");
+      logger.error("verifyPayment error:", err);
+      toast.error("Failed to verify payment.");
     }
     setProcessing(null);
   };
@@ -136,8 +138,8 @@ export default function AdminBillingVerify() {
       await rejectPayment(userId, user.id, user.name);
       setPayments(prev => prev.filter(p => p.userId !== userId));
     } catch (err) {
-      console.error("rejectPayment error:", err);
-      alert("Failed to reject payment.");
+      logger.error("rejectPayment error:", err);
+      toast.error("Failed to reject payment.");
     }
     setProcessing(null);
   };

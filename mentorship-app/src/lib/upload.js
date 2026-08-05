@@ -1,5 +1,6 @@
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "../firebase/config";
+import { toast } from "./notify";
 
 export const fileToBase64 = (file) =>
   new Promise((resolve, reject) => {
@@ -62,7 +63,7 @@ const decodeHtmlEntities = (str) => {
 };
 
 export const downloadFromUrl = async (url, fileName, filePath) => {
-  if (!url) { alert("No file available"); return; }
+  if (!url) { toast.info("No file available"); return; }
   const cleanUrl = decodeHtmlEntities(url);
   const a = document.createElement("a");
   a.href = cleanUrl;

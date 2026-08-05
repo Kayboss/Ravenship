@@ -5,6 +5,7 @@ import { getMentors, getUnassignedMentees, getMenteesByMentor, assignMenteeToMen
 import { db } from "../../firebase/config";
 import { doc, updateDoc } from "firebase/firestore";
 import { Card, CardTitle, Select, Input, Btn } from "./adminStyles";
+import { logger } from "../../lib/logger";
 
 export default function AdminMentorship() {
   const [mentors, setMentors] = useState([]);
@@ -21,11 +22,11 @@ export default function AdminMentorship() {
   const [demotingId, setDemotingId] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   const load = () => {
-    getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(e => console.error("getMentors error:", e));
-    getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(e => console.error("getUnassignedMentees error:", e));
+    getMentors().then(d => setMentors(Array.isArray(d) ? d : [])).catch(e => logger.error("getMentors error:", e));
+    getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(e => logger.error("getUnassignedMentees error:", e));
   };
   const loadAdmins = () => {
-    getAdmins().then(d => setAdmins(Array.isArray(d) ? d : [])).catch(e => console.error("getAdmins error:", e));
+    getAdmins().then(d => setAdmins(Array.isArray(d) ? d : [])).catch(e => logger.error("getAdmins error:", e));
   };
   useEffect(() => { load(); loadAdmins(); }, []);
 
@@ -52,14 +53,14 @@ export default function AdminMentorship() {
     try {
       await updateUser(id, { role: "mentee" });
       loadAdmins();
-    } catch (e) { console.error("demote error:", e); }
+    } catch (e) { logger.error("demote error:", e); }
     setDemotingId(null);
   };
 
   useEffect(() => {
     if (selectedMentor) {
       setGroupName(selectedMentor.groupName || "");
-      getMenteesByMentor(selectedMentor.id).then(d => setAssignedMentees(Array.isArray(d) ? d : [])).catch(e => console.error("getMenteesByMentor error:", e));
+      getMenteesByMentor(selectedMentor.id).then(d => setAssignedMentees(Array.isArray(d) ? d : [])).catch(e => logger.error("getMenteesByMentor error:", e));
     } else {
       setAssignedMentees([]);
       setGroupName("");
@@ -99,7 +100,7 @@ export default function AdminMentorship() {
       await removeMenteeFromMentor(selectedMentor.id, menteeId);
       setMsg(`Removed ${menteeName} from ${selectedMentor.name}`);
       setAssignedMentees(prev => prev.filter(u => u.id !== menteeId));
-      getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(e => console.error("getUnassignedMentees refresh error:", e));
+      getUnassignedMentees().then(d => setUnassigned(Array.isArray(d) ? d : [])).catch(e => logger.error("getUnassignedMentees refresh error:", e));
     } catch (e) { setMsg(e.message); }
     setLoading(false);
   };

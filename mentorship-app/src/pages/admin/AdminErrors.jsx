@@ -4,6 +4,7 @@ import "aos/dist/aos.css";
 import { getErrorsPaginated, markErrorResolved, pruneOldErrors, batchResolveErrors } from "../../firebase/db";
 import { Card, CardTitle, Badge } from "./adminStyles";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
+import { logger } from "../../lib/logger";
 
 export default function AdminErrors() {
   const [errors, setErrors] = useState([]);
@@ -31,7 +32,7 @@ export default function AdminErrors() {
       setLastDoc(ld);
       setHasMore(hm);
       setLoading(false);
-    }).catch(e => { console.error("getErrors error:", e); setLoading(false); });
+    }).catch(e => { logger.error("getErrors error:", e); setLoading(false); });
   }, []);
   const loadMore = () => {
     if (loading || !hasMore) return;
@@ -41,11 +42,11 @@ export default function AdminErrors() {
       setLastDoc(ld);
       setHasMore(hm);
       setLoading(false);
-    }).catch(e => { console.error("loadMore error:", e); setLoading(false); });
+    }).catch(e => { logger.error("loadMore error:", e); setLoading(false); });
   };
   const doResolve = (id) => {
     setResolving(id);
-    markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? {...e, resolved: true} : e)); }).catch(e => console.error("markErrorResolved error:", e)).finally(() => setResolving(null));
+    markErrorResolved(id).then(() => { setErrors(prev => prev.map(e => e.id === id ? {...e, resolved: true} : e)); }).catch(e => logger.error("markErrorResolved error:", e)).finally(() => setResolving(null));
   };
   if (loading && errors.length === 0) return <Card data-aos="fade-up"><LoadingSpinner label="Loading errors..." fullHeight /></Card>;
   return (

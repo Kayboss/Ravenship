@@ -5,6 +5,7 @@ import "aos/dist/aos.css";
 import { useLocation, useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { logger } from "../lib/logger";
 import { getStoredUser, onAuthReady, isUserOnline } from "../firebase/auth";
 import { getPosts, addPost, updatePost, deletePost, togglePostLike, addComment as fbAddComment, getEvents, getUsers, getOrCreateConversation, sendMessage, subscribeMessages, subscribeConversations, markMessagesRead, subscribeConversation, setTyping } from "../firebase/db";
 import { db } from "../firebase/config";
@@ -663,15 +664,15 @@ export const Community = () => {
     if (!authReady) return;
     AOS.init({ duration: 800, once: true });
     Promise.all([
-      getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(e => console.error("getPosts error:", e)),
+      getPosts().then(d => setPostList(Array.isArray(d) ? d : [])).catch(e => logger.error("getPosts error:", e)),
       getUsers().then(d => {
         const members = Array.isArray(d) ? d : [];
         setMemberList(members.map(m => ({
           ...m,
           online: isUserOnline(m.lastSeen),
         })));
-      }).catch(e => console.error("getUsers error:", e)),
-      getEvents().then(d => setEventList(Array.isArray(d) ? d : [])).catch(e => console.error("getEvents error:", e)),
+      }).catch(e => logger.error("getUsers error:", e)),
+      getEvents().then(d => setEventList(Array.isArray(d) ? d : [])).catch(e => logger.error("getEvents error:", e)),
     ]).finally(() => setLoading(false));
     const stateTarget = location.state?.chatTarget;
     if (stateTarget?.id && stateTarget?.name) {
@@ -765,7 +766,7 @@ export const Community = () => {
         setPostList(prev => prev.map((p, i) => i === index ? { ...p, text: editingPostText } : p));
         cancelEdit();
       })
-      .catch(e => console.error("saveEdit error:", e));
+      .catch(e => logger.error("saveEdit error:", e));
   };
 
   const handleDelete = (index) => {
@@ -774,7 +775,7 @@ export const Community = () => {
     if (!window.confirm("Delete this post?")) return;
     deletePost(post.id)
       .then(() => setPostList(prev => prev.filter((_, i) => i !== index)))
-      .catch(e => console.error("handleDelete error:", e));
+      .catch(e => logger.error("handleDelete error:", e));
   };
 
   const toggleComments = (index) => {
@@ -793,7 +794,7 @@ export const Community = () => {
     setCommentInputs(prev => ({ ...prev, [index]: "" }));
     try {
       await fbAddComment(post.id, text);
-    } catch (e) { console.error("Failed to save comment:", e); }
+    } catch (e) { logger.error("Failed to save comment:", e); }
   };
 
   const handleNewPostImage = (e) => {
@@ -826,7 +827,7 @@ export const Community = () => {
         setNewPostImage(null);
         setPosting(false);
       })
-      .catch(e => { console.error("submitPost error:", e); setPosting(false); });
+      .catch(e => { logger.error("submitPost error:", e); setPosting(false); });
   };
 
   const filteredMembers = memberFilter === "online" ? memberList.filter(m => m.online) : memberList;
@@ -850,7 +851,7 @@ export const Community = () => {
         })));
       });
     } catch (e) {
-      console.error("Failed to open chat", e);
+      logger.error("Failed to open chat", e);
     }
     setChatOpen(true);
   };
@@ -864,7 +865,7 @@ export const Community = () => {
       await setTyping(chatConvId, user.id, false);
       await sendMessage(chatConvId, text);
     } catch (e) {
-      console.error("Failed to send message", e);
+      logger.error("Failed to send message", e);
     }
   };
 

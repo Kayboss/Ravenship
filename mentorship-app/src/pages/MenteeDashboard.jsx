@@ -5,6 +5,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { MenteeSidebar } from "../components/layout/MenteeSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { logger } from "../lib/logger";
 import { useCourses } from "../context/CourseContext.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getCourses, getSubmissions, updateSubmission, getGradebook, getUser, getEnrollments } from "../firebase/db";
@@ -580,7 +581,7 @@ export const MenteeDashboard = () => {
         const u = await getUser(menteeId);
         if (u?.mentorId) {
           mentorFilter = u.mentorId;
-          getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(e => console.error("getUser/groupName error:", e));
+          getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(e => logger.error("getUser/groupName error:", e));
         }
       }
       const [coursesData, submissions, gradebook] = await Promise.all([

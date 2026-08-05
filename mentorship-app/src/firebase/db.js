@@ -5,6 +5,7 @@ import {
 } from "firebase/firestore";
 import { getStoredUser } from "./auth";
 import { sanitizeInput } from "../lib/sanitize";
+import { logger } from "../lib/logger";
 
 // Fields that intentionally store HTML/structured data — rendered safely via DOMPurify or React JSX (auto-escaped)
 const RICH_FIELDS = new Set(["content", "lessonContent", "syllabus", "stack", "description", "featuredImage", "fileUrl", "filePath", "file"]);
@@ -312,7 +313,7 @@ export const getPosts = async () => {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
-    console.error("getPosts failed:", e);
+    logger.error("getPosts failed:", e);
     const snap = await getDocs(collection(db, "posts"));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
@@ -380,7 +381,7 @@ export const getEvents = async () => {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) {
-    console.error("getEvents failed:", e);
+    logger.error("getEvents failed:", e);
     const snap = await getDocs(collection(db, "events"));
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
   }
@@ -562,7 +563,7 @@ export const markMessagesRead = async (conversationId, userId) => {
 export const subscribeConversation = (conversationId, callback) => {
   return onSnapshot(doc(db, "conversations", conversationId), (snap) => {
     callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-  }, (e) => console.error("subscribeConversation error:", e));
+  }, (e) => logger.error("subscribeConversation error:", e));
 };
 
 export const setTyping = async (conversationId, userId, isTyping) => {
@@ -585,7 +586,7 @@ export const subscribeNotifications = (role, callback) => {
       return tB - tA;
     });
     callback(data);
-  }, (e) => console.error("subscribeNotifications error:", e));
+  }, (e) => logger.error("subscribeNotifications error:", e));
 };
 
 export const markNotificationsRead = async (notificationIds) => {
@@ -612,7 +613,7 @@ export const subscribeMessages = (conversationId, callback) => {
   );
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-  }, (e) => console.error("subscribeMessages error:", e));
+  }, (e) => logger.error("subscribeMessages error:", e));
 };
 
 export const subscribeConversations = (userId, callback) => {
@@ -628,7 +629,7 @@ export const subscribeConversations = (userId, callback) => {
       return tB - tA;
     });
     callback(data);
-  }, (e) => console.error("subscribeConversations error:", e));
+  }, (e) => logger.error("subscribeConversations error:", e));
 };
 
 // ── Activity Logging ──
@@ -659,7 +660,7 @@ export const pruneOldActivity = async (months = 3) => {
     await batch.commit();
     return snap.docs.length;
   } catch (e) {
-    console.error("pruneOldActivity error:", e);
+    logger.error("pruneOldActivity error:", e);
     return 0;
   }
 };
@@ -738,7 +739,7 @@ export const pruneOldErrors = async (months = 1) => {
     await batch.commit();
     return snap.docs.length;
   } catch (e) {
-    console.error("pruneOldErrors error:", e);
+    logger.error("pruneOldErrors error:", e);
     return 0;
   }
 };

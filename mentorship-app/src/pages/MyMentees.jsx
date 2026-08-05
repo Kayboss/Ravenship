@@ -5,6 +5,7 @@ import "aos/dist/aos.css";
 import { useParams } from "react-router-dom";
 import { MentorSidebar } from "../components/layout/MentorSidebar.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { logger } from "../lib/logger";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getUsers } from "../firebase/db";
 import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
@@ -334,7 +335,7 @@ export const MyMentees = () => {
           skills: u.skills || [],
         })));
       }
-    }).catch(e => console.error("getMentees error:", e)).finally(() => setLoading(false));
+    }).catch(e => logger.error("getMentees error:", e)).finally(() => setLoading(false));
   }, [authReady]);
 
   const q = searchTerm.toLowerCase();

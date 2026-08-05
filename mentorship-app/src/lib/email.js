@@ -1,4 +1,5 @@
 import emailjs from "@emailjs/browser";
+import { logger } from "./logger";
 
 // ── EmailJS Configuration ──
 // 1. Sign up at https://www.emailjs.com/ (free tier: 200 emails/month)
@@ -89,7 +90,7 @@ export async function sendAdminNotifyEmail({ name, email, role }) {
       user_email: email,
       user_role: role,
     });
-  } catch (e) { console.error("sendAdminNotifyEmail error:", e); }
+  } catch (e) { logger.error("sendAdminNotifyEmail error:", e); }
 }
 
 export async function sendApprovedEmail({ name, email, role }) {
@@ -102,5 +103,5 @@ export async function sendApprovedEmail({ name, email, role }) {
       user_name: name,
       user_role: role,
     });
-  } catch (e) { console.error("sendApprovedEmail error:", e); }
+  } catch (e) { logger.error("sendApprovedEmail error:", e); }
 }

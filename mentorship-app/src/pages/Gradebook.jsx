@@ -5,6 +5,7 @@ import "aos/dist/aos.css";
 import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { logger } from "../lib/logger";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getUsers, getCourses, getAllGradebook, updateGradebook, getSubmissions, getMenteesByMentor } from "../firebase/db";
 import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
@@ -259,7 +260,7 @@ export const Gradebook = () => {
     const load = async () => {
       try {
         const [allGradebooks, users, courses] = await Promise.all([getAllGradebook(), getUsers(), getCourses()]);
-        console.log("Gradebook loaded:", allGradebooks.length, "entries", role);
+        logger.log("Gradebook loaded:", allGradebooks.length, "entries", role);
         let filteredGradebooks = allGradebooks;
         if (role === "mentor" && user?.id) {
           const mentees = await getMenteesByMentor(user.id).catch(() => []);
@@ -295,7 +296,7 @@ export const Gradebook = () => {
           m.avg = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
         });
         setMentees(result);
-      } catch (e) { console.error("getGradebook error:", e); }
+      } catch (e) { logger.error("getGradebook error:", e); }
       setLoading(false);
     };
     load();

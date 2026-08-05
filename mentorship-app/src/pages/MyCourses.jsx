@@ -6,6 +6,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase/config";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
+import { logger } from "../lib/logger";
+import { toast } from "../lib/notify";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
@@ -749,7 +751,7 @@ export const MyCourses = () => {
         try {
           const enrollmentSnap = await getDocs(collection(db, "enrollments"));
           enrollmentList = enrollmentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        } catch (e) { console.warn("enrollments fetch skipped:", e.message); }
+        } catch (e) { logger.warn("enrollments fetch skipped:", e.message); }
         const counts = {};
         for (const a of allAssignments) {
           if (a.course) counts[a.course] = (counts[a.course] || 0) + 1;
@@ -784,7 +786,7 @@ export const MyCourses = () => {
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.desc.trim() || !form.duration.trim()) {
-      alert("Please fill in all fields");
+      toast.error("Please fill in all fields");
       return;
     }
     setSaving(true);
@@ -811,13 +813,13 @@ export const MyCourses = () => {
       const id = await addCourse(newCourse);
       setCoursesList(prev => [{ ...newCourse, id }, ...prev]);
     } catch {
-      alert("Failed to save program to server. Saved locally instead.");
+      toast.error("Failed to save program to server. Saved locally instead.");
       setCoursesList(prev => [newCourse, ...prev]);
     }
     setShowCreate(false);
     setForm({ title: "", desc: "", badge: "Design", emoji: "🎨", duration: "", level: "Beginner", featuredImage: "" });
     setSaving(false);
-    alert("Program created!");
+    toast.success("Program created!");
   };
 
   const handleEdit = (course) => {
@@ -825,23 +827,23 @@ export const MyCourses = () => {
   };
 
   const saveEdit = async () => {
-    if (!editTarget.title.trim()) return alert("Title is required");
+    if (!editTarget.title.trim()) return toast.error("Title is required");
     setSaving(true);
     const updated = { ...editTarget };
     delete updated._origTitle;
     delete updated.id;
     if (editTarget.id) {
-      try { await updateCourse(editTarget.id, updated); } catch { alert("Failed to save changes to server."); setSaving(false); return; }
+      try { await updateCourse(editTarget.id, updated); } catch { toast.error("Failed to save changes to server."); setSaving(false); return; }
     }
     setCoursesList(prev => prev.map(c => (c.id && c.id === editTarget.id) || (!c.id && c.title === editTarget._origTitle) ? { ...editTarget } : c));
     setEditTarget(null);
     setSaving(false);
-    alert("Program updated!");
+    toast.success("Program updated!");
   };
 
   const confirmDelete = (course) => {
     if (course.enrolled > 0) {
-      alert(`Cannot delete "${course.title}" — ${course.enrolled} mentee(s) are already enrolled in this program.`);
+      toast.error(`Cannot delete "${course.title}" — ${course.enrolled} mentee(s) are already enrolled in this program.`);
       return;
     }
     setDeleteTarget(course);
@@ -850,12 +852,12 @@ export const MyCourses = () => {
   const doDelete = async () => {
     setDeletingId(deleteTarget?.id || "local");
     if (deleteTarget.id) {
-      try { await deleteCourse(deleteTarget.id); } catch { alert("Failed to delete program from server."); setDeletingId(null); return; }
+      try { await deleteCourse(deleteTarget.id); } catch { toast.error("Failed to delete program from server."); setDeletingId(null); return; }
     }
     setCoursesList(prev => prev.filter(c => (c.id && c.id !== deleteTarget.id) || (!c.id && c.title !== deleteTarget.title)));
     setDeleteTarget(null);
     setDeletingId(null);
-    alert("Program deleted!");
+    toast.success("Program deleted!");
   };
 
   const doBulkDelete = async () => {
@@ -869,7 +871,7 @@ export const MyCourses = () => {
     setCoursesList(prev => prev.filter(c => !selectedIds.includes(c.id || c.title)));
     setSelectedIds([]);
     setSaving(false);
-    alert("Selected programs deleted!");
+    toast.success("Selected programs deleted!");
   };
   useEffect(() => { AOS.init({ duration: 800, once: true }); }, []);
   const q = searchTerm.toLowerCase();
@@ -1053,7 +1055,7 @@ export const MyCourses = () => {
                   ▶ Continue — {Array.isArray(selected.syllabus) ? (selected.syllabus[enrolledCourses[selected.title].lastTopic ?? 0] ?? "Course") : "Course"}
                 </ContinueBtn>
               ) : (
-                <StartBtn onClick={async () => { enrollCourse(selected.title); if (selected.id && currentUser?.id) { try { await enrollMentee(selected.id, currentUser.id); } catch (e) { console.error("Enrollment failed", e); } } setSelected(null); navigate(`/dashboard/${role}/course/${encodeURIComponent(selected.title)}`); }}>
+                <StartBtn onClick={async () => { enrollCourse(selected.title); if (selected.id && currentUser?.id) { try { await enrollMentee(selected.id, currentUser.id); } catch (e) { logger.error("Enrollment failed", e); } } setSelected(null); navigate(`/dashboard/${role}/course/${encodeURIComponent(selected.title)}`); }}>
                   🚀 Start Course — {Array.isArray(selected.syllabus) && selected.syllabus.length > 0 ? selected.syllabus[0] : "Begin"}
                 </StartBtn>
               )}
@@ -1123,7 +1125,7 @@ export const MyCourses = () => {
                       style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"none", background:"rgba(0,0,0,0.5)", color:"#fff", cursor:"pointer", fontSize:"0.8rem" }}>✕</button>
                   </div>
                 )}
-                <input type="file" id="featured-image-create" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500 * 1024) { alert("Image too large. Please choose an image under 500KB."); return; } const r=new FileReader(); r.onload=(ev) => setForm({ ...form, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
+                <input type="file" id="featured-image-create" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500 * 1024) { toast.error("Image too large. Please choose an image under 500KB."); return; } const r=new FileReader(); r.onload=(ev) => setForm({ ...form, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
                   style={{ fontSize:"0.85rem", fontFamily:"inherit" }} />
               </FormGroup>
 
@@ -1188,7 +1190,7 @@ export const MyCourses = () => {
                       style={{ position:"absolute", top:8, right:8, width:28, height:28, borderRadius:"50%", border:"none", background:"rgba(0,0,0,0.5)", color:"#fff", cursor:"pointer", fontSize:"0.8rem" }}>✕</button>
                   </div>
                 )}
-                <input type="file" id="featured-image-edit" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500 * 1024) { alert("Image too large. Please choose an image under 500KB."); return; } const r=new FileReader(); r.onload=(ev) => setEditTarget({ ...editTarget, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
+                <input type="file" id="featured-image-edit" accept="image/*" onChange={(e) => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500 * 1024) { toast.error("Image too large. Please choose an image under 500KB."); return; } const r=new FileReader(); r.onload=(ev) => setEditTarget({ ...editTarget, featuredImage: ev.target.result }); r.readAsDataURL(f); }}
                   style={{ fontSize:"0.85rem", fontFamily:"inherit" }} />
               </FormGroup>
               <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>

@@ -6,6 +6,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { logger } from "../lib/logger";
+import { toast } from "../lib/notify";
 import { getCourses, updateCourse, deleteCourse as deleteCourseFromDb, getUser } from "../firebase/db";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
@@ -299,14 +301,14 @@ export const CourseView = () => {
         if (match.resources) setCourseData(prev => ({ ...prev, resources: match.resources }));
       }
       setLoading(false);
-    })().catch(e => { console.error("CourseView load error:", e); setLoading(false); });
+    })().catch(e => { logger.error("CourseView load error:", e); setLoading(false); });
   }, [authReady, courseName, courseTitle, isMentor]);
 
   useEffect(() => {
     if (isMentor && !editMode && firestoreCourseId && savedOnceRef.current) {
       const payload = { _title: courseTitle, lessons: topicKeys.length, lessonContent: courseData.lessons, syllabus: topicKeys, resources: courseData.resources, emoji: courseData.emoji, color: courseData.color };
       if (courseData.featuredImage) payload.featuredImage = courseData.featuredImage;
-      updateCourse(firestoreCourseId, payload).catch(e => console.error("updateCourse error:", e));
+      updateCourse(firestoreCourseId, payload).catch(e => logger.error("updateCourse error:", e));
     }
     if (!editMode) savedOnceRef.current = true;
   }, [editMode, firestoreCourseId]);
@@ -392,7 +394,7 @@ export const CourseView = () => {
 
   const addNewTopic = () => {
     if (!newTopicName.trim()) return;
-    if (courseData.lessons[newTopicName.trim()]) return alert("Topic already exists");
+    if (courseData.lessons[newTopicName.trim()]) return toast.error("Topic already exists");
     setCourseData(prev => ({
       ...prev,
       lessons: { ...prev.lessons, [newTopicName.trim()]: { desc: "New lesson description", video: "🎬", sections: [{ type: "text", content: "Lesson content goes here." }, { type: "list", items: ["Key point 1", "Key point 2"] }] } },
@@ -402,7 +404,7 @@ export const CourseView = () => {
   };
 
   const deleteTopic = (topic) => {
-    if (topicKeys.length <= 1) return alert("A course must have at least one topic");
+    if (topicKeys.length <= 1) return toast.error("A course must have at least one topic");
     setCourseData(prev => {
       const lessons = { ...prev.lessons };
       delete lessons[topic];
@@ -414,7 +416,7 @@ export const CourseView = () => {
   const deleteCourse = () => {
     if (confirm(`Are you sure you want to delete "${courseName}"? This cannot be undone.`)) {
       if (firestoreCourseId) {
-        deleteCourseFromDb(firestoreCourseId).catch(e => console.error("deleteCourseFromDb error:", e));
+        deleteCourseFromDb(firestoreCourseId).catch(e => logger.error("deleteCourseFromDb error:", e));
       }
       navigate(role === "admin" ? "/dashboard/admin/courses" : `/dashboard/${role}/my-courses`);
     }
@@ -560,7 +562,7 @@ export const CourseView = () => {
                     style={{ position: "absolute", top: 8, right: 8, width: 28, height: 28, borderRadius: "50%", border: "none", background: "rgba(0,0,0,0.5)", color: "#fff", cursor: "pointer", fontSize: "0.8rem", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                 </div>
               )}
-              <input type="file" id="featured-image" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; if (file.size > 500 * 1024) { alert("Image too large. Please choose an image under 500KB."); return; } const reader = new FileReader(); reader.onload = (ev) => setCourseData(prev => ({ ...prev, featuredImage: ev.target.result })); reader.readAsDataURL(file); }}
+              <input type="file" id="featured-image" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (!file) return; if (file.size > 500 * 1024) { toast.error("Image too large. Please choose an image under 500KB."); return; } const reader = new FileReader(); reader.onload = (ev) => setCourseData(prev => ({ ...prev, featuredImage: ev.target.result })); reader.readAsDataURL(file); }}
                 style={{ fontSize: "0.85rem", fontFamily: "inherit" }} />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
@@ -613,7 +615,7 @@ export const CourseView = () => {
                 <input type="file" id="res-file" name="resFile" onChange={e => { const f = e.target.files?.[0]; if (f) { const r = new FileReader(); r.onload = ev => setResValue(ev.target.result); r.readAsDataURL(f); } }}
                   style={{ fontSize: "0.85rem", fontFamily: "inherit" }} />
               )}
-              <button onClick={() => { if (!resTitle.trim() || !resValue.trim()) return alert("Title and value required"); setCourseData(prev => ({ ...prev, resources: [...prev.resources, { title: resTitle.trim(), type: resType, value: resValue }] })); setResTitle(""); setResValue(""); }}
+              <button onClick={() => { if (!resTitle.trim() || !resValue.trim()) return toast.error("Title and value required"); setCourseData(prev => ({ ...prev, resources: [...prev.resources, { title: resTitle.trim(), type: resType, value: resValue }] })); setResTitle(""); setResValue(""); }}
                 style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "#006590", color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: "0.85rem" }}>Add</button>
             </div>
           </div>

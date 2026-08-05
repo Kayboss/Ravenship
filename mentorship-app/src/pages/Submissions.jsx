@@ -6,6 +6,8 @@ import { useParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { logger } from "../lib/logger";
+import { toast } from "../lib/notify";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { getSubmissions, addSubmission, updateSubmission, getAssignments, getCourses, getMenteesByMentor, setGradebookEntry } from "../firebase/db";
 import { uploadSubmissionFile, downloadFromUrl } from "../lib/upload";
@@ -281,7 +283,7 @@ export const Submissions = () => {
 
   const submitGrade = async () => {
     const score = parseInt(gradeScore);
-    if (isNaN(score) || score < 0 || score > 100) return alert("Enter a grade between 0 and 100");
+    if (isNaN(score) || score < 0 || score > 100) return toast.error("Enter a grade between 0 and 100");
     setGrading(true);
     const subId = gradeTarget.id || gradeTarget.firestoreId;
     const orig = gradeTarget;
@@ -291,11 +293,11 @@ export const Submissions = () => {
       }
       if (orig.menteeId) {
         const assignmentLabel = orig.assignmentTitle || orig.assignmentId || orig.title || "Assignment";
-        console.log("submitGrade: writing to gradebook", { menteeId: orig.menteeId, course: orig.course, assignmentLabel, score });
+        logger.log("submitGrade: writing to gradebook", { menteeId: orig.menteeId, course: orig.course, assignmentLabel, score });
         await setGradebookEntry(orig.menteeId, orig.course || "General", { [assignmentLabel]: score });
-        console.log("submitGrade: gradebook write succeeded");
+        logger.log("submitGrade: gradebook write succeeded");
       }
-    } catch (e) { console.error("submitGrade error:", e); }
+    } catch (e) { logger.error("submitGrade error:", e); }
     setSubmissions(prev => prev.map(s =>
       (s.id === subId || s.firestoreId === subId) ? { ...s, status: "reviewed", grade: score, feedback: gradeFeedback } : s
     ));
@@ -319,25 +321,25 @@ export const Submissions = () => {
     getAssignments().then(d => {
       const acc = (Array.isArray(d) ? d : []).filter(a => a.status === "accepted" || a.status === "submitted");
       setAcceptedAssignments(acc);
-    }).catch(e => console.error("getAssignments error:", e));
+    }).catch(e => logger.error("getAssignments error:", e));
 
     if (isMentor && currentUser?.id && role !== "admin") {
       getMenteesByMentor(currentUser.id).then(mentees => {
         const menteeIds = new Set(mentees.map(m => m.id));
         getSubmissions().then(d => {
           if (Array.isArray(d)) setSubmissions(d.filter(s => menteeIds.has(s.menteeId)));
-        }).catch(e => console.error("getSubmissions error:", e));
-      }).catch(e => console.error("getMenteesByMentor error:", e)).finally(() => setLoading(false));
+        }).catch(e => logger.error("getSubmissions error:", e));
+      }).catch(e => logger.error("getMenteesByMentor error:", e)).finally(() => setLoading(false));
     } else {
       const filter = isMentee ? { menteeId: currentUser.id } : {};
-      getSubmissions(filter).then(d => { if (Array.isArray(d)) setSubmissions(d); }).catch(e => console.error("getSubmissions error:", e)).finally(() => setLoading(false));
+      getSubmissions(filter).then(d => { if (Array.isArray(d)) setSubmissions(d); }).catch(e => logger.error("getSubmissions error:", e)).finally(() => setLoading(false));
     }
   }, [authReady]);
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5000000) { alert("File too large. Maximum size is 5MB."); return; }
+      if (file.size > 5000000) { toast.error("File too large. Maximum size is 5MB."); return; }
       setFileName(file.name);
       setSelectedFile(file);
     }
@@ -351,7 +353,7 @@ export const Submissions = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.title || !fileName) return;
-    if (!selectedFile) { alert("Please select a file first"); return; }
+    if (!selectedFile) { toast.error("Please select a file first"); return; }
     setSubmitting(true);
     const currentUser = getStoredUser();
     const tempId = Date.now().toString();
@@ -360,7 +362,7 @@ export const Submissions = () => {
     try {
       fileUrl = await uploadSubmissionFile(selectedFile, tempId);
       filePath = `submissions/${tempId}/${selectedFile.name}`;
-    } catch (e) { console.error("Upload failed:", e); alert("File upload failed. Try again."); setSubmitting(false); return; }
+    } catch (e) { logger.error("Upload failed:", e); toast.error("File upload failed. Try again."); setSubmitting(false); return; }
     const sizeStr = selectedFile.size < 1024 ? "<1 KB" : ((selectedFile.size / 1024).toFixed(0) + " KB");
     const newSub = {
       title: form.title,
@@ -379,7 +381,7 @@ export const Submissions = () => {
       const firestoreId = await addSubmission(newSub);
       newSub.id = firestoreId;
       newSub.firestoreId = firestoreId;
-    } catch (e) { console.error("addSubmission error:", e); newSub.id = Date.now(); }
+    } catch (e) { logger.error("addSubmission error:", e); newSub.id = Date.now(); }
     setSubmissions([newSub, ...submissions]);
     setForm({ title: "", course: "" });
     setFileName("");
@@ -395,7 +397,7 @@ export const Submissions = () => {
         const coursesData = mentorId ? await getCourses(mentorId) : [];
         setForm(prev => ({ ...prev, course: coursesData[0]?.title || "" }));
       } catch (e) {
-        console.error("getCourses error:", e);
+        logger.error("getCourses error:", e);
         setForm(prev => ({ ...prev, course: "" }));
       }
     };
@@ -408,7 +410,7 @@ export const Submissions = () => {
     if (sub.fileUrl) {
       downloadFromUrl(sub.fileUrl, sub.fileName || sub.file || "submission", sub.filePath);
     } else {
-      alert("No file available for this submission");
+      toast.info("No file available for this submission");
     }
   };
 
@@ -424,7 +426,7 @@ export const Submissions = () => {
         const coursesData = await getCourses(mentorId);
         setForm(prev => ({ ...prev, course: coursesData[0]?.title || "" }));
       } catch (e) {
-        console.error("getCourses error:", e);
+        logger.error("getCourses error:", e);
         setForm(prev => ({ ...prev, course: "" }));
       }
     };
@@ -475,7 +477,7 @@ export const Submissions = () => {
                 $drag={drag}
                 onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
                 onDragLeave={() => setDrag(false)}
-                onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) { if (f.size > 5000000) { alert("File too large. Maximum size is 5MB."); return; } setFileName(f.name); setSelectedFile(f); } }}
+                onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) { if (f.size > 5000000) { toast.error("File too large. Maximum size is 5MB."); return; } setFileName(f.name); setSelectedFile(f); } }}
                 onClick={() => document.getElementById("file-input").click()}
               >
                 <input id="file-input" type="file" style={{ display: "none" }} onChange={handleFile} />

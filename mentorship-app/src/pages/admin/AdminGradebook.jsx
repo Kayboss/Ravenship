@@ -4,6 +4,7 @@ import "aos/dist/aos.css";
 import { getAllGradebook, getUsers, getCourses, getSubmissions, setGradebookEntry } from "../../firebase/db";
 import { Card, CardTitle, Badge, Table, Th, Td } from "./adminStyles";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
+import { logger } from "../../lib/logger";
 
 export default function AdminGradebook() {
   const [mentees, setMentees] = useState([]);
@@ -28,7 +29,7 @@ export default function AdminGradebook() {
         try {
           await setGradebookEntry(s.menteeId, s.courseId || "", { [assignmentLabel]: score });
           written++;
-        } catch (e) { console.error("backfill entry error:", e); skipped++; }
+        } catch (e) { logger.error("backfill entry error:", e); skipped++; }
       }
       setBackfillResult(`Done! ${written} grade(s) written to gradebook, ${skipped} skipped.`);
       setLoading(true);
@@ -48,7 +49,7 @@ export default function AdminGradebook() {
         .catch(() => {})
         .finally(() => setLoading(false));
     } catch (e) {
-      console.error("backfill error:", e);
+      logger.error("backfill error:", e);
       setBackfillResult("Error: " + e.message);
     }
     setBackfilling(false);
@@ -69,7 +70,7 @@ export default function AdminGradebook() {
         });
       })
       .then(setMentees)
-      .catch(e => console.error("getUsers/mentees error:", e))
+      .catch(e => logger.error("getUsers/mentees error:", e))
       .finally(() => setLoading(false));
     getCourses().then(courses => {
       const names = [...new Set(courses.flatMap(c => c.assignments ? (typeof c.assignments === 'number' ? [] : c.assignments) : []))];

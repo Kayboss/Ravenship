@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { getCourses, getUsers, getAssignments, addCourse, updateCourse, deleteCourse, logActivity } from "../../firebase/db";
+import { logger } from "../../lib/logger";
+import { toast } from "../../lib/notify";
 import { Badge, SectionBox, ModalOverlay, ModalBox, ModalTitle, Input, Textarea, Select, Btn } from "./adminStyles";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
@@ -421,18 +423,18 @@ export default function AdminCourses() {
         (d || []).forEach(a => { if (a.course) counts[a.course] = (counts[a.course] || 0) + 1; });
         setAssignmentCounts(counts);
       })
-    ]).then(() => setLoading(false)).catch(e => { console.error("load error:", e); setLoading(false); });
+    ]).then(() => setLoading(false)).catch(e => { logger.error("load error:", e); setLoading(false); });
   };
 
   useEffect(() => { loadData(); }, []);
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.desc.trim() || !form.duration.trim() || !form.mentorId) {
-      alert("Please fill in all fields and select a mentor");
+      toast.error("Please fill in all fields and select a mentor");
       return;
     }
     const mentor = mentors.find(m => m.id === form.mentorId);
-    if (!mentor) { alert("Selected mentor not found"); return; }
+    if (!mentor) { toast.error("Selected mentor not found"); return; }
     setSaving(true);
     const newCourse = {
       title: form.title,
@@ -457,8 +459,8 @@ export default function AdminCourses() {
       const id = await addCourse(newCourse);
       setCourses(prev => [{ ...newCourse, id, enrolledMentees: [], syllabus: [] }, ...prev]);
       logActivity("Admin created course", { detail: `Course "${form.title}" created for mentor ${mentor.name}` });
-      alert("Course created!");
-    } catch { alert("Failed to save course."); }
+      toast.success("Course created!");
+    } catch { toast.error("Failed to save course."); }
     setShowCreate(false);
     setForm({ title:"", desc:"", badge:"Design", emoji:"🎨", duration:"", level:"Beginner", featuredImage:"", mentorId:"" });
     setSaving(false);
@@ -469,9 +471,9 @@ export default function AdminCourses() {
   };
 
   const saveEdit = async () => {
-    if (!editTarget.title.trim()) return alert("Title is required");
+    if (!editTarget.title.trim()) return toast.error("Title is required");
     const mentor = mentors.find(m => m.id === editTarget._mentorId);
-    if (!mentor) { alert("Selected mentor not found"); return; }
+    if (!mentor) { toast.error("Selected mentor not found"); return; }
     setSaving(true);
     const updated = {
       title: editTarget.title,
@@ -486,19 +488,19 @@ export default function AdminCourses() {
       duration: editTarget.duration,
     };
     if (editTarget.id) {
-      try { await updateCourse(editTarget.id, updated); } catch { alert("Failed to save changes."); setSaving(false); return; }
+      try { await updateCourse(editTarget.id, updated); } catch { toast.error("Failed to save changes."); setSaving(false); return; }
     }
     setCourses(prev => prev.map(c => c.id === editTarget.id ? { ...c, ...updated, syllabus: c.syllabus } : c));
     setEditTarget(null);
     setSaving(false);
-    alert("Course updated!");
+    toast.success("Course updated!");
   };
 
   const confirmDelete = (course) => {
     const fromArray = (course.enrolledMentees || []).length;
     const fromEnrollments = enrollmentMap.filter(e => e.courseTitle === course.title).length;
     const count = Math.max(fromArray, fromEnrollments);
-    if (count > 0) { alert(`Cannot delete "${course.title}" — ${count} mentee(s) are enrolled.`); return; }
+    if (count > 0) { toast.error(`Cannot delete "${course.title}" — ${count} mentee(s) are enrolled.`); return; }
     setDeleteTarget(course);
   };
 
@@ -509,7 +511,7 @@ export default function AdminCourses() {
       await deleteCourse(deleteTarget.id);
       setCourses(prev => prev.filter(c => c.id !== deleteTarget.id));
       logActivity("Admin deleted course", { detail: `Course "${deleteTarget.title}" deleted` });
-    } catch { alert("Failed to delete course."); }
+    } catch { toast.error("Failed to delete course."); }
     setDeleteTarget(null);
     setSaving(false);
   };
@@ -622,7 +624,7 @@ export default function AdminCourses() {
                       style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:"50%",border:"none",background:"rgba(0,0,0,0.5)",color:"#fff",cursor:"pointer",fontSize:"0.8rem"}}>✕</button>
                   </div>
                 )}
-                <input type="file" accept="image/*" onChange={e => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500*1024) { alert("Image too large. Max 500KB."); return; } const r=new FileReader(); r.onload=ev => setForm({...form, featuredImage: ev.target.result}); r.readAsDataURL(f); }}
+                <input type="file" accept="image/*" onChange={e => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500*1024) { toast.error("Image too large. Max 500KB."); return; } const r=new FileReader(); r.onload=ev => setForm({...form, featuredImage: ev.target.result}); r.readAsDataURL(f); }}
                   style={{fontSize:"0.85rem",fontFamily:"inherit"}} />
               </FormGroup>
               <div style={{display:"flex",gap:16,marginBottom:20}}>
@@ -691,7 +693,7 @@ export default function AdminCourses() {
                       style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:"50%",border:"none",background:"rgba(0,0,0,0.5)",color:"#fff",cursor:"pointer",fontSize:"0.8rem"}}>✕</button>
                   </div>
                 )}
-                <input type="file" accept="image/*" onChange={e => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500*1024) { alert("Image too large."); return; } const r=new FileReader(); r.onload=ev => setEditTarget({...editTarget, featuredImage: ev.target.result}); r.readAsDataURL(f); }}
+                <input type="file" accept="image/*" onChange={e => { const f=e.target.files?.[0]; if (!f) return; if (f.size > 500*1024) { toast.error("Image too large."); return; } const r=new FileReader(); r.onload=ev => setEditTarget({...editTarget, featuredImage: ev.target.result}); r.readAsDataURL(f); }}
                   style={{fontSize:"0.85rem",fontFamily:"inherit"}} />
               </FormGroup>
               <div style={{display:"flex",gap:16,marginBottom:20}}>

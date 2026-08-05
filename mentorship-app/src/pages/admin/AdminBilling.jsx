@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { getStoredUser } from "../../firebase/auth";
 import { submitPayment, getBillingStatus, checkOrganizationBilling } from "../../firebase/db";
 import { Card, CardTitle } from "./adminStyles";
+import { logger } from "../../lib/logger";
+import { toast } from "../../lib/notify";
 
 const PageTitle = styled.h2`
   font-size: ${(props) => props.theme.typography.heading2};
@@ -150,8 +152,8 @@ export default function AdminBilling() {
       const updated = await getBillingStatus(user.id);
       setBilling(updated);
     } catch (err) {
-      console.error("submitPayment error:", err);
-      alert("Failed to submit payment. Please try again.");
+      logger.error("submitPayment error:", err);
+      toast.error("Failed to submit payment. Please try again.");
     }
     setSubmitting(false);
   };

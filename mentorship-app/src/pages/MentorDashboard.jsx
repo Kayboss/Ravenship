@@ -6,6 +6,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { useNavigate, useParams } from "react-router-dom";
 import { MentorSidebar } from "../components/layout/MentorSidebar.jsx";
+import { logger } from "../lib/logger";
 import { TopBar } from "../components/layout/TopBar.jsx";
 
 const DashboardContainer = styled.div`
@@ -678,9 +679,9 @@ export const MentorDashboard = () => {
     const mentorId = mentor?.id || mentor?.uid || "";
     const loadDashboard = async () => {
       const [users, courses, submissions] = await Promise.all([
-        getUsers().catch(e => { console.error("getUsers error:", e); return []; }),
-        getCourses(mentorId).catch(e => { console.error("getCourses error:", e); return []; }),
-        getSubmissions({}).catch(e => { console.error("getSubmissions error:", e); return []; }),
+        getUsers().catch(e => { logger.error("getUsers error:", e); return []; }),
+        getCourses(mentorId).catch(e => { logger.error("getCourses error:", e); return []; }),
+        getSubmissions({}).catch(e => { logger.error("getSubmissions error:", e); return []; }),
       ]);
       const mentees = (users || []).filter(u => (u.mentorId === mentorId) && u.role !== "mentor" && u.role !== "admin");
       const menteeIds = mentees.map(m => m.id);

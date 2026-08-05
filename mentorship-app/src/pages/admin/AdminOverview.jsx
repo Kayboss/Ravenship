@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { getStoredUser } from "../../firebase/auth";
 import { getUsers, getAnnouncements, getAnalytics, getSubmissions, getSiteVisits, getCourses } from "../../firebase/db";
 import { db } from "../../firebase/config";
+import { logger } from "../../lib/logger";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import {
   Card, CardTitle, KpiGrid, KpiCard, KpiIcon, KpiValue, KpiLabel, KpiTrend,
@@ -28,8 +29,8 @@ export default function AdminOverview() {
   const [loading, setLoading] = useState(true);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getAnalytics().then(d => { setData(d); setLoading(false); }).catch(e => { console.error("getAnalytics error:", e); setLoading(false); });
-    getSiteVisits().then(d => setVisits(d)).catch(e => console.error("getSiteVisits error:", e));
+    getAnalytics().then(d => { setData(d); setLoading(false); }).catch(e => { logger.error("getAnalytics error:", e); setLoading(false); });
+    getSiteVisits().then(d => setVisits(d)).catch(e => logger.error("getSiteVisits error:", e));
     Promise.all([
       getAnnouncements(),
       getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
@@ -42,7 +43,7 @@ export default function AdminOverview() {
         return tb - ta;
       });
       setNotifs(merged);
-    }).catch(e => console.error("getAnnouncements/notifications error:", e));
+    }).catch(e => logger.error("getAnnouncements/notifications error:", e));
     getUsers().then(allUsers => {
       const arr = allUsers.filter(u => !u.deleted);
       setUsers(arr);
@@ -50,7 +51,7 @@ export default function AdminOverview() {
       allUsers.forEach(u => { const c = u.city || "Unknown"; cities[c] = (cities[c]||0)+1; });
       const total = allUsers.length || 1;
       setSourceData(Object.entries(cities).map(([l, v]) => ({ l, v: Math.round((v/total)*100), c: "#b50064" })));
-    }).catch(e => console.error("getUsers error:", e));
+    }).catch(e => logger.error("getUsers error:", e));
   }, []);
   const filteredUsers = roleFilter === "all" ? users : users.filter(u => u.role === roleFilter);
   const greeting = (() => { const h = new Date().getHours(); if (h < 12) return "Good morning"; if (h < 18) return "Good afternoon"; return "Good evening"; })();

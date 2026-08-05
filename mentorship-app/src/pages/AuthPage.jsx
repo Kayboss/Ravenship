@@ -124,8 +124,6 @@ export const AuthPage = () => {
         setAuthMessage({ text: "Too many attempts. Try again later.", type: "error" });
       } else if (code === "auth/network-request-failed") {
         setAuthMessage({ text: "Network error. Check your connection.", type: "error" });
-      } else if (message) {
-        setAuthMessage({ text: message, type: "error" });
       } else {
         setAuthMessage({ text: "Something went wrong. Please try again.", type: "error" });
       }

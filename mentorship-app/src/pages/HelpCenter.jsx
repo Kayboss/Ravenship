@@ -8,6 +8,7 @@ import { TopBar } from "../components/layout/TopBar.jsx";
 import { getCounsellingRequests, deleteCounsellingRequest, getSponsorshipRequests, deleteSponsorshipRequest } from "../firebase/db";
 import { onAuthReady } from "../firebase/auth";
 import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
+import { toast } from "../lib/notify";
 
 const Page = styled.div`
   display: flex;
@@ -303,7 +304,7 @@ export const HelpCenter = () => {
             <Card data-aos="fade-up">
               <CardTitle>💬 Live Chat</CardTitle>
               <CardDesc>Chat with our support team in real-time during business hours.</CardDesc>
-              <ContactBtn as="button" style={{ border: "none", cursor: "pointer", fontFamily: "inherit" }} onClick={() => alert("Live chat coming soon!")}>Start Live Chat</ContactBtn>
+              <ContactBtn as="button" style={{ border: "none", cursor: "pointer", fontFamily: "inherit" }} onClick={() => toast.info("Live chat coming soon!")}>Start Live Chat</ContactBtn>
             </Card>
           )}
           <Card data-aos="fade-up">
@@ -314,7 +315,7 @@ export const HelpCenter = () => {
           <Card data-aos="fade-up">
             <CardTitle>📚 Quick Guide</CardTitle>
             <CardDesc>New here? Get started with our platform overview.</CardDesc>
-            <ContactBtn href="#" onClick={(e) => { e.preventDefault(); alert("Quick start guide coming soon!") }}>View Quick Start Guide →</ContactBtn>
+            <ContactBtn href="#" onClick={(e) => { e.preventDefault(); toast.info("Quick start guide coming soon!") }}>View Quick Start Guide →</ContactBtn>
           </Card>
           <Card data-aos="fade-up">
             <CardTitle>🛠️ Report a Bug</CardTitle>

@@ -4,6 +4,7 @@ import "aos/dist/aos.css";
 import { getActivitiesPaginated, pruneOldActivity } from "../../firebase/db";
 import { Card, CardTitle } from "./adminStyles";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
+import { logger } from "../../lib/logger";
 
 export default function AdminActivity() {
   const [activities, setActivities] = useState([]);
@@ -19,7 +20,7 @@ export default function AdminActivity() {
       setLastDoc(ld);
       setHasMore(hm);
       setLoading(false);
-    }).catch(e => { console.error("getActivities error:", e); setLoading(false); });
+    }).catch(e => { logger.error("getActivities error:", e); setLoading(false); });
   }, []);
   const loadMore = () => {
     if (loading || !hasMore) return;
@@ -29,7 +30,7 @@ export default function AdminActivity() {
       setLastDoc(ld);
       setHasMore(hm);
       setLoading(false);
-    }).catch(e => { console.error("loadMore error:", e); setLoading(false); });
+    }).catch(e => { logger.error("loadMore error:", e); setLoading(false); });
   };
   if (loading && activities.length === 0) return <Card data-aos="fade-up"><LoadingSpinner label="Loading activity..." fullHeight /></Card>;
   return (

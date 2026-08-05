@@ -5,6 +5,8 @@ import "aos/dist/aos.css";
 import { useParams, useNavigate } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { logger } from "../lib/logger";
+import { toast } from "../lib/notify";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import { updateUser, logActivity, getUser } from "../firebase/db";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -388,7 +390,7 @@ export const Settings = () => {
       }
       setLoading(false);
     }).catch(e => {
-      console.error("Settings load error:", e);
+      logger.error("Settings load error:", e);
       const cached = localStorage.getItem("settings_" + sUser.id);
       if (cached) {
         try {
@@ -408,7 +410,7 @@ export const Settings = () => {
     setNotifPrefs(prev => {
       const next = { ...prev, [key]: !prev[key] };
       const sUser = getStoredUser();
-      if (sUser?.id) updateUser(sUser.id, { notifPrefs: next }).catch(e => console.error("save notifPrefs error:", e));
+      if (sUser?.id) updateUser(sUser.id, { notifPrefs: next }).catch(e => logger.error("save notifPrefs error:", e));
       return next;
     });
   };
@@ -461,8 +463,8 @@ export const Settings = () => {
     setUploadStage("");
 
     if (currentPw || newPw || confirmPw) {
-      if (newPw !== confirmPw) { setSaving(false); alert("Passwords do not match."); return; }
-      if (newPw.length < 8) { setSaving(false); alert("Password must be at least 8 characters."); return; }
+      if (newPw !== confirmPw) { setSaving(false); toast.error("Passwords do not match."); return; }
+      if (newPw.length < 8) { setSaving(false); toast.error("Password must be at least 8 characters."); return; }
     }
 
     try {
@@ -490,8 +492,8 @@ export const Settings = () => {
       setSaving(false);
       setUploadStage("");
       setUploadProgress(0);
-      console.error("Settings save error:", err);
-      alert(err?.message || "Network error. Could not save profile.");
+      logger.error("Settings save error:", err);
+      toast.error(err?.message || "Network error. Could not save profile.");
       return;
     }
 
@@ -506,7 +508,7 @@ export const Settings = () => {
         }
       } catch (err) {
         setSaving(false);
-        alert("Password change failed: " + (err.message || "Unknown error"));
+        toast.error("Password change failed: " + (err.message || "Unknown error"));
         return;
       }
     }
@@ -757,12 +759,12 @@ function CommunitySettingsCard() {
     if (!authReady) return;
     getDoc(doc(db, "communitySettings", "main"))
       .then((snap) => { if (snap.exists()) setSettings(snap.data()); })
-      .catch(e => console.error("getCommunitySettings error:", e));
+      .catch(e => logger.error("getCommunitySettings error:", e));
   }, [authReady]);
   const save = () => {
     setDoc(doc(db, "communitySettings", "main"), settings, { merge: true })
       .then(() => { setSaved(true); setTimeout(() => setSaved(false), 2000); })
-      .catch(e => console.error("saveCommunitySettings error:", e));
+      .catch(e => logger.error("saveCommunitySettings error:", e));
   };
   return (
     <Card $span2 data-aos="fade-up">

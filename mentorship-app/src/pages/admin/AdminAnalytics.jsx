@@ -4,13 +4,14 @@ import "aos/dist/aos.css";
 import { getAnalytics } from "../../firebase/db";
 import { Card, CardTitle, StatGrid, StatCard, StatNum, StatLabel } from "./adminStyles";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
+import { logger } from "../../lib/logger";
 
 export default function AdminAnalytics() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   useEffect(() => { AOS.init({ once: true }); }, []);
   useEffect(() => {
-    getAnalytics().then(d => setData(d)).catch(e => console.error("getAnalytics error:", e)).finally(() => setLoading(false));
+    getAnalytics().then(d => setData(d)).catch(e => logger.error("getAnalytics error:", e)).finally(() => setLoading(false));
   }, []);
   if (loading) return <Card data-aos="fade-up"><LoadingSpinner label="Loading..." fullHeight /></Card>;
   return (

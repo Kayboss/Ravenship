@@ -6,6 +6,7 @@ import { useParams, Link } from "react-router-dom";
 import { jsPDF } from "jspdf";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { logger } from "../lib/logger";
 import { addSponsorshipRequest, getUser } from "../firebase/db";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
@@ -244,9 +245,9 @@ export const SponsorshipRequest = () => {
     if (user?.id && role === "mentee") {
       getUser(user.id).then(u => {
         if (u?.mentorId) {
-          getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(e => console.error("getUser/mentor groupName error:", e));
+          getUser(u.mentorId).then(m => { if (m?.groupName) setGroupName(m.groupName); }).catch(e => logger.error("getUser/mentor groupName error:", e));
         }
-      }).catch(e => console.error("getUser/mentee error:", e)).finally(() => setLoading(false));
+      }).catch(e => logger.error("getUser/mentee error:", e)).finally(() => setLoading(false));
     } else {
       setLoading(false);
     }

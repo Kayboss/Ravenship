@@ -5,6 +5,8 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser, unenrollMentee } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
+import { logger } from "../../lib/logger";
+import { toast } from "../../lib/notify";
 import { Card, Badge, BioModal } from "./adminStyles";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
@@ -29,7 +31,7 @@ export default function AdminMentees() {
         const enrollments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setEnrollmentMap(enrollments);
       })
-    ]).then(() => setLoading(false)).catch(e => { console.error("loadData error:", e); setLoading(false); });
+    ]).then(() => setLoading(false)).catch(e => { logger.error("loadData error:", e); setLoading(false); });
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
   const doVerify = (id, v) => {
@@ -146,7 +148,7 @@ export default function AdminMentees() {
                           <div style={{padding:"12px 16px",borderTop:"1px solid #e0e0e0"}}>
                             <p style={{fontSize:"0.8rem",fontWeight:600,color:"#2c3e50",marginBottom:6}}>Course Details</p>
                             <p style={{fontSize:"0.78rem",color:"#594048"}}>Instructor: {c.instructor} · Level: {c.level} · Duration: {c.duration}</p>
-                            <button disabled={unenrollingId === c.id} onClick={async () => { if (confirm(`Remove ${u.name} from "${c.title}"?`)) { setUnenrollingId(c.id); try { await unenrollMentee(c.id, u.id); setExpandedCourse(null); } catch (e) { alert(e.message); } finally { setUnenrollingId(null); } } }} style={{marginTop:8,padding:"6px 14px",borderRadius:8,border:"1px solid #e53935",background:"transparent",color:"#e53935",fontFamily:"inherit",fontWeight:600,fontSize:"0.78rem",cursor:"pointer",opacity:unenrollingId===c.id?0.6:1}}>{unenrollingId===c.id?"Removing...":"Unenroll"}</button>
+                            <button disabled={unenrollingId === c.id} onClick={async () => { if (confirm(`Remove ${u.name} from "${c.title}"?`)) { setUnenrollingId(c.id); try { await unenrollMentee(c.id, u.id); setExpandedCourse(null); } catch (e) { toast.error(e.message); } finally { setUnenrollingId(null); } } }} style={{marginTop:8,padding:"6px 14px",borderRadius:8,border:"1px solid #e53935",background:"transparent",color:"#e53935",fontFamily:"inherit",fontWeight:600,fontSize:"0.78rem",cursor:"pointer",opacity:unenrollingId===c.id?0.6:1}}>{unenrollingId===c.id?"Removing...":"Unenroll"}</button>
                           </div>
                         )}
                       </div>

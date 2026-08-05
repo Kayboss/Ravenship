@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { SidebarByRole } from "../components/layout/SidebarByRole.jsx";
 import { useCourses } from "../context/CourseContext.jsx";
 import { TopBar } from "../components/layout/TopBar.jsx";
+import { logger } from "../lib/logger";
+import { toast } from "../lib/notify";
 import { getUser, getCourses, getAssignments, getSubmissions, addAssignment, updateAssignment, deleteAssignment, addSubmission, logActivity, getMenteesByMentor } from "../firebase/db";
 import { getStoredUser, onAuthReady } from "../firebase/auth";
 import LoadingSpinner from "../components/ui/LoadingSpinner.jsx";
@@ -571,7 +573,7 @@ export const Assignments = () => {
           const c = await getCourses();
           if (Array.isArray(c)) setCourses(c);
           const d = await getAssignments();
-          const subs = await getSubmissions({}).catch(e => { console.error("getSubmissions error:", e); return []; });
+          const subs = await getSubmissions({}).catch(e => { logger.error("getSubmissions error:", e); return []; });
           if (Array.isArray(d)) {
             const subCounts = {};
             (subs || []).forEach(s => {
@@ -589,7 +591,7 @@ export const Assignments = () => {
           const c = await getCourses(currentUser.id);
           if (Array.isArray(c)) setCourses(c);
           const d = await getAssignments(currentUser.id);
-          const subs = await getSubmissions({}).catch(e => { console.error("getSubmissions error:", e); return []; });
+          const subs = await getSubmissions({}).catch(e => { logger.error("getSubmissions error:", e); return []; });
           if (Array.isArray(d)) {
             const subCounts = {};
             (subs || []).forEach(s => {
@@ -609,7 +611,7 @@ export const Assignments = () => {
           if (mentorId) {
             setMenteeMentorId(mentorId);
             const d = await getAssignments(mentorId);
-            const subs = await getSubmissions({}).catch(e => { console.error("getSubmissions error:", e); return []; });
+            const subs = await getSubmissions({}).catch(e => { logger.error("getSubmissions error:", e); return []; });
             if (Array.isArray(d)) {
               const subCounts = {};
               (subs || []).forEach(s => {
@@ -629,7 +631,7 @@ export const Assignments = () => {
           const d = await getAssignments();
           if (Array.isArray(d)) setAssignments(d);
         }
-      } catch (e) { console.error("load assignments error:", e); }
+      } catch (e) { logger.error("load assignments error:", e); }
       setLoading(false);
     };
     load();
@@ -648,11 +650,11 @@ export const Assignments = () => {
     setSaving(true);
     try {
       if (editingAssignment.firestoreId) await updateAssignment(editingAssignment.firestoreId, { title: editingAssignment.title, course: editingAssignment.course, desc: editingAssignment.desc, content: editingAssignment.content || "", marks: editingAssignment.marks, due: editingAssignment.due });
-    } catch (e) { console.error("updateAssignment error:", e); }
+    } catch (e) { logger.error("updateAssignment error:", e); }
     setAssignments(prev => prev.map(a => a.id === editingAssignment.id ? { ...editingAssignment } : a));
     setEditingAssignment(null);
     setSaving(false);
-    alert("Assignment updated!");
+    toast.success("Assignment updated!");
   };
 
   const handleDeleteAssignment = async (id) => {
@@ -662,13 +664,13 @@ export const Assignments = () => {
     try {
       if (target.firestoreId) await deleteAssignment(target.firestoreId);
       setAssignments(prev => prev.filter(a => a.id !== id));
-    } catch (e) { console.error("deleteAssignment error:", e); alert("Failed to delete assignment."); }
+    } catch (e) { logger.error("deleteAssignment error:", e); toast.error("Failed to delete assignment."); }
     setDeletingId(null);
   };
 
   const handleCreateAssignment = async () => {
     if (!newAssignment.title.trim() || !newAssignment.course) {
-      alert("Please fill in all required fields (title, course)");
+      toast.error("Please fill in all required fields (title, course)");
       return;
     }
     setSaving(true);
@@ -695,19 +697,19 @@ export const Assignments = () => {
     try {
       const firestoreId = await addAssignment(assignment);
       assignment.firestoreId = firestoreId;
-    } catch (e) { console.error("addAssignment error:", e); }
+    } catch (e) { logger.error("addAssignment error:", e); }
     setAssignments([assignment, ...assignments]);
     setNewAssignment({ title: "", course: "", desc: "", content: "", marks: "", due: "" });
     setShowCreateForm(false);
     setSaving(false);
-    alert("Assignment posted!");
+    toast.success("Assignment posted!");
   };
 
   const handleAccept = async (id) => {
     const a = assignments.find(x => x.id === id);
     if (!a) return;
     if (a.firestoreId) {
-      try { await updateAssignment(a.firestoreId, { status: "accepted" }); } catch (e) { console.error("updateAssignment error:", e); }
+      try { await updateAssignment(a.firestoreId, { status: "accepted" }); } catch (e) { logger.error("updateAssignment error:", e); }
     }
     setAssignments(prev => prev.map(x => x.id === id ? { ...x, status: "accepted" } : x));
   };
@@ -989,15 +991,15 @@ export const Assignments = () => {
                     style={{ flex: 1, fontSize: "0.85rem", fontFamily: "inherit" }} />
                   <button onClick={async () => {
                     const f = document.getElementById(`file-${a.id}`).files?.[0];
-                    if (!f) return alert("Please select a file");
-                    if (f.size > 5000000) { alert("File too large. Maximum size is 5MB."); return; }
+                    if (!f) return toast.error("Please select a file");
+                    if (f.size > 5000000) { toast.error("File too large. Maximum size is 5MB."); return; }
                     let fileUrl = "";
                     let filePath = "";
                     try {
                       const submissionId = Date.now().toString();
                       fileUrl = await uploadSubmissionFile(f, submissionId);
                       filePath = `submissions/${submissionId}/${f.name}`;
-                    } catch { alert("File upload failed. Try again."); return; }
+                    } catch { toast.error("File upload failed. Try again."); return; }
                     const u = getStoredUser();
                     const subData = {
                       assignmentId: a.id,
@@ -1010,9 +1012,9 @@ export const Assignments = () => {
                       menteeId: u?.id || null,
                       menteeName: u?.name || "Unknown",
                     };
-                    await addSubmission(subData).catch(e => console.error("addSubmission error:", e));
+                    await addSubmission(subData).catch(e => logger.error("addSubmission error:", e));
                     setAssignments(prev => prev.map(x => x.id === a.id ? { ...x, status: "submitted" } : x));
-                    alert(`Submitted "${a.title}" successfully!`);
+                    toast.success(`Submitted "${a.title}" successfully!`);
                   }}
                     style={{ padding: "8px 20px", borderRadius: 10, border: "none", background: "#b50064", color: "#fff", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
                     Upload & Submit

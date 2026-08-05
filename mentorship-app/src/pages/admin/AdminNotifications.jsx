@@ -6,6 +6,7 @@ import { db } from "../../firebase/config";
 import { collection, getDocs, deleteDoc, doc, query, orderBy } from "firebase/firestore";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 import { Card, CardTitle, Input, Textarea, Select, Btn } from "./adminStyles";
+import { logger } from "../../lib/logger";
 
 export default function AdminNotifications() {
   const [loading, setLoading] = useState(true);
@@ -20,7 +21,7 @@ export default function AdminNotifications() {
   useEffect(() => {
     getDocs(query(collection(db, "notifications"), orderBy("createdAt", "desc")))
       .then(snap => setList(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-      .catch(e => console.error("getNotifications error:", e))
+      .catch(e => logger.error("getNotifications error:", e))
       .finally(() => setLoading(false));
   }, []);
   const send = () => {

@@ -5,6 +5,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/config";
 import { getUsers, verifyUser, unverifyUser, getCourses, logActivity, updateUser, deleteUser } from "../../firebase/db";
 import { sendApprovedEmail } from "../../lib/email";
+import { logger } from "../../lib/logger";
 import { Card, Badge, Table, Th, Td, BioModal } from "./adminStyles";
 import LoadingSpinner from "../../components/ui/LoadingSpinner.jsx";
 
@@ -32,7 +33,7 @@ export default function AdminMentors() {
       getDocs(collection(db, "enrollments")).then(snap => {
         setEnrollmentMap(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       })
-    ]).then(() => setLoading(false)).catch(e => { console.error("loadData error:", e); setLoading(false); });
+    ]).then(() => setLoading(false)).catch(e => { logger.error("loadData error:", e); setLoading(false); });
   }, []);
   useEffect(() => { loadData(); }, [loadData]);
   const resolveMentees = (ids) => ids.map(id => allUsers.find(u => u.id === id)).filter(Boolean);

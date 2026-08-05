@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { getEnrollments, setEnrollment, deleteEnrollment, getUser, getCourses } from "../firebase/db";
 import { getStoredUser } from "../firebase/auth";
+import { logger } from "../lib/logger";
 
 const CourseContext = createContext({
   enrolledCourses: {},
@@ -50,7 +51,7 @@ export const CourseProvider = ({ children }) => {
       startedAt: data.startedAt || new Date().toISOString(),
       progress: data.progress ?? 0,
       lastTopic: data.lastTopic ?? 0,
-    }).catch(e => console.error("setEnrollment error:", e));
+    }).catch(e => logger.error("setEnrollment error:", e));
   }, []);
 
   const enrollCourse = useCallback((title) => {
@@ -92,7 +93,7 @@ export const CourseProvider = ({ children }) => {
     });
     const user = getStoredUser();
     if (user?.id) {
-      deleteEnrollment(user.id, title).catch(e => console.error("deleteEnrollment error:", e));
+      deleteEnrollment(user.id, title).catch(e => logger.error("deleteEnrollment error:", e));
     }
   }, []);
 
