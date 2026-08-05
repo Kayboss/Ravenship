@@ -30,9 +30,10 @@ import AdminBillingVerify from "./pages/admin/AdminBillingVerify.jsx";
 import { HelpCenter } from "./pages/HelpCenter.jsx";
 import { CounsellingRequest } from "./pages/CounsellingRequest.jsx";
 import { SponsorshipRequest } from "./pages/SponsorshipRequest.jsx";
-import { logError, trackSiteVisit } from "./firebase/db";
+import { logError, trackSiteVisit, pruneOldActivity, pruneOldErrors } from "./firebase/db";
 import { watchPresence, onAuthReady, getStoredUser } from "./firebase/auth";
 import { getUser, checkOrganizationBilling } from "./firebase/db";
+import { logger } from "./lib/logger";
 
 const AuthGuard = ({ children, expectedRole }) => {
   const [ready, setReady] = useState(false);
@@ -143,9 +144,39 @@ const GlobalErrorLogger = () => {
   return null;
 };
 
+const LOG_PRUNE_KEY = "log_prune_last_run";
+const LOG_PRUNE_INTERVAL = 6 * 60 * 60 * 1000;
+
+const LogCleaner = () => {
+  useEffect(() => {
+    const run = async () => {
+      try {
+        const user = getStoredUser();
+        if (!user || user.role !== "admin") return;
+        const now = Date.now();
+        const last = parseInt(localStorage.getItem(LOG_PRUNE_KEY) || "0", 10);
+        if (now - last < LOG_PRUNE_INTERVAL) return;
+        localStorage.setItem(LOG_PRUNE_KEY, String(now));
+        const activityRemoved = await pruneOldActivity(3);
+        const errorsRemoved = await pruneOldErrors(1);
+        if (activityRemoved || errorsRemoved) {
+          logger.info(`Log cleanup: removed ${activityRemoved} activity + ${errorsRemoved} error entries`);
+        }
+      } catch (e) {
+        logger.error("LogCleaner error:", e);
+      }
+    };
+    run();
+    const id = setInterval(run, LOG_PRUNE_INTERVAL);
+    return () => clearInterval(id);
+  }, []);
+  return null;
+};
+
 export const App = () => (
   <BrowserRouter>
     <GlobalErrorLogger />
+    <LogCleaner />
     <ErrorBoundary>
       <AppLayout>
         <Routes>
